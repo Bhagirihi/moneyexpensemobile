@@ -110,22 +110,6 @@ export const DashboardScreen = ({ navigation }) => {
     }
   };
 
-  const renderRightSection = () => (
-    <View style={styles.headerRight}>
-      <TouchableOpacity
-        style={styles.notificationButton}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <MaterialCommunityIcons
-          name="bell-outline"
-          size={24}
-          color={theme.text}
-        />
-      </TouchableOpacity>
-      <ThemeToggle />
-    </View>
-  );
-
   const renderBalanceCard = () => (
     <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
       {/* <View style={styles.balanceHeader}>
@@ -218,25 +202,21 @@ export const DashboardScreen = ({ navigation }) => {
     <View style={styles.quickActions}>
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: theme.card }]}
-        onPress={() => {
-          /* Navigate to Add Trip */
-        }}
+        onPress={() => navigation.navigate("ExpenseBoard")}
       >
         <MaterialCommunityIcons
-          name="plus-circle-outline"
+          name="view-grid"
           size={24}
-          color={theme.primary}
+          color={theme.success}
         />
-        <Text style={[styles.actionText, { color: theme.text }]}>Add Trip</Text>
+        <Text style={[styles.actionText, { color: theme.text }]}>Boards</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: theme.card }]}
-        onPress={() => {
-          /* Navigate to Add Expense */
-        }}
+        onPress={() => navigation.navigate("AddExpense")}
       >
         <MaterialCommunityIcons
-          name="wallet-outline"
+          name="plus-circle-outline"
           size={24}
           color={theme.primary}
         />
@@ -246,19 +226,84 @@ export const DashboardScreen = ({ navigation }) => {
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: theme.card }]}
-        onPress={() => {
-          /* Navigate to Analytics */
-        }}
+        onPress={() => navigation.navigate("Categories")}
       >
-        <MaterialCommunityIcons
-          name="chart-pie"
-          size={24}
-          color={theme.primary}
-        />
+        <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
         <Text style={[styles.actionText, { color: theme.text }]}>
-          Analytics
+          Categories
         </Text>
       </TouchableOpacity>
+    </View>
+  );
+
+  const renderNavigationOptions = () => (
+    <View style={styles.navigationSection}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        More Options
+      </Text>
+      <View style={styles.navigationGrid}>
+        <TouchableOpacity
+          style={[styles.navButton, { backgroundColor: theme.card }]}
+          onPress={() => navigation.navigate("Analytics")}
+        >
+          <MaterialCommunityIcons
+            name="chart-bar"
+            size={24}
+            color={theme.primary}
+          />
+          <Text style={[styles.navButtonText, { color: theme.text }]}>
+            Analytics
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, { backgroundColor: theme.card }]}
+          onPress={() => navigation.navigate("Analysis")}
+        >
+          <MaterialCommunityIcons
+            name="chart-line"
+            size={24}
+            color={theme.success}
+          />
+          <Text style={[styles.navButtonText, { color: theme.text }]}>
+            Analysis
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, { backgroundColor: theme.card }]}
+          onPress={() => navigation.navigate("Notification")}
+        >
+          <MaterialCommunityIcons name="bell" size={24} color={theme.warning} />
+          <Text style={[styles.navButtonText, { color: theme.text }]}>
+            Notifications
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, { backgroundColor: theme.card }]}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          <MaterialCommunityIcons
+            name="account"
+            size={24}
+            color={theme.error}
+          />
+          <Text style={[styles.navButtonText, { color: theme.text }]}>
+            Profile
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navButton, { backgroundColor: theme.card }]}
+          onPress={() => navigation.navigate("Settings")}
+        >
+          <MaterialCommunityIcons
+            name="cog"
+            size={24}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.navButtonText, { color: theme.text }]}>
+            Settings
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -272,28 +317,58 @@ export const DashboardScreen = ({ navigation }) => {
     );
   }
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerContent}>
+        <View>
+          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+            Welcome back,
+          </Text>
+          <Text style={[styles.nameText, { color: theme.text }]}>
+            {userProfile?.full_name || "John Doe"}
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Notification")}
+            style={styles.notificationButton}
+          >
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={24}
+              color={theme.text}
+            />
+          </TouchableOpacity>
+          <ThemeToggle />
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header
+      {renderHeader()}
+      {/* <Header
         title={userProfile?.full_name || "John Doe"}
         onBack={() => navigation.goBack()}
         rightComponent={renderRightSection()}
         showBack={false}
-      />
+      /> */}
       <ScrollView showsVerticalScrollIndicator={false}>
         {renderBalanceCard()}
         {renderQuickActions()}
         <ExpenseList
           expenses={expenses.slice(0, 4)}
           onExpensePress={(expense) => {
-            /* Navigate to Expense Details */
+            navigation.navigate("Expense", { expense });
           }}
           onSeeAllPress={() => {
             navigation.navigate("Expense");
           }}
         />
+        {renderNavigationOptions()}
       </ScrollView>
       <FooterTab navigation={navigation} />
     </SafeAreaView>
@@ -304,14 +379,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    padding: 20,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+  },
+  welcomeText: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  nameText: {
+    fontSize: 24,
+    fontWeight: "bold",
   },
   notificationButton: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 8,
   },
+  // headerRight: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   gap: 12,
+  // },
+  // notificationButton: {
+  //   padding: 4,
+  // },
   balanceCard: {
     marginHorizontal: 20,
     marginBottom: 20,
@@ -408,5 +507,38 @@ const styles = StyleSheet.create({
   actionText: {
     marginTop: 8,
     fontSize: 12,
+  },
+  navigationSection: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 16,
+  },
+  navigationGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  navButton: {
+    width: "48%",
+    padding: 16,
+    borderRadius: 15,
+    alignItems: "center",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+  },
+  navButtonText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

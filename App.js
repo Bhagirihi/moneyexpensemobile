@@ -1,18 +1,31 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "./src/context/ThemeContext";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
-import { WelcomeScreen } from "./src/screens/WelcomeScreen";
-import { OnboardingScreen } from "./src/screens/OnboardingScreen";
+
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { RegisterScreen } from "./src/screens/RegisterScreen";
 import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 import { VerificationScreen } from "./src/screens/VerificationScreen";
+
+// Import all screens
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
+import { WelcomeScreen } from "./src/screens/WelcomeScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { ExpenseScreen } from "./src/screens/ExpenseScreen";
 import { AddExpenseScreen } from "./src/screens/AddExpenseScreen";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ExpenseBoardScreen } from "./src/screens/ExpenseBoardScreen";
+import { ExpenseBoardDetailsScreen } from "./src/screens/ExpenseBoardDetailsScreen";
+import { CreateExpenseBoardScreen } from "./src/screens/CreateExpenseBoardScreen";
+import { CategoriesScreen } from "./src/screens/CategoriesScreen";
+import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
+import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
+import { AnalysisScreen } from "./src/screens/AnalysisScreen";
+import { NotificationScreen } from "./src/screens/NotificationScreen";
+import { ProfileScreen } from "./src/screens/ProfileScreen";
+import { SettingsScreen } from "./src/screens/SettingsScreen";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
@@ -89,6 +102,22 @@ const Navigation = () => {
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="Expense" component={ExpenseScreen} />
           <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+          <Stack.Screen name="ExpenseBoard" component={ExpenseBoardScreen} />
+          <Stack.Screen
+            name="ExpenseBoardDetails"
+            component={ExpenseBoardDetailsScreen}
+          />
+          <Stack.Screen
+            name="CreateExpenseBoard"
+            component={CreateExpenseBoardScreen}
+          />
+          <Stack.Screen name="Categories" component={CategoriesScreen} />
+          <Stack.Screen name="AddCategory" component={AddCategoryScreen} />
+          <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+          <Stack.Screen name="Analysis" component={AnalysisScreen} />
+          <Stack.Screen name="Notification" component={NotificationScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </>
       )}
     </Stack.Navigator>
