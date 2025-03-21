@@ -1,18 +1,19 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ThemeProvider } from "./src/context/ThemeContext";
-import { AuthProvider } from "./src/context/AuthContext";
-import WelcomeScreen from "./src/screens/WelcomeScreen";
-import OnboardingScreen from "./src/screens/OnboardingScreen";
-import LoginScreen from "./src/screens/LoginScreen";
-import RegisterScreen from "./src/screens/RegisterScreen";
-import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
-import VerificationScreen from "./src/screens/VerificationScreen";
-import HomeScreen from "./src/screens/HomeScreen";
-import { useAuth } from "./src/context/AuthContext";
+import { AuthProvider, useAuth } from "./src/context/AuthContext";
+import { WelcomeScreen } from "./src/screens/WelcomeScreen";
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
+import { LoginScreen } from "./src/screens/LoginScreen";
+import { RegisterScreen } from "./src/screens/RegisterScreen";
+import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
+import { VerificationScreen } from "./src/screens/VerificationScreen";
+import { DashboardScreen } from "./src/screens/DashboardScreen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-const Stack = createStackNavigator();
+// Initialize native stack navigator
+const Stack = createNativeStackNavigator();
 
 const config = {
   animation: "spring",
@@ -58,43 +59,48 @@ const screenOptions = {
   },
 };
 
-const AuthStack = () => (
-  <Stack.Navigator screenOptions={screenOptions}>
-    <Stack.Screen name="Welcome" component={WelcomeScreen} />
-    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-    <Stack.Screen name="Verification" component={VerificationScreen} />
-  </Stack.Navigator>
-);
-
-const AppStack = () => (
-  <Stack.Navigator screenOptions={screenOptions}>
-    <Stack.Screen name="Home" component={HomeScreen} />
-  </Stack.Navigator>
-);
-
 const Navigation = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return null; // Or a loading screen
+    return null;
   }
 
   return (
-    <NavigationContainer>
-      {user ? <AppStack /> : <AuthStack />}
-    </NavigationContainer>
+    <Stack.Navigator screenOptions={screenOptions}>
+      {!user ? (
+        // Auth Stack
+        <>
+          <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+          />
+          <Stack.Screen name="Verification" component={VerificationScreen} />
+        </>
+      ) : (
+        // App Stack
+        <>
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+        </>
+      )}
+    </Stack.Navigator>
   );
 };
 
 export default function App() {
   return (
-    <ThemeProvider>
+    <SafeAreaProvider>
       <AuthProvider>
-        <Navigation />
+        <ThemeProvider>
+          <NavigationContainer>
+            <Navigation />
+          </NavigationContainer>
+        </ThemeProvider>
       </AuthProvider>
-    </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

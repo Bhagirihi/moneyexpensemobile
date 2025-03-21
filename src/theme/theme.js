@@ -12,6 +12,12 @@ export const lightTheme = {
   nextButtonBackground: "#F5F5F5",
   nextButtonInner: "#000000",
   nextButtonText: "#FFFFFF",
+  // Dashboard specific colors
+  white: "#FFFFFF",
+  success: "#4CAF50",
+  card: "#FFFFFF",
+  border: "#E0E0E0",
+  shadow: "rgba(0, 0, 0, 0.1)",
 };
 
 export const darkTheme = {
@@ -28,4 +34,10 @@ export const darkTheme = {
   nextButtonBackground: "#333333",
   nextButtonInner: "#FFFFFF",
   nextButtonText: "#000000",
+  // Dashboard specific colors
+  white: "#FFFFFF",
+  success: "#4CAF50",
+  card: "#2A2A2A",
+  border: "#333333",
+  shadow: "rgba(0, 0, 0, 0.3)",
 };
