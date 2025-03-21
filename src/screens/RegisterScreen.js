@@ -11,9 +11,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { signUpWithEmail } from "../config/supabase";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -26,6 +28,7 @@ const RegisterScreen = ({ navigation }) => {
   });
   const [errors, setErrors] = useState({});
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -81,20 +84,36 @@ const RegisterScreen = ({ navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (validateForm()) {
-      // Implement register logic here
-      console.log("Register attempted with:", formData);
+      setLoading(true);
+      try {
+        const { data, error } = await signUpWithEmail(
+          formData.email,
+          formData.password,
+          {
+            full_name: formData.name,
+            mobile: formData.mobile,
+          }
+        );
 
-      // Navigate to verification screen with both email and mobile
-      navigation.navigate("Verification", {
-        email: formData.email,
-        mobile: formData.mobile,
-      });
+        if (error) {
+          Alert.alert("Registration Error", error.message);
+          return;
+        }
+
+        // Navigate to verification screen
+        navigation.navigate("Verification", {
+          email: formData.email,
+          mobile: formData.mobile,
+        });
+      } catch (error) {
+        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     } else {
-      Alert.alert("Validation Error", "Please fix the errors in the form", [
-        { text: "OK" },
-      ]);
+      Alert.alert("Validation Error", "Please fix the errors in the form");
     }
   };
 
@@ -365,17 +384,29 @@ const RegisterScreen = ({ navigation }) => {
 
         {/* Register Button */}
         <TouchableOpacity
-          style={[styles.nextButton, { backgroundColor: theme.primary }]}
+          style={[
+            styles.nextButton,
+            { backgroundColor: theme.primary, opacity: loading ? 0.7 : 1 },
+          ]}
           onPress={handleRegister}
+          disabled={loading}
         >
-          <Text style={[styles.nextButtonText, { color: theme.background }]}>
-            Sign Up
-          </Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={24}
-            color={theme.background}
-          />
+          {loading ? (
+            <ActivityIndicator color={theme.background} />
+          ) : (
+            <>
+              <Text
+                style={[styles.nextButtonText, { color: theme.background }]}
+              >
+                Create Account
+              </Text>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color={theme.background}
+              />
+            </>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity

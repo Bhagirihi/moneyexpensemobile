@@ -1,90 +1,78 @@
 # TripExpanse Mobile App
 
-A modern React Native mobile application for managing travel expenses and budgets with a beautiful UI and seamless user experience.
+A React Native mobile application for managing travel expenses and budgets, built with Expo and Supabase.
 
 ## Features
 
-### Authentication
+### Authentication & User Management
 
-- **User Registration**
+- Email and password authentication
+- Google Sign-in integration
+- Email verification flow
+- Mobile number verification
+- Secure password reset
+- Session persistence
+- Real-time connection status monitoring
 
-  - Email & Mobile verification
-  - Password strength validation
-  - Google Sign-up integration
-  - Terms & Conditions agreement
+### User Profile
 
-- **Login System**
+- Profile creation and management
+- Email and mobile verification status
+- Avatar support
+- Profile updates
 
-  - Email/Password authentication
-  - Google Sign-in
-  - Forgot Password recovery
-  - Persistent session management
+### Security
 
-- **Verification System**
-  - Two-step verification (Email & Mobile)
-  - OTP-based verification
-  - Resend functionality with cooldown
-  - Real-time validation
+- Row Level Security (RLS) implementation
+- Secure data access policies
+- Environment variable configuration
+- Session management
 
-### UI/UX Features
+### UI/UX
 
-- Modern and clean interface
-- Smooth animations and transitions
-- Theme support (Light/Dark mode)
-- Form validation with visual feedback
-- Responsive design for all screen sizes
+- Modern, responsive design
+- Dark/Light theme support
+- Loading states and animations
+- Error handling and feedback
+- Connection status indicator
 
 ## Tech Stack
 
-- **Frontend**
-
-  - React Native
-  - Expo
-  - React Navigation
-  - Context API for state management
-  - Vector Icons
-
-- **UI Components**
-  - Custom animated components
-  - Material Community Icons
-  - Custom form inputs
-  - Responsive layouts
+- **Frontend Framework**: React Native with Expo
+- **State Management**: Context API
+- **Backend & Authentication**: Supabase
+- **Storage**: AsyncStorage
+- **Styling**: React Native StyleSheet
+- **Navigation**: React Navigation
 
 ## Project Structure
 
 ```
-Mobile_2/
-├── src/
-│   ├── screens/
-│   │   ├── WelcomeScreen.js
-│   │   ├── OnboardingScreen.js
-│   │   ├── LoginScreen.js
-│   │   ├── RegisterScreen.js
-│   │   ├── VerificationScreen.js
-│   │   └── ForgotPasswordScreen.js
-│   ├── context/
-│   │   └── ThemeContext.js
-│   └── components/
-├── App.js
-└── package.json
+src/
+├── components/         # Reusable UI components
+├── config/            # Configuration files
+├── context/           # Context providers
+├── screens/           # Screen components
+├── theme/             # Theme configuration
+└── utils/             # Utility functions
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or later)
+- Node.js (v14 or higher)
 - npm or yarn
 - Expo CLI
-- iOS Simulator or Android Emulator
+- Supabase account
 
 ### Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Bhagirihi/moneyexpensemobile.git
-cd moneyexpensemobile
+git clone https://github.com/yourusername/tripexpanse-mobile.git
+cd tripexpanse-mobile
 ```
 
 2. Install dependencies:
@@ -95,44 +83,48 @@ npm install
 yarn install
 ```
 
-3. Start the development server:
+3. Create a `.env` file in the root directory with your Supabase credentials:
 
-```bash
-expo start
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### Running the App
+4. Start the development server:
 
-- Press `i` to run on iOS simulator
-- Press `a` to run on Android emulator
-- Scan QR code with Expo Go app for physical device
+```bash
+npm start
+# or
+yarn start
+```
 
 ## Development
 
 ### Theme System
 
-The app uses a custom theme system that supports:
-
-- Light and dark mode
-- Custom color schemes
-- Dynamic theme switching
-- Consistent styling across components
+The app uses a custom theme system that supports both light and dark modes. Theme colors and styles are managed through the ThemeContext.
 
 ### Authentication Flow
 
-1. Welcome Screen → Onboarding
-2. Registration with validation
-3. Two-step verification (Email & Mobile)
-4. Login with multiple options
-5. Password recovery system
+1. User registration with email and password
+2. Email verification
+3. Mobile number verification
+4. Profile creation
+5. Session management
 
-### Verification System
+### Database Schema
 
-- Separate email and mobile verification
-- OTP input with auto-focus
-- Resend functionality with 30s cooldown
-- Success/Error animations
-- Progress tracking between steps
+The app uses Supabase with the following main tables:
+
+- `profiles`: User profile information
+- `auth.users`: Authentication data (managed by Supabase)
+
+### Security Features
+
+- Row Level Security (RLS) policies for data access
+- Secure session management
+- Environment variable protection
+- Input validation and sanitization
 
 ## Contributing
 
@@ -148,4 +140,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 
-Project Link: [https://github.com/Bhagirihi/moneyexpensemobile](https://github.com/Bhagirihi/moneyexpensemobile)
+Your Name - [@yourtwitter](https://twitter.com/yourtwitter) - email@example.com
+
+Project Link: [https://github.com/yourusername/tripexpanse-mobile](https://github.com/yourusername/tripexpanse-mobile)

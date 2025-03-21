@@ -8,9 +8,12 @@ import {
   StatusBar,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { signInWithEmail } from "../config/supabase";
+import { ConnectionStatus } from "../components/ConnectionStatus";
 
 const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -20,6 +23,8 @@ const LoginScreen = ({ navigation }) => {
   });
   const [errors, setErrors] = useState({});
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -43,14 +48,42 @@ const LoginScreen = ({ navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (validateForm()) {
-      // Implement login logic here
-      console.log("Login attempted with:", formData);
+      setLoading(true);
+      try {
+        const { data, error } = await signInWithEmail(
+          formData.email,
+          formData.password
+        );
+
+        if (error) {
+          Alert.alert("Login Error", error.message);
+          return;
+        }
+
+        // Navigate to Home screen on successful login
+        navigation.replace("Home");
+      } catch (error) {
+        Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     } else {
-      Alert.alert("Validation Error", "Please fix the errors in the form", [
-        { text: "OK" },
-      ]);
+      Alert.alert("Validation Error", "Please fix the errors in the form");
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      // Implement Google sign in logic here
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated delay
+      console.log("Google sign in attempted");
+    } catch (error) {
+      Alert.alert("Error", "Failed to sign in with Google");
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -196,35 +229,58 @@ const LoginScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Next Button */}
+      {/* Sign In Button */}
       <TouchableOpacity
-        style={[styles.nextButton, { backgroundColor: theme.primary }]}
+        style={[
+          styles.nextButton,
+          { backgroundColor: theme.primary, opacity: loading ? 0.7 : 1 },
+        ]}
         onPress={handleLogin}
+        disabled={loading}
       >
-        <Text style={[styles.nextButtonText, { color: theme.background }]}>
-          Sign In
-        </Text>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={24}
-          color={theme.background}
-        />
+        {loading ? (
+          <ActivityIndicator color={theme.background} />
+        ) : (
+          <>
+            <Text style={[styles.nextButtonText, { color: theme.background }]}>
+              Sign In
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={theme.background}
+            />
+          </>
+        )}
       </TouchableOpacity>
 
       {/* Google Sign In Button */}
       <TouchableOpacity
-        style={[styles.googleButton, { backgroundColor: theme.secondary }]}
-        onPress={() => console.log("Google sign in attempted")}
+        style={[
+          styles.googleButton,
+          {
+            backgroundColor: theme.secondary,
+            opacity: googleLoading ? 0.7 : 1,
+          },
+        ]}
+        onPress={handleGoogleSignIn}
+        disabled={googleLoading}
       >
-        <MaterialCommunityIcons
-          name="google"
-          size={24}
-          color={theme.text}
-          style={styles.googleIcon}
-        />
-        <Text style={[styles.googleButtonText, { color: theme.text }]}>
-          Sign in with Google
-        </Text>
+        {googleLoading ? (
+          <ActivityIndicator color={theme.text} />
+        ) : (
+          <>
+            <MaterialCommunityIcons
+              name="google"
+              size={24}
+              color={theme.text}
+              style={styles.googleIcon}
+            />
+            <Text style={[styles.googleButtonText, { color: theme.text }]}>
+              Sign in with Google
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
       {/* Register Link */}
@@ -238,6 +294,8 @@ const LoginScreen = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <ConnectionStatus />
     </View>
   );
 };

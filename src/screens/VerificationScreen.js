@@ -10,9 +10,11 @@ import {
   Platform,
   Animated,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { sendVerificationOTP, verifyOTP } from "../config/supabase";
 
 const VerificationScreen = ({ route, navigation }) => {
   const { theme } = useTheme();
@@ -22,6 +24,8 @@ const VerificationScreen = ({ route, navigation }) => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const inputRefs = useRef([]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -124,13 +128,58 @@ const VerificationScreen = ({ route, navigation }) => {
     return enteredCode === expectedCode;
   };
 
-  const handleVerify = () => {
+  const sendVerificationCode = async () => {
+    setResendLoading(true);
+    try {
+      const { error } = await sendVerificationOTP(
+        activeTab,
+        activeTab === "email" ? email : mobile
+      );
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        return;
+      }
+
+      setTimeLeft(30);
+      Alert.alert(
+        "Verification Code Sent",
+        `A verification code has been sent to your ${
+          activeTab === "email" ? "email address" : "mobile number"
+        }.`
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Failed to send verification code. Please try again."
+      );
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleVerify = async () => {
     const otpString = otp.join("");
     if (otpString.length === 6) {
-      if (verifyCode(otpString)) {
-        setVerificationStatus("success");
+      setLoading(true);
+      try {
+        const { error } = await verifyOTP(
+          activeTab,
+          activeTab === "email" ? email : mobile,
+          otpString
+        );
 
-        // Show success message
+        if (error) {
+          setVerificationStatus("error");
+          setErrorMessage(error.message);
+          shakeAnimation();
+          return;
+        }
+
+        setVerificationStatus("success");
+        successAnimation();
+
+        // Show success message and handle navigation
         Alert.alert(
           "Verification Successful",
           activeTab === "email"
@@ -141,49 +190,30 @@ const VerificationScreen = ({ route, navigation }) => {
               text: "OK",
               onPress: () => {
                 if (activeTab === "email") {
-                  // Switch to mobile verification
                   setActiveTab("mobile");
                   setOtp(["", "", "", "", "", ""]);
                   setTimeLeft(30);
                   setVerificationStatus(null);
+                  sendVerificationCode(); // Send OTP for mobile verification
                 } else {
-                  // Both verifications complete
                   navigation.replace("Home");
                 }
               },
             },
           ]
         );
-      } else {
+      } catch (error) {
         setVerificationStatus("error");
-        setErrorMessage("Invalid verification code. Please try again.");
+        setErrorMessage("Verification failed. Please try again.");
+        shakeAnimation();
+      } finally {
+        setLoading(false);
       }
     } else {
       setVerificationStatus("error");
       setErrorMessage("Please enter all digits");
+      shakeAnimation();
     }
-  };
-
-  const sendVerificationCode = () => {
-    // Mock API call to send verification code
-    console.log(
-      `Sending verification code to ${activeTab === "email" ? email : mobile}`
-    );
-
-    // In a real app, you would:
-    // 1. Call your backend API to send the verification code
-    // 2. The API would send an email/SMS with the code
-    // 3. Handle success/error responses
-
-    Alert.alert(
-      "Verification Code Sent",
-      `A verification code has been sent to your ${
-        activeTab === "email" ? "email" : "mobile number"
-      }.\n\nFor testing, use:\n${
-        activeTab === "email" ? mockEmailCode : mockMobileCode
-      }`,
-      [{ text: "OK" }]
-    );
   };
 
   const getInputStyle = (index) => {
@@ -321,42 +351,47 @@ const VerificationScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.verifyButton,
-            { backgroundColor: theme.primary },
-            verificationStatus === "success" && {
-              backgroundColor: theme.success || "#4CAF50",
+            {
+              backgroundColor: theme.primary,
+              opacity: loading ? 0.7 : 1,
             },
           ]}
           onPress={handleVerify}
-          disabled={verificationStatus === "success"}
+          disabled={loading || otp.some((digit) => !digit)}
         >
-          <Text style={[styles.verifyButtonText, { color: theme.background }]}>
-            VERIFY
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={theme.background} />
+          ) : (
+            <Text
+              style={[styles.verifyButtonText, { color: theme.background }]}
+            >
+              Verify {activeTab === "email" ? "Email" : "Mobile"}
+            </Text>
+          )}
         </TouchableOpacity>
 
-        <View style={styles.resendContainer}>
-          <TouchableOpacity onPress={handleResend} disabled={timeLeft > 0}>
-            <Text style={[styles.resendText, { color: theme.textSecondary }]}>
-              Didn't receive any code?{" "}
-              <Text
-                style={[
-                  styles.resendLink,
-                  {
-                    color: timeLeft > 0 ? theme.textSecondary : theme.primary,
-                    opacity: timeLeft > 0 ? 0.5 : 1,
-                  },
-                ]}
-              >
-                Resend Again
-              </Text>
+        <TouchableOpacity
+          style={[
+            styles.resendButton,
+            {
+              opacity: timeLeft > 0 || resendLoading ? 0.5 : 1,
+            },
+          ]}
+          onPress={sendVerificationCode}
+          disabled={timeLeft > 0 || resendLoading}
+        >
+          {resendLoading ? (
+            <ActivityIndicator color={theme.textSecondary} />
+          ) : (
+            <Text
+              style={[styles.resendButtonText, { color: theme.textSecondary }]}
+            >
+              {timeLeft > 0
+                ? `Resend code in ${timeLeft}s`
+                : "Resend verification code"}
             </Text>
-          </TouchableOpacity>
-          <Text style={[styles.timerText, { color: theme.textSecondary }]}>
-            Request new code in{" "}
-            {String(Math.floor(timeLeft / 60)).padStart(2, "0")}:
-            {String(timeLeft % 60).padStart(2, "0")}s
-          </Text>
-        </View>
+          )}
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -439,19 +474,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 1,
   },
-  resendContainer: {
+  resendButton: {
+    height: 56,
+    borderRadius: 16,
+    justifyContent: "center",
     alignItems: "center",
+    marginBottom: 24,
   },
-  resendText: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  resendLink: {
+  resendButtonText: {
+    fontSize: 16,
     fontWeight: "600",
-  },
-  timerText: {
-    fontSize: 14,
-    opacity: 0.7,
+    letterSpacing: 1,
   },
 });
 
