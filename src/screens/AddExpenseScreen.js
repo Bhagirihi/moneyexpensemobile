@@ -12,15 +12,8 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
-const categories = [
-  { id: 1, name: "Food", icon: "food", color: "#FF6B6B" },
-  { id: 2, name: "Transport", icon: "car", color: "#4ECDC4" },
-  { id: 3, name: "Shopping", icon: "shopping", color: "#45B7D1" },
-  { id: 4, name: "Entertainment", icon: "movie", color: "#96CEB4" },
-  { id: 5, name: "Health", icon: "medical-bag", color: "#FFEEAD" },
-  { id: 6, name: "Education", icon: "book-open-variant", color: "#D4A5A5" },
-];
+import { Header } from "../components/Header";
+import { CategoryList } from "../components/CategoryList";
 
 const paymentMethods = [
   { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -40,34 +33,18 @@ const expenseBoards = [
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [formData, setFormData] = useState({
-    board: null,
     amount: "",
     description: "",
     category: null,
     paymentMethod: null,
     date: new Date(),
+    board: null,
   });
 
   const handleSave = () => {
     // TODO: Implement save functionality
     navigation.goBack();
   };
-
-  const renderHeader = () => (
-    <View style={[styles.header, { borderBottomColor: theme.border }]}>
-      <TouchableOpacity
-        style={[styles.backButton, { backgroundColor: theme.card }]}
-        onPress={() => navigation.goBack()}
-      >
-        <MaterialCommunityIcons
-          name="arrow-left"
-          size={20}
-          color={theme.text}
-        />
-      </TouchableOpacity>
-      <Text style={[styles.title, { color: theme.text }]}>Add Expense</Text>
-    </View>
-  );
 
   const renderExpenseBoard = () => (
     <View style={styles.inputContainer}>
@@ -172,66 +149,6 @@ export const AddExpenseScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderCategorySelector = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Category</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesList}
-      >
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={[
-              styles.categoryItem,
-              {
-                backgroundColor:
-                  formData.category === category.id
-                    ? theme.primary
-                    : theme.card,
-                borderWidth: formData.category === category.id ? 2 : 1,
-                borderColor:
-                  formData.category === category.id
-                    ? theme.primary
-                    : theme.border,
-              },
-            ]}
-            onPress={() => setFormData({ ...formData, category: category.id })}
-          >
-            <View
-              style={[
-                styles.categoryIcon,
-                {
-                  backgroundColor: `${category.color}15`,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={category.icon}
-                size={22}
-                color={category.color}
-              />
-            </View>
-            <Text
-              style={[
-                styles.categoryName,
-                {
-                  color:
-                    formData.category === category.id
-                      ? theme.white
-                      : theme.text,
-                },
-              ]}
-            >
-              {category.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-
   const renderPaymentMethodSelector = () => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.text }]}>Payment Method</Text>
@@ -322,14 +239,25 @@ export const AddExpenseScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderSaveButton = () => (
+    <TouchableOpacity
+      style={[styles.saveButton, { backgroundColor: theme.primary }]}
+      onPress={handleSave}
+    >
+      <Text style={[styles.saveButtonText, { color: theme.white }]}>
+        Save Expense
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      {renderHeader()}
+      <Header title="Add Expense" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.content}
+        style={styles.keyboardAvoid}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -337,20 +265,18 @@ export const AddExpenseScreen = ({ navigation }) => {
         >
           {renderExpenseBoard()}
           {renderAmountInput()}
-          {renderDateSelector()}
-          {renderCategorySelector()}
-          {renderPaymentMethodSelector()}
           {renderDescriptionInput()}
+          <CategoryList
+            selectedCategory={formData.category}
+            onSelectCategory={(categoryId) =>
+              setFormData({ ...formData, category: categoryId })
+            }
+          />
+          {renderPaymentMethodSelector()}
+          {renderDateSelector()}
         </ScrollView>
-        <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: theme.primary }]}
-          onPress={handleSave}
-        >
-          <Text style={[styles.saveButtonText, { color: theme.white }]}>
-            Save Expense
-          </Text>
-        </TouchableOpacity>
       </KeyboardAvoidingView>
+      {renderSaveButton()}
     </SafeAreaView>
   );
 };
@@ -359,38 +285,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-    borderRadius: 20,
-    width: 36,
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  content: {
+  keyboardAvoid: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80,
+    padding: 16,
   },
   inputContainer: {
     padding: 12,

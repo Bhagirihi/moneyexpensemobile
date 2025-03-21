@@ -17,6 +17,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { tripService } from "../services/tripService";
 import ThemeToggle from "../components/ThemeToggle";
 import FooterTab from "../components/FooterTab";
+import { Header } from "../components/Header";
+import { ExpenseList } from "../components/ExpenseList";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +30,8 @@ const dummyExpenses = [
     amount: 45.5,
     date: "2024-03-20T12:00:00",
     description: "Lunch at Restaurant",
+    icon: "food",
+    color: "#FF6B6B",
   },
   {
     id: 2,
@@ -35,6 +39,8 @@ const dummyExpenses = [
     amount: 25.0,
     date: "2024-03-19T15:30:00",
     description: "Bus Ticket",
+    icon: "car",
+    color: "#4ECDC4",
   },
   {
     id: 3,
@@ -42,6 +48,8 @@ const dummyExpenses = [
     amount: 120.0,
     date: "2024-03-18T10:15:00",
     description: "Souvenirs",
+    icon: "shopping",
+    color: "#45B7D1",
   },
 ];
 
@@ -102,28 +110,19 @@ export const DashboardScreen = ({ navigation }) => {
     }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerContent}>
-        <View>
-          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-            Welcome back,
-          </Text>
-          <Text style={[styles.nameText, { color: theme.text }]}>
-            {userProfile?.full_name || "John Doe"}
-          </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notificationButton}>
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={24}
-              color={theme.text}
-            />
-          </TouchableOpacity>
-          <ThemeToggle />
-        </View>
-      </View>
+  const renderRightSection = () => (
+    <View style={styles.headerRight}>
+      <TouchableOpacity
+        style={styles.notificationButton}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <MaterialCommunityIcons
+          name="bell-outline"
+          size={24}
+          color={theme.text}
+        />
+      </TouchableOpacity>
+      <ThemeToggle />
     </View>
   );
 
@@ -263,57 +262,6 @@ export const DashboardScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderExpenses = () => (
-    <View style={styles.expenses}>
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Recent Expenses
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            /* Navigate to All Expenses */
-            navigation.navigate("Expense");
-          }}
-        >
-          <Text style={[styles.seeAll, { color: theme.primary }]}>See All</Text>
-        </TouchableOpacity>
-      </View>
-      {expenses.slice(0, 4).map((expense) => (
-        <TouchableOpacity
-          key={expense.id}
-          style={[styles.expenseItem, { backgroundColor: theme.card }]}
-          onPress={() => {
-            /* Navigate to Expense Details */
-          }}
-        >
-          <View
-            style={[
-              styles.expenseIcon,
-              { backgroundColor: `${theme.primary}20` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="food"
-              size={20}
-              color={theme.primary}
-            />
-          </View>
-          <View style={styles.expenseInfo}>
-            <Text style={[styles.expenseName, { color: theme.text }]}>
-              {expense.category}
-            </Text>
-            <Text style={[styles.expenseDate, { color: theme.textSecondary }]}>
-              {new Date(expense.date).toLocaleDateString()}
-            </Text>
-          </View>
-          <Text style={[styles.expenseAmount, { color: theme.text }]}>
-            ${expense.amount.toFixed(2)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
   if (loading) {
     return (
       <SafeAreaView
@@ -328,11 +276,24 @@ export const DashboardScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      {renderHeader()}
+      <Header
+        title={userProfile?.full_name || "John Doe"}
+        onBack={() => navigation.goBack()}
+        rightComponent={renderRightSection()}
+        showBack={false}
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         {renderBalanceCard()}
         {renderQuickActions()}
-        {renderExpenses()}
+        <ExpenseList
+          expenses={expenses.slice(0, 4)}
+          onExpensePress={(expense) => {
+            /* Navigate to Expense Details */
+          }}
+          onSeeAllPress={() => {
+            navigation.navigate("Expense");
+          }}
+        />
       </ScrollView>
       <FooterTab navigation={navigation} />
     </SafeAreaView>
@@ -343,29 +304,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  welcomeText: {
-    fontSize: 16,
-    opacity: 0.7,
-  },
-  nameText: {
-    fontSize: 24,
-    fontWeight: "bold",
+    gap: 12,
   },
   notificationButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: 4,
   },
   balanceCard: {
     marginHorizontal: 20,
@@ -463,61 +408,5 @@ const styles = StyleSheet.create({
   actionText: {
     marginTop: 8,
     fontSize: 12,
-  },
-  expenses: {
-    padding: 20,
-    paddingBottom: 80, // Add padding for footer tab
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  seeAll: {
-    fontSize: 14,
-  },
-  expenseItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  expenseIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  expenseInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  expenseName: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  expenseDate: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginTop: 1,
-  },
-  expenseAmount: {
-    fontSize: 15,
-    fontWeight: "bold",
   },
 });
