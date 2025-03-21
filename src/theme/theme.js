@@ -18,6 +18,15 @@ export const lightTheme = {
   card: "#FFFFFF",
   border: "#E0E0E0",
   shadow: "rgba(0, 0, 0, 0.1)",
+  // CreateExpenseBoard specific colors
+  error: "#FF6B6B",
+  sectionBackground: "#FFFFFF",
+  sectionBorder: "rgba(0, 0, 0, 0.1)",
+  inputBackground: "#FFFFFF",
+  inputBorder: "#E0E0E0",
+  selectedColorBorder: "#FFFFFF",
+  iconBackground: "#FFFFFF",
+  iconSelectedBackground: "rgba(108, 99, 255, 0.1)", // 20% opacity of primary color
 };
 
 export const darkTheme = {
@@ -40,4 +49,13 @@ export const darkTheme = {
   card: "#2A2A2A",
   border: "#333333",
   shadow: "rgba(0, 0, 0, 0.3)",
+  // CreateExpenseBoard specific colors
+  error: "#FF6B6B",
+  sectionBackground: "#2A2A2A",
+  sectionBorder: "rgba(255, 255, 255, 0.1)",
+  inputBackground: "#2A2A2A",
+  inputBorder: "#333333",
+  selectedColorBorder: "#FFFFFF",
+  iconBackground: "#2A2A2A",
+  iconSelectedBackground: "rgba(108, 99, 255, 0.2)", // 20% opacity of primary color
 };

@@ -11,7 +11,7 @@ export const Header = ({
   titleStyle,
   containerStyle,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   const renderRightSection = () => {
     if (rightComponent) {
@@ -38,7 +38,7 @@ export const Header = ({
             <MaterialCommunityIcons
               name="arrow-left-circle"
               size={28}
-              color={isDark ? "#FFFFFF" : "#000000"}
+              color={theme.text}
             />
           </TouchableOpacity>
         )}
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   rightSection: {
-    width: 40,
+    minWidth: 120,
     alignItems: "flex-end",
   },
   backButton: {
@@ -77,5 +77,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     textAlign: "center",
+    marginHorizontal: 8,
   },
 });

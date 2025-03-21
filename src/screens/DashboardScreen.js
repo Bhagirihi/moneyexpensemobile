@@ -361,11 +361,10 @@ export const DashboardScreen = ({ navigation }) => {
         {renderQuickActions()}
         <ExpenseList
           expenses={expenses.slice(0, 4)}
+          onSeeAllPress={() => navigation.navigate("Expense")}
           onExpensePress={(expense) => {
-            navigation.navigate("Expense", { expense });
-          }}
-          onSeeAllPress={() => {
-            navigation.navigate("Expense");
+            // Handle expense press
+            console.log("Expense pressed:", expense);
           }}
         />
         {renderNavigationOptions()}

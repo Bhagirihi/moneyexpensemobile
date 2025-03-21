@@ -20,7 +20,6 @@ import { ExpenseBoardScreen } from "./src/screens/ExpenseBoardScreen";
 import { ExpenseBoardDetailsScreen } from "./src/screens/ExpenseBoardDetailsScreen";
 import { CreateExpenseBoardScreen } from "./src/screens/CreateExpenseBoardScreen";
 import { CategoriesScreen } from "./src/screens/CategoriesScreen";
-import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { AnalysisScreen } from "./src/screens/AnalysisScreen";
 import { NotificationScreen } from "./src/screens/NotificationScreen";
@@ -112,7 +111,7 @@ const Navigation = () => {
             component={CreateExpenseBoardScreen}
           />
           <Stack.Screen name="Categories" component={CategoriesScreen} />
-          <Stack.Screen name="AddCategory" component={AddCategoryScreen} />
+
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
           <Stack.Screen name="Analysis" component={AnalysisScreen} />
           <Stack.Screen name="Notification" component={NotificationScreen} />
