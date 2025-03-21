@@ -272,6 +272,7 @@ export const DashboardScreen = ({ navigation }) => {
         <TouchableOpacity
           onPress={() => {
             /* Navigate to All Expenses */
+            navigation.navigate("Expense");
           }}
         >
           <Text style={[styles.seeAll, { color: theme.primary }]}>See All</Text>

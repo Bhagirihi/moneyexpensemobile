@@ -10,6 +10,8 @@ import { RegisterScreen } from "./src/screens/RegisterScreen";
 import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
 import { VerificationScreen } from "./src/screens/VerificationScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
+import { ExpenseScreen } from "./src/screens/ExpenseScreen";
+import { AddExpenseScreen } from "./src/screens/AddExpenseScreen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Initialize native stack navigator
@@ -85,6 +87,8 @@ const Navigation = () => {
         // App Stack
         <>
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="Expense" component={ExpenseScreen} />
+          <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         </>
       )}
     </Stack.Navigator>
