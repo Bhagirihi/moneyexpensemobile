@@ -1,145 +1,344 @@
 # TripExpanse Mobile App
 
-A React Native mobile application for managing travel expenses and budgets, built with Expo and Supabase.
+A comprehensive expense tracking and management application built with React Native. TripExpanse helps users manage their personal and shared expenses with an intuitive interface and powerful features.
 
-## Features
+## ✨ Features
 
-### Authentication & User Management
+### 📱 User Interface
 
-- Email and password authentication
-- Google Sign-in integration
-- Email verification flow
-- Mobile number verification
-- Secure password reset
-- Session persistence
-- Real-time connection status monitoring
+- **Theme System**
 
-### User Profile
+  - Dark/Light theme with smooth transitions
+  - Auto-theme based on system preferences
+  - Custom color palettes for each theme
+  - Consistent typography system
 
-- Profile creation and management
-- Email and mobile verification status
-- Avatar support
-- Profile updates
+- **Internationalization**
 
-### Security
+  - Multi-language support (English, Spanish, French, German)
+  - RTL language support
+  - Currency format localization
+  - Date and time localization
 
-- Row Level Security (RLS) implementation
-- Secure data access policies
-- Environment variable configuration
-- Session management
+- **Responsive Design**
+  - Adaptive layouts for all screen sizes
+  - Dynamic font scaling
+  - Gesture-based interactions
+  - Smooth animations and transitions
 
-### UI/UX
+### 💰 Expense Management
 
-- Modern, responsive design
-- Dark/Light theme support
-- Loading states and animations
-- Error handling and feedback
-- Connection status indicator
+- **Expense Tracking**
 
-## Tech Stack
+  - Quick expense entry
+  - Category-based organization
+  - Receipt photo attachments
+  - Location tagging
+  - Notes and tags support
 
-- **Frontend Framework**: React Native with Expo
-- **State Management**: Context API
-- **Backend & Authentication**: Supabase
-- **Storage**: AsyncStorage
-- **Styling**: React Native StyleSheet
-- **Navigation**: React Navigation
+- **Budget Management**
 
-## Project Structure
+  - Monthly budget setting per board
+  - Budget alerts and notifications
+  - Spending trends analysis
+  - Category-wise budget allocation
 
-```
-src/
-├── components/         # Reusable UI components
-├── config/            # Configuration files
-├── context/           # Context providers
-├── screens/           # Screen components
-├── theme/             # Theme configuration
-└── utils/             # Utility functions
-```
+- **Expense Boards**
+  - Multiple board support (Personal, Family, Work)
+  - Board sharing and collaboration
+  - Member management
+  - Activity tracking
+  - Real-time updates
 
-## Getting Started
+### 👤 User Management
+
+- **Profile Management**
+
+  - Personal information management
+  - Profile picture upload
+  - Contact information
+  - Preferences settings
+
+- **Account Integration**
+
+  - Google account sync
+  - Contact import
+  - Calendar integration
+  - Cloud backup
+
+- **Premium Features**
+  - Advanced analytics
+  - Unlimited boards
+  - Export capabilities
+  - Priority support
+
+### 🔐 Security
+
+- **Authentication**
+
+  - Secure email/password login
+  - Two-factor authentication
+  - Biometric authentication
+  - Session management
+
+- **Data Protection**
+  - End-to-end encryption
+  - Secure data storage
+  - Privacy controls
+  - Regular security audits
+
+## 🔄 User Flow
+
+### Main Navigation
+
+1. **Splash Screen**
+
+   - App loading
+   - Authentication check
+   - Theme initialization
+
+2. **Authentication Flow**
+
+   - Login screen
+   - Registration screen
+   - Password recovery
+   - 2FA verification
+
+3. **Main Screens**
+   - Dashboard/Home
+   - Expense Boards
+   - Reports/Analytics
+   - Settings
+   - Profile
+
+### Settings Management
+
+1. **Appearance**
+
+   - Theme selection
+   - Language preference
+   - Text size adjustment
+   - Animation toggles
+
+2. **Expense Settings**
+
+   - Default currency
+   - Budget preferences
+   - Category management
+   - Board preferences
+
+3. **Account Settings**
+
+   - Profile editing
+   - Premium features
+   - Notification preferences
+   - Integration settings
+
+4. **Security Settings**
+   - Password management
+   - 2FA setup
+   - Privacy controls
+   - Session management
+
+## 🛠 Technical Stack
+
+### Frontend
+
+- **React Native** - Core framework
+- **Expo** - Development platform
+- **React Navigation** - Navigation library
+- **React Native Paper** - UI components
+- **Material Community Icons** - Icon pack
+
+### State Management
+
+- **Context API** - App-wide state
+- **Async Storage** - Local data persistence
+- **Redux** (planned) - Complex state management
+
+### Backend Integration
+
+- **REST APIs** - Data communication
+- **WebSocket** - Real-time updates
+- **Firebase** (planned) - Backend services
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
-- npm or yarn
-- Expo CLI
-- Supabase account
+1. **Node.js Environment**
+
+   ```bash
+   node >= 14.0.0
+   npm >= 6.0.0
+   ```
+
+2. **Development Tools**
+   - Xcode (for iOS)
+   - Android Studio (for Android)
+   - VS Code (recommended IDE)
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone Repository**
 
-```bash
-git clone https://github.com/yourusername/tripexpanse-mobile.git
-cd tripexpanse-mobile
+   ```bash
+   git clone https://github.com/yourusername/TripExpanse.git
+   cd TripExpanse
+   ```
+
+2. **Install Dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+
+   ```bash
+   # Create .env file
+   cp .env.example .env
+   # Configure your environment variables
+   ```
+
+4. **Run Development Server**
+   ```bash
+   # Start Metro bundler
+   npm start
+   ```
+
+### Running the App
+
+1. **iOS Development**
+
+   ```bash
+   # Install pods
+   cd ios && pod install && cd ..
+   # Run iOS simulator
+   npm run ios
+   ```
+
+2. **Android Development**
+   ```bash
+   # Open Android emulator
+   npm run android
+   ```
+
+## 📁 Project Structure
+
+```
+TripExpanse/
+├── src/
+│   ├── components/     # Reusable UI components
+│   │   ├── common/    # Shared components
+│   │   ├── forms/     # Form components
+│   │   └── layouts/   # Layout components
+│   ├── screens/       # App screens
+│   │   ├── auth/     # Authentication screens
+│   │   ├── boards/   # Board management
+│   │   └── settings/ # Settings screens
+│   ├── context/      # Context providers
+│   ├── navigation/   # Navigation config
+│   ├── utils/        # Helper functions
+│   ├── hooks/        # Custom hooks
+│   ├── constants/    # App constants
+│   └── assets/       # Static assets
+├── __tests__/        # Test files
+├── android/          # Android specific
+├── ios/             # iOS specific
+└── docs/            # Documentation
 ```
 
-2. Install dependencies:
+## 🧪 Testing
 
-```bash
-npm install
-# or
-yarn install
-```
+1. **Unit Tests**
 
-3. Create a `.env` file in the root directory with your Supabase credentials:
+   ```bash
+   npm run test
+   ```
 
-```env
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+2. **Integration Tests**
 
-4. Start the development server:
+   ```bash
+   npm run test:integration
+   ```
 
-```bash
-npm start
-# or
-yarn start
-```
+3. **E2E Tests**
+   ```bash
+   npm run test:e2e
+   ```
 
-## Development
+## 📦 Deployment
 
-### Theme System
+### iOS
 
-The app uses a custom theme system that supports both light and dark modes. Theme colors and styles are managed through the ThemeContext.
+1. Configure app signing
+2. Update version numbers
+3. Build production IPA
+4. Submit to App Store
 
-### Authentication Flow
+### Android
 
-1. User registration with email and password
-2. Email verification
-3. Mobile number verification
-4. Profile creation
-5. Session management
+1. Configure keystore
+2. Update version codes
+3. Build production APK/Bundle
+4. Submit to Play Store
 
-### Database Schema
+## 🤝 Contributing
 
-The app uses Supabase with the following main tables:
+1. **Fork Repository**
 
-- `profiles`: User profile information
-- `auth.users`: Authentication data (managed by Supabase)
+   ```bash
+   git clone https://github.com/yourusername/TripExpanse.git
+   ```
 
-### Security Features
+2. **Create Feature Branch**
 
-- Row Level Security (RLS) policies for data access
-- Secure session management
-- Environment variable protection
-- Input validation and sanitization
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
 
-## Contributing
+3. **Make Changes**
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+   - Follow coding standards
+   - Add necessary tests
+   - Update documentation
 
-## License
+4. **Commit Changes**
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+   ```bash
+   git commit -m 'Add some AmazingFeature'
+   ```
 
-## Contact
+5. **Push to Branch**
 
-Your Name - [@yourtwitter](https://twitter.com/yourtwitter) - email@example.com
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
 
-Project Link: [https://github.com/yourusername/tripexpanse-mobile](https://github.com/yourusername/tripexpanse-mobile)
+6. **Open Pull Request**
+   - Describe changes
+   - Link related issues
+   - Add screenshots if applicable
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Contact & Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/TripExpanse/issues)
+- **Email**: support@tripexpanse.com
+- **Twitter**: [@TripExpanse](https://twitter.com/TripExpanse)
+- **Website**: [https://tripexpanse.com](https://tripexpanse.com)
+
+## 🙏 Acknowledgments
+
+- React Native community
+- Expo team
+- All contributors
+- Open source packages used
+
+---
+
+Made with ❤️ by the TripExpanse Team
