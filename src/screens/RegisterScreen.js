@@ -85,6 +85,12 @@ const RegisterScreen = ({ navigation }) => {
     if (validateForm()) {
       // Implement register logic here
       console.log("Register attempted with:", formData);
+
+      // Navigate to verification screen with both email and mobile
+      navigation.navigate("Verification", {
+        email: formData.email,
+        mobile: formData.mobile,
+      });
     } else {
       Alert.alert("Validation Error", "Please fix the errors in the form", [
         { text: "OK" },
@@ -372,6 +378,36 @@ const RegisterScreen = ({ navigation }) => {
           />
         </TouchableOpacity>
 
+        <TouchableOpacity
+          onPress={() => {
+            if (formData.email && formData.mobile) {
+              navigation.navigate("Verification", {
+                email: formData.email,
+                mobile: formData.mobile,
+              });
+            } else {
+              Alert.alert(
+                "Missing Information",
+                "Please enter your email and mobile number first",
+                [{ text: "OK" }]
+              );
+            }
+          }}
+          style={styles.verificationTextContainer}
+        >
+          <Text
+            style={[styles.verificationText, { color: theme.textSecondary }]}
+          >
+            After signing up, you'll need to verify your email and mobile number
+          </Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={16}
+            color={theme.textSecondary}
+            style={styles.verificationIcon}
+          />
+        </TouchableOpacity>
+
         {/* Google Sign Up Button */}
         <TouchableOpacity
           style={[styles.googleButton, { backgroundColor: theme.secondary }]}
@@ -517,6 +553,21 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  verificationText: {
+    fontSize: 13,
+    textAlign: "center",
+    fontStyle: "italic",
+    flex: 1,
+  },
+  verificationTextContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  verificationIcon: {
+    marginLeft: 4,
   },
   errorText: {
     fontSize: 12,
