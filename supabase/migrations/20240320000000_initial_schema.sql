@@ -9,9 +9,13 @@ CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'net_banking');
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID REFERENCES auth.users ON DELETE CASCADE,
     full_name TEXT,
+    email_address TEXT,
     mobile TEXT,
     avatar_url TEXT,
     has_notifications BOOLEAN DEFAULT false,
+    current_plan TEXT DEFAULT 'free' CHECK (current_plan IN ('free', 'premium', 'business')),
+    is_google_connected BOOLEAN DEFAULT false,
+    account_status TEXT DEFAULT 'active' CHECK (account_status IN ('active', 'suspended', 'deactivated')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     PRIMARY KEY (id)
@@ -33,13 +37,27 @@ CREATE POLICY "Users can update their own profile"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, full_name, mobile, avatar_url, has_notifications)
+    INSERT INTO public.profiles (
+        id,
+        full_name,
+        email_address,
+        mobile,
+        avatar_url,
+        has_notifications,
+        current_plan,
+        is_google_connected,
+        account_status
+    )
     VALUES (
         NEW.id,
         NEW.raw_user_meta_data->>'full_name',
+        NEW.email,
         NEW.raw_user_meta_data->>'mobile',
         NEW.raw_user_meta_data->>'avatar_url',
-        COALESCE((NEW.raw_user_meta_data->>'has_notifications')::boolean, false)
+        COALESCE((NEW.raw_user_meta_data->>'has_notifications')::boolean, false),
+        'free',
+        COALESCE((NEW.raw_user_meta_data->>'is_google_connected')::boolean, false),
+        'active'
     );
     RETURN NEW;
 END;
