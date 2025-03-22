@@ -11,11 +11,13 @@ import {
   TextInput,
   Modal,
   FlatList,
+  Alert,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ThemeToggle from "../components/ThemeToggle";
+import { supabase } from "../config/supabase";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -65,6 +67,19 @@ export const SettingsScreen = ({ navigation }) => {
     setEditingItem(item);
     setEditValue(item.subtitle || "");
     setEditModalVisible(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Navigation will be handled automatically by App.js auth listener
+    } catch (error) {
+      Alert.alert("Error", "Failed to log out. Please try again.", [
+        { text: "OK" },
+      ]);
+    }
   };
 
   const renderLanguageSelector = () => (
@@ -648,9 +663,7 @@ export const SettingsScreen = ({ navigation }) => {
 
         <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: theme.error + "15" }]}
-          onPress={() => {
-            // Handle logout
-          }}
+          onPress={handleLogout}
         >
           <MaterialCommunityIcons name="logout" size={20} color={theme.error} />
           <Text style={[styles.logoutText, { color: theme.error }]}>

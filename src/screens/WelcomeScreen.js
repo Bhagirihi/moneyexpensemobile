@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../context/ThemeContext";
 import BalloonIllustration from "../components/BalloonIllustration";
 
@@ -14,12 +15,33 @@ const WelcomeScreen = ({ navigation }) => {
   const { theme, isDarkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace("Onboarding");
-    }, 2000);
+    checkFirstLaunch();
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [navigation]);
+  const checkFirstLaunch = async () => {
+    try {
+      const hasLaunched = await AsyncStorage.getItem("hasLaunched");
+
+      if (hasLaunched === null) {
+        // First time launching the app
+        await AsyncStorage.setItem("hasLaunched", "true");
+        setTimeout(() => {
+          navigation.replace("Onboarding");
+        }, 2000);
+      } else {
+        // Not first launch, go directly to Login
+        setTimeout(() => {
+          navigation.replace("Login");
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Error checking first launch:", error);
+      // In case of error, default to Login
+      setTimeout(() => {
+        navigation.replace("Login");
+      }, 2000);
+    }
+  };
 
   return (
     <SafeAreaView

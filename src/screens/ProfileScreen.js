@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -9,14 +9,44 @@ import {
   Animated,
   Platform,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { supabase } from "../config/supabase";
 
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderProfileImage = () => (
     <View
@@ -33,17 +63,19 @@ export const ProfileScreen = ({ navigation }) => {
               { backgroundColor: `${theme.primary}15` },
             ]}
           >
-            <MaterialCommunityIcons
-              name="account"
-              size={50}
-              color={theme.primary}
-            />
-            {/* Replace with Image component when there's a profile picture */}
-            {/* <Image
-              source={{ uri: profileImageUrl }}
-              style={styles.profileImage}
-              resizeMode="cover"
-            /> */}
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.profileImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialCommunityIcons
+                name="account"
+                size={50}
+                color={theme.primary}
+              />
+            )}
           </View>
           <TouchableOpacity
             style={[styles.editImageButton, { backgroundColor: theme.primary }]}
@@ -56,12 +88,14 @@ export const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.profileDetails}>
-          <Text style={[styles.profileName, { color: theme.text }]}>Test</Text>
+          <Text style={[styles.profileName, { color: theme.text }]}>
+            {userProfile?.full_name || "No name set"}
+          </Text>
           <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-            test@yopmail.com
+            {userProfile?.email || "No email set"}
           </Text>
           <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-            +91 7874766500
+            {userProfile?.mobile || "No phone set"}
           </Text>
         </View>
       </View>
@@ -208,6 +242,16 @@ export const ProfileScreen = ({ navigation }) => {
       </View>
     </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <ActivityIndicator size="large" color={theme.primary} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView

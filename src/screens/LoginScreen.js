@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { signInWithEmail } from "../config/supabase";
+import { supabase } from "../config/supabase";
 import { ConnectionStatus } from "../components/ConnectionStatus";
 
 const LoginScreen = ({ navigation }) => {
@@ -52,18 +52,17 @@ const LoginScreen = ({ navigation }) => {
     if (validateForm()) {
       setLoading(true);
       try {
-        const { data, error } = await signInWithEmail(
-          formData.email,
-          formData.password
-        );
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
 
         if (error) {
           Alert.alert("Login Error", error.message);
           return;
         }
 
-        // Navigate to Home screen on successful login
-        navigation.replace("Home");
+        // If successful, App.js auth listener will handle navigation
       } catch (error) {
         Alert.alert("Error", "An unexpected error occurred. Please try again.");
       } finally {

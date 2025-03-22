@@ -6,25 +6,50 @@ CREATE TYPE expense_status AS ENUM ('pending', 'settled', 'cancelled');
 CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'net_banking');
 
 -- Create profiles table
-CREATE TABLE profiles (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID REFERENCES auth.users ON DELETE CASCADE,
     full_name TEXT,
+    mobile TEXT,
     avatar_url TEXT,
+    has_notifications BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    PRIMARY KEY (id)
 );
 
--- Enable Row Level Security for profiles
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Create policies for profiles
+-- Create policies
 CREATE POLICY "Users can view their own profile"
-    ON profiles FOR SELECT
+    ON public.profiles FOR SELECT
     USING (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
-    ON profiles FOR UPDATE
+    ON public.profiles FOR UPDATE
     USING (auth.uid() = id);
+
+-- Create function to handle new user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, full_name, mobile, avatar_url, has_notifications)
+    VALUES (
+        NEW.id,
+        NEW.raw_user_meta_data->>'full_name',
+        NEW.raw_user_meta_data->>'mobile',
+        NEW.raw_user_meta_data->>'avatar_url',
+        COALESCE((NEW.raw_user_meta_data->>'has_notifications')::boolean, false)
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for new user creation
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Create expense_boards table
 CREATE TABLE expense_boards (

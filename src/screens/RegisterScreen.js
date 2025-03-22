@@ -12,10 +12,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { signUpWithEmail } from "../config/supabase";
+import CustomModal from "../components/common/CustomModal";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -29,6 +31,7 @@ const RegisterScreen = ({ navigation }) => {
   const [errors, setErrors] = useState({});
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -94,6 +97,8 @@ const RegisterScreen = ({ navigation }) => {
           {
             full_name: formData.name,
             mobile: formData.mobile,
+            avatar_url: null,
+            has_notifications: false,
           }
         );
 
@@ -102,11 +107,8 @@ const RegisterScreen = ({ navigation }) => {
           return;
         }
 
-        // Navigate to verification screen
-        navigation.navigate("Verification", {
-          email: formData.email,
-          mobile: formData.mobile,
-        });
+        // Show verification modal
+        setShowVerificationModal(true);
       } catch (error) {
         Alert.alert("Error", "An unexpected error occurred. Please try again.");
       } finally {
@@ -115,6 +117,15 @@ const RegisterScreen = ({ navigation }) => {
     } else {
       Alert.alert("Validation Error", "Please fix the errors in the form");
     }
+  };
+
+  const handleOpenEmail = () => {
+    Linking.openURL("mailto:");
+  };
+
+  const handleGoToLogin = () => {
+    setShowVerificationModal(false);
+    navigation.navigate("Login");
   };
 
   const handleGoogleSignUp = () => {
@@ -467,6 +478,26 @@ const RegisterScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <CustomModal
+        visible={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        title="Verify Your Email"
+        message="Please check your email for verification link"
+        icon="email-check"
+        buttons={[
+          {
+            text: "Open Email App",
+            onPress: handleOpenEmail,
+            style: "default",
+          },
+          {
+            text: "Go to Login",
+            onPress: handleGoToLogin,
+            style: "outline",
+          },
+        ]}
+      />
     </KeyboardAvoidingView>
   );
 };

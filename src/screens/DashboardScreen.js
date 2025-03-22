@@ -71,9 +71,12 @@ export const DashboardScreen = ({ navigation }) => {
 
   const fetchUserProfile = async () => {
     try {
+      console.log("Fetching user profile...");
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      console.log("User data from auth:", user);
+
       if (user) {
         const { data, error } = await supabase
           .from("profiles")
@@ -82,12 +85,11 @@ export const DashboardScreen = ({ navigation }) => {
           .single();
 
         if (error) throw error;
+        console.log("User profile data:", data);
         setUserProfile(data);
       }
     } catch (error) {
       console.error("Error fetching profile:", error.message);
-      // Use dummy profile data if fetch fails
-      setUserProfile({ full_name: "John Doe" });
     }
   };
 
@@ -320,14 +322,39 @@ export const DashboardScreen = ({ navigation }) => {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerContent}>
-        <View>
-          <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-            Welcome back,
-          </Text>
-          <Text style={[styles.nameText, { color: theme.text }]}>
-            {userProfile?.full_name || "John Doe"}
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={styles.profileSection}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          <View
+            style={[
+              styles.profileIconContainer,
+              { backgroundColor: `${theme.primary}15` },
+            ]}
+          >
+            {userProfile?.avatar_url ? (
+              <Image
+                source={{ uri: userProfile.avatar_url }}
+                style={styles.smallProfileImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialCommunityIcons
+                name="account"
+                size={24}
+                color={theme.primary}
+              />
+            )}
+          </View>
+          <View>
+            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
+              Welcome back,
+            </Text>
+            <Text style={[styles.nameText, { color: theme.text }]}>
+              {userProfile?.full_name || "Guest"}
+            </Text>
+          </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={() => navigation.navigate("Notification")}
@@ -338,6 +365,14 @@ export const DashboardScreen = ({ navigation }) => {
               size={24}
               color={theme.text}
             />
+            {userProfile?.has_notifications && (
+              <View
+                style={[
+                  styles.notificationBadge,
+                  { backgroundColor: theme.error },
+                ]}
+              />
+            )}
           </TouchableOpacity>
           <ThemeToggle />
         </View>
@@ -363,7 +398,6 @@ export const DashboardScreen = ({ navigation }) => {
           expenses={expenses.slice(0, 4)}
           onSeeAllPress={() => navigation.navigate("Expense")}
           onExpensePress={(expense) => {
-            // Handle expense press
             console.log("Expense pressed:", expense);
           }}
         />
@@ -538,5 +572,31 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     fontWeight: "500",
+  },
+  profileSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  profileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  smallProfileImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "./src/context/ThemeContext";
-import { AuthProvider, useAuth } from "./src/context/AuthContext";
+import { AuthProvider } from "./src/context/AuthContext";
+import { supabase } from "./src/config/supabase";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
@@ -73,63 +74,92 @@ const screenOptions = {
   },
 };
 
-const Navigation = () => {
-  const { user, loading } = useAuth();
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   if (loading) {
-    return null;
+    return null; // Or a loading screen
   }
 
-  return (
-    <Stack.Navigator screenOptions={screenOptions}>
-      {!user ? (
-        // Auth Stack
-        <>
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen
-            name="ForgotPassword"
-            component={ForgotPasswordScreen}
-          />
-          <Stack.Screen name="Verification" component={VerificationScreen} />
-        </>
-      ) : (
-        // App Stack
-        <>
-          <Stack.Screen name="Dashboard" component={DashboardScreen} />
-          <Stack.Screen name="Expense" component={ExpenseScreen} />
-          <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
-          <Stack.Screen name="ExpenseBoard" component={ExpenseBoardScreen} />
-          <Stack.Screen
-            name="ExpenseBoardDetails"
-            component={ExpenseBoardDetailsScreen}
-          />
-          <Stack.Screen
-            name="CreateExpenseBoard"
-            component={CreateExpenseBoardScreen}
-          />
-          <Stack.Screen name="Categories" component={CategoriesScreen} />
-
-          <Stack.Screen name="Analytics" component={AnalyticsScreen} />
-          <Stack.Screen name="Analysis" component={AnalysisScreen} />
-          <Stack.Screen name="Notification" component={NotificationScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-        </>
-      )}
-    </Stack.Navigator>
-  );
-};
-
-export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <ThemeProvider>
           <NavigationContainer>
-            <Navigation />
+            <Stack.Navigator screenOptions={screenOptions}>
+              {session ? (
+                // Protected routes
+                <>
+                  <Stack.Screen name="Dashboard" component={DashboardScreen} />
+                  <Stack.Screen name="Expense" component={ExpenseScreen} />
+                  <Stack.Screen
+                    name="AddExpense"
+                    component={AddExpenseScreen}
+                  />
+                  <Stack.Screen
+                    name="ExpenseBoard"
+                    component={ExpenseBoardScreen}
+                  />
+                  <Stack.Screen
+                    name="ExpenseBoardDetails"
+                    component={ExpenseBoardDetailsScreen}
+                  />
+                  <Stack.Screen
+                    name="CreateExpenseBoard"
+                    component={CreateExpenseBoardScreen}
+                  />
+                  <Stack.Screen
+                    name="Categories"
+                    component={CategoriesScreen}
+                  />
+                  <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+                  <Stack.Screen name="Analysis" component={AnalysisScreen} />
+                  <Stack.Screen
+                    name="Notification"
+                    component={NotificationScreen}
+                  />
+                  <Stack.Screen name="Profile" component={ProfileScreen} />
+                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                </>
+              ) : (
+                // Public routes
+                <>
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                  <Stack.Screen
+                    name="Onboarding"
+                    component={OnboardingScreen}
+                  />
+                  <Stack.Screen name="Register" component={RegisterScreen} />
+                  <Stack.Screen
+                    name="ForgotPassword"
+                    component={ForgotPasswordScreen}
+                  />
+                  <Stack.Screen
+                    name="Verification"
+                    component={VerificationScreen}
+                  />
+                </>
+              )}
+            </Stack.Navigator>
           </NavigationContainer>
         </ThemeProvider>
       </AuthProvider>
