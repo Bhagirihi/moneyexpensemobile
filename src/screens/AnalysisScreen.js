@@ -12,6 +12,8 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import Card from "../components/common/Card";
+import StatCard from "../components/common/StatCard";
 
 const { width } = Dimensions.get("window");
 
@@ -171,7 +173,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
   );
 
   const renderSummaryCard = () => (
-    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+    <Card style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
           <MaterialCommunityIcons
@@ -186,125 +188,49 @@ export const AnalysisScreen = ({ navigation, route }) => {
         </View>
       </View>
       <View style={styles.summaryGrid}>
-        <View style={styles.summaryItem}>
-          <View style={styles.summaryItemHeader}>
-            <View
-              style={[
-                styles.summaryIcon,
-                { backgroundColor: theme.primary + "20" },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="cash-multiple"
-                size={24}
-                color={theme.primary}
-              />
-            </View>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              Expense
-            </Text>
-          </View>
-          <Text style={[styles.summaryValue, { color: theme.text }]}>
-            ${analysisData.totalExpense}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <View style={styles.summaryItemHeader}>
-            <View
-              style={[
-                styles.summaryIcon,
-                { backgroundColor: theme.success + "20" },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="wallet"
-                size={24}
-                color={theme.success}
-              />
-            </View>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              Budget
-            </Text>
-          </View>
-          <Text style={[styles.summaryValue, { color: theme.text }]}>
-            ${analysisData.totalBudget}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <View style={styles.summaryItemHeader}>
-            <View
-              style={[
-                styles.summaryIcon,
-                { backgroundColor: theme.warning + "20" },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="account-group"
-                size={24}
-                color={theme.warning}
-              />
-            </View>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              Budget
-            </Text>
-          </View>
-          <Text style={[styles.summaryValue, { color: theme.text }]}>
-            ${analysisData.perPersonBudget}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <View style={styles.summaryItemHeader}>
-            <View
-              style={[
-                styles.summaryIcon,
-                {
-                  backgroundColor:
-                    analysisData.totalExpense > analysisData.totalBudget
-                      ? theme.error + "20"
-                      : theme.success + "20",
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={
-                  analysisData.totalExpense > analysisData.totalBudget
-                    ? "alert-circle"
-                    : "check-circle"
-                }
-                size={24}
-                color={
-                  analysisData.totalExpense > analysisData.totalBudget
-                    ? theme.error
-                    : theme.success
-                }
-              />
-            </View>
-            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-              Status
-            </Text>
-          </View>
-          <Text
-            style={[
-              styles.summaryValue,
-              {
-                color:
-                  analysisData.totalExpense > analysisData.totalBudget
-                    ? theme.error
-                    : theme.success,
-              },
-            ]}
-          >
-            {analysisData.totalExpense > analysisData.totalBudget
+        <StatCard
+          title="Expense"
+          value={`$${analysisData.totalExpense}`}
+          icon="cash-multiple"
+          style={styles.summaryItem}
+        />
+        <StatCard
+          title="Budget"
+          value={`$${analysisData.totalBudget}`}
+          icon="wallet"
+          style={styles.summaryItem}
+        />
+        <StatCard
+          title="Per Person"
+          value={`$${analysisData.perPersonBudget}`}
+          icon="account-group"
+          style={styles.summaryItem}
+        />
+        <StatCard
+          title="Status"
+          value={
+            analysisData.totalExpense > analysisData.totalBudget
               ? "Over Budget"
-              : "Under Budget"}
-          </Text>
-        </View>
+              : "Under Budget"
+          }
+          icon={
+            analysisData.totalExpense > analysisData.totalBudget
+              ? "alert-circle"
+              : "check-circle"
+          }
+          trendType={
+            analysisData.totalExpense > analysisData.totalBudget
+              ? "negative"
+              : "positive"
+          }
+          style={styles.summaryItem}
+        />
       </View>
-    </View>
+    </Card>
   );
 
   const renderParticipantSpending = () => (
-    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+    <Card style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, { color: theme.text }]}>
           Per Person Spending
@@ -360,11 +286,11 @@ export const AnalysisScreen = ({ navigation, route }) => {
           </Text>
         </View>
       ))}
-    </View>
+    </Card>
   );
 
   const renderSettlements = () => (
-    <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+    <Card style={styles.card}>
       <View style={styles.cardHeader}>
         <View>
           <Text style={[styles.cardTitle, { color: theme.text }]}>
@@ -461,7 +387,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
           </Text>
         </View>
       )}
-    </View>
+    </Card>
   );
 
   if (loading) {
@@ -632,27 +558,6 @@ const styles = StyleSheet.create({
   summaryItem: {
     width: (width - 64) / 2,
     marginBottom: 16,
-  },
-  summaryItemHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  summaryIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    flex: 1,
-  },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: "600",
   },
   participantItem: {
     flexDirection: "row",

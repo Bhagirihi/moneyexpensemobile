@@ -19,6 +19,8 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
+import FormInput from "../components/common/FormInput";
+import FormButton from "../components/common/FormButton";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -277,8 +279,8 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
   const handleCreateBoard = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
     try {
-      setLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -310,7 +312,8 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      Alert.alert("Error", error.message || "Failed to create expense board");
+      console.error("Error creating board:", error);
+      Alert.alert("Error", "Failed to create board. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -376,96 +379,54 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
   });
 
   const renderBoardNameInput = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Board Name</Text>
-      <TextInput
-        style={[
-          styles.input,
-          getInputStyle(),
-          errors.boardName && getInputErrorStyle(),
-        ]}
-        placeholder="Enter board name"
-        placeholderTextColor={theme.textSecondary}
-        value={boardName}
-        onChangeText={(text) => {
-          setBoardName(text);
-          if (errors.boardName) {
-            setErrors((prev) => ({ ...prev, boardName: undefined }));
-          }
-        }}
-        maxLength={50}
-      />
-      {errors.boardName && (
-        <Text style={[styles.errorText, { color: theme.error }]}>
-          {errors.boardName}
-        </Text>
-      )}
-    </View>
+    <FormInput
+      label="Board Name"
+      value={boardName}
+      onChangeText={(text) => {
+        setBoardName(text);
+        if (errors.boardName) {
+          setErrors((prev) => ({ ...prev, boardName: undefined }));
+        }
+      }}
+      placeholder="Enter board name"
+      error={errors.boardName}
+      maxLength={50}
+    />
   );
 
   const renderDescriptionInput = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-      <TextInput
-        style={[
-          styles.input,
-          styles.descriptionInput,
-          getInputStyle(),
-          errors.description && getInputErrorStyle(),
-        ]}
-        placeholder="Enter board description"
-        placeholderTextColor={theme.textSecondary}
-        value={description}
-        onChangeText={(text) => {
-          setDescription(text);
-          if (errors.description) {
-            setErrors((prev) => ({ ...prev, description: undefined }));
-          }
-        }}
-        multiline
-        numberOfLines={3}
-        maxLength={200}
-      />
-      {errors.description && (
-        <Text style={[styles.errorText, { color: theme.error }]}>
-          {errors.description}
-        </Text>
-      )}
-    </View>
+    <FormInput
+      label="Description"
+      value={description}
+      onChangeText={(text) => {
+        setDescription(text);
+        if (errors.description) {
+          setErrors((prev) => ({ ...prev, description: undefined }));
+        }
+      }}
+      placeholder="Enter board description"
+      multiline
+      numberOfLines={3}
+      error={errors.description}
+      maxLength={200}
+    />
   );
 
   const renderBudgetInput = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>
-        Per Person Budget
-      </Text>
-      <View style={styles.budgetContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            styles.budgetInput,
-            getInputStyle(),
-            errors.perPersonBudget && getInputErrorStyle(),
-          ]}
-          placeholder="Enter amount"
-          placeholderTextColor={theme.textSecondary}
-          value={perPersonBudget}
-          onChangeText={(text) => {
-            setPerPersonBudget(text);
-            if (errors.perPersonBudget) {
-              setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
-            }
-          }}
-          keyboardType="decimal-pad"
-        />
-        <Text style={[styles.label, { color: theme.text }]}>$</Text>
-      </View>
-      {errors.perPersonBudget && (
-        <Text style={[styles.errorText, { color: theme.error }]}>
-          {errors.perPersonBudget}
-        </Text>
-      )}
-    </View>
+    <FormInput
+      label="Per Person Budget"
+      value={perPersonBudget}
+      onChangeText={(text) => {
+        setPerPersonBudget(text);
+        if (errors.perPersonBudget) {
+          setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
+        }
+      }}
+      placeholder="Enter budget amount"
+      keyboardType="numeric"
+      prefix="$"
+      error={errors.perPersonBudget}
+    />
   );
 
   const renderColorPicker = () => (
@@ -613,23 +574,12 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
           {renderShareOptions()}
         </ScrollView>
       </KeyboardAvoidingView>
-      <TouchableOpacity
-        style={[
-          styles.createButton,
-          getCreateButtonStyle(),
-          loading && styles.createButtonDisabled,
-        ]}
+      <FormButton
+        title="Create Board"
         onPress={handleCreateBoard}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color={theme.white} />
-        ) : (
-          <Text style={[styles.createButtonText, getCreateButtonTextStyle()]}>
-            Create Board
-          </Text>
-        )}
-      </TouchableOpacity>
+        loading={loading}
+        style={styles.createButton}
+      />
     </SafeAreaView>
   );
 };

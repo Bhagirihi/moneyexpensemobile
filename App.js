@@ -5,14 +5,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "./src/context/ThemeContext";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 
-import { LoginScreen } from "./src/screens/LoginScreen";
-import { RegisterScreen } from "./src/screens/RegisterScreen";
-import { ForgotPasswordScreen } from "./src/screens/ForgotPasswordScreen";
-import { VerificationScreen } from "./src/screens/VerificationScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import RegisterScreen from "./src/screens/RegisterScreen";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import VerificationScreen from "./src/screens/VerificationScreen";
 
 // Import all screens
-import { OnboardingScreen } from "./src/screens/OnboardingScreen";
-import { WelcomeScreen } from "./src/screens/WelcomeScreen";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
+import WelcomeScreen from "./src/screens/WelcomeScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { ExpenseScreen } from "./src/screens/ExpenseScreen";
 import { AddExpenseScreen } from "./src/screens/AddExpenseScreen";

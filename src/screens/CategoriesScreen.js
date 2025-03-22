@@ -16,6 +16,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
+import ListHeader from "../components/common/ListHeader";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -743,13 +744,13 @@ export const CategoriesScreen = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
-              <Text
-                style={[styles.sectionTitle, { color: theme.textSecondary }]}
-              >
-                {categories.some((cat) => cat.id.startsWith("default-"))
-                  ? "Default Categories"
-                  : "Your Categories"}
-              </Text>
+              <ListHeader
+                title={
+                  categories.some((cat) => cat.id.startsWith("default-"))
+                    ? "Default Categories"
+                    : "Your Categories"
+                }
+              />
             }
           />
         )}

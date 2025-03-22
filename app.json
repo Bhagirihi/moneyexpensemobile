@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Mobile_2",
-    "slug": "Mobile_2",
+    "name": "TripExpense",
+    "slug": "TripExpense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

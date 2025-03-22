@@ -18,7 +18,7 @@ import { tripService } from "../services/tripService";
 import ThemeToggle from "../components/ThemeToggle";
 import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
-import { ExpenseList } from "../components/ExpenseList";
+import ExpenseList from "../components/ExpenseList";
 
 const { width } = Dimensions.get("window");
 
@@ -367,9 +367,8 @@ export const DashboardScreen = ({ navigation }) => {
             console.log("Expense pressed:", expense);
           }}
         />
-        {renderNavigationOptions()}
       </ScrollView>
-      <FooterTab navigation={navigation} />
+      <FooterTab navigation={navigation} activeRoute="Home" />
     </SafeAreaView>
   );
 };

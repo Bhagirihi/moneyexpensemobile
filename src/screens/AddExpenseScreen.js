@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
@@ -14,6 +13,8 @@ import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
 import { CategoryList } from "../components/CategoryList";
+import FormInput from "../components/common/FormInput";
+import FormButton from "../components/common/FormButton";
 
 const paymentMethods = [
   { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -32,6 +33,7 @@ const expenseBoards = [
 
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -41,9 +43,16 @@ export const AddExpenseScreen = ({ navigation }) => {
     board: null,
   });
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    navigation.goBack();
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // TODO: Implement save functionality
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error saving expense:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderExpenseBoard = () => (
@@ -100,53 +109,25 @@ export const AddExpenseScreen = ({ navigation }) => {
   );
 
   const renderAmountInput = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Amount</Text>
-      <View
-        style={[
-          styles.amountInput,
-          {
-            backgroundColor: theme.card,
-            borderWidth: 1,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <Text style={[styles.currency, { color: theme.textSecondary }]}>$</Text>
-        <TextInput
-          style={[styles.input, { color: theme.text }]}
-          value={formData.amount}
-          onChangeText={(text) => setFormData({ ...formData, amount: text })}
-          keyboardType="numeric"
-          placeholder="0.00"
-          placeholderTextColor={theme.textSecondary}
-        />
-      </View>
-    </View>
+    <FormInput
+      label="Amount"
+      value={formData.amount}
+      onChangeText={(text) => setFormData({ ...formData, amount: text })}
+      placeholder="Enter amount"
+      keyboardType="numeric"
+      prefix="$"
+    />
   );
 
   const renderDescriptionInput = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-      <TextInput
-        style={[
-          styles.input,
-          styles.descriptionInput,
-          {
-            backgroundColor: theme.card,
-            color: theme.text,
-            borderWidth: 1,
-            borderColor: theme.border,
-          },
-        ]}
-        value={formData.description}
-        onChangeText={(text) => setFormData({ ...formData, description: text })}
-        placeholder="Enter expense description"
-        placeholderTextColor={theme.textSecondary}
-        multiline
-        numberOfLines={3}
-      />
-    </View>
+    <FormInput
+      label="Description"
+      value={formData.description}
+      onChangeText={(text) => setFormData({ ...formData, description: text })}
+      placeholder="Enter description"
+      multiline
+      numberOfLines={3}
+    />
   );
 
   const renderPaymentMethodSelector = () => (
@@ -240,14 +221,12 @@ export const AddExpenseScreen = ({ navigation }) => {
   );
 
   const renderSaveButton = () => (
-    <TouchableOpacity
-      style={[styles.saveButton, { backgroundColor: theme.primary }]}
+    <FormButton
+      title="Save Expense"
       onPress={handleSave}
-    >
-      <Text style={[styles.saveButtonText, { color: theme.white }]}>
-        Save Expense
-      </Text>
-    </TouchableOpacity>
+      loading={loading}
+      style={styles.saveButton}
+    />
   );
 
   return (

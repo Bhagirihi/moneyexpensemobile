@@ -169,10 +169,10 @@ export const getSession = async () => {
       error,
     } = await supabase.auth.getSession();
     if (error) throw error;
-    return { session, error: null };
+    return { session };
   } catch (error) {
-    console.error("Get session error:", error.message);
-    return { session: null, error };
+    console.error("Error getting session:", error.message);
+    return { session: null };
   }
 };
 
