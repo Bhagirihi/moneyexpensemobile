@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -13,6 +15,7 @@ import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
 import { CategoryList } from "../components/CategoryList";
 import { ExpenseList } from "../components/ExpenseList";
+import { expenseService } from "../services/expenseService";
 
 const categories = [
   { id: 0, name: "All", icon: "view-grid", color: "#6C5CE7" },
@@ -57,12 +60,54 @@ const recentExpenses = [
 export const ExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [expenses, setExpenses] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState({
+    totalExpenses: 0,
+    totalBudget: 0,
+    remainingBalance: 0,
+  });
 
-  // Dummy data for monthly stats
-  const monthlyStats = {
-    totalExpenses: 1250.5,
-    totalBudget: 2000.0,
-    remainingBalance: 749.5,
+  useEffect(() => {
+    fetchExpenses();
+  }, [selectedCategory]);
+
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching expenses...");
+      const data = await expenseService.getExpenses(
+        selectedCategory === 0 ? null : categories[selectedCategory].name
+      );
+      console.log("Fetched expenses:", data);
+
+      if (data && data.length > 0) {
+        setExpenses(data);
+        // Calculate monthly stats
+        const totalExpenses = data.reduce(
+          (sum, expense) => sum + expense.amount,
+          0
+        );
+        setMonthlyStats({
+          totalExpenses,
+          totalBudget: 2000.0, // This should come from your budget settings
+          remainingBalance: 2000.0 - totalExpenses,
+        });
+      } else {
+        setExpenses([]);
+        setMonthlyStats({
+          totalExpenses: 0,
+          totalBudget: 2000.0,
+          remainingBalance: 2000.0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching expenses:", error.message);
+      Alert.alert("Error", "Failed to fetch expenses. Please try again later.");
+      setExpenses([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderAddButton = () => (
@@ -83,7 +128,7 @@ export const ExpenseScreen = ({ navigation }) => {
             Total Expenses
           </Text>
           <Text style={[styles.statsValue, { color: theme.text }]}>
-            ${monthlyStats.totalExpenses.toFixed(2)}
+            ₹{monthlyStats.totalExpenses.toFixed(2)}
           </Text>
         </View>
         <View style={styles.statsItem}>
@@ -91,7 +136,7 @@ export const ExpenseScreen = ({ navigation }) => {
             Remaining
           </Text>
           <Text style={[styles.statsValue, { color: theme.success }]}>
-            ${monthlyStats.remainingBalance.toFixed(2)}
+            ₹{monthlyStats.remainingBalance.toFixed(2)}
           </Text>
         </View>
       </View>
@@ -119,6 +164,46 @@ export const ExpenseScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons
+        name="receipt-text-outline"
+        size={64}
+        color={theme.textSecondary}
+      />
+      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+        No expenses found
+      </Text>
+      <TouchableOpacity
+        style={[styles.addExpenseButton, { backgroundColor: theme.primary }]}
+        onPress={() => navigation.navigate("AddExpense")}
+      >
+        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
+        <Text style={[styles.addExpenseText, { color: theme.white }]}>
+          Add Your First Expense
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header
+          title="Expenses"
+          onBack={() => navigation.goBack()}
+          rightComponent={renderAddButton()}
+          showBack={false}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -135,15 +220,19 @@ export const ExpenseScreen = ({ navigation }) => {
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
         />
-        <ExpenseList
-          expenses={recentExpenses}
-          onExpensePress={(expense) => {
-            /* Navigate to Expense Details */
-          }}
-          onSeeAllPress={() => {
-            /* Navigate to All Expenses */
-          }}
-        />
+        {expenses.length > 0 ? (
+          <ExpenseList
+            expenses={expenses}
+            onExpensePress={(expense) => {
+              navigation.navigate("ExpenseDetails", { expenseId: expense.id });
+            }}
+            onSeeAllPress={() => {
+              navigation.navigate("AllExpenses");
+            }}
+          />
+        ) : (
+          renderEmptyState()
+        )}
       </ScrollView>
       <FooterTab navigation={navigation} />
     </SafeAreaView>
@@ -207,5 +296,34 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    marginTop: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 12,
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  addExpenseButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addExpenseText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

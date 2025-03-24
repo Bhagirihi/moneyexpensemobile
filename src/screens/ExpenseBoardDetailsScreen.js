@@ -12,6 +12,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ExpenseList } from "../components/ExpenseList";
+import { formatCurrency } from "../utils/formatters";
 
 const { width } = Dimensions.get("window");
 
@@ -69,7 +70,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
             Total Expenses
           </Text>
           <Text style={[styles.summaryValue, { color: theme.text }]}>
-            ${totalExpenses}
+            {formatCurrency(totalExpenses)}
           </Text>
         </View>
         <View style={styles.summaryItem}>
@@ -100,7 +101,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title={boardName}
+        title={boardName || "Expense Board"}
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity

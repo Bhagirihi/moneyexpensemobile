@@ -1,9 +1,18 @@
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create enum types
-CREATE TYPE expense_status AS ENUM ('pending', 'settled', 'cancelled');
-CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'net_banking');
+-- Create enum types if they don't exist
+DO $$ BEGIN
+    CREATE TYPE expense_status AS ENUM ('pending', 'settled', 'cancelled');
+    EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE payment_method AS ENUM ('cash', 'card', 'upi', 'net_banking');
+    EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -36,7 +45,10 @@ CREATE POLICY "Users can update their own profile"
 -- Create function to handle new user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    default_board_id UUID;
 BEGIN
+    -- Insert into profiles table
     INSERT INTO public.profiles (
         id,
         full_name,
@@ -59,6 +71,46 @@ BEGIN
         COALESCE((NEW.raw_user_meta_data->>'is_google_connected')::boolean, false),
         'active'
     );
+
+    -- Create default categories for the new user
+    INSERT INTO public.categories (
+        name,
+        description,
+        icon,
+        color,
+        user_id,
+        is_default
+    )
+    VALUES
+        ('Food', 'Food and dining expenses', 'food', '#FF6B6B', NEW.id, true),
+        ('Transport', 'Transportation costs', 'car', '#4ECDC4', NEW.id, true),
+        ('Shopping', 'Shopping and retail', 'shopping', '#45B7D1', NEW.id, true),
+        ('Entertainment', 'Entertainment and leisure', 'movie', '#96CEB4', NEW.id, true),
+        ('Health', 'Health and medical expenses', 'heart', '#FFEEAD', NEW.id, true),
+        ('Education', 'Education and learning', 'book', '#D4A5A5', NEW.id, true),
+        ('Housing', 'Housing and utilities', 'home', '#9B59B6', NEW.id, true),
+        ('Travel', 'Travel and tourism', 'airplane', '#3498DB', NEW.id, true);
+
+    -- Create a default "General Expense" board
+    INSERT INTO public.expense_boards (
+        name,
+        description,
+        total_budget,
+        created_by
+    )
+    VALUES (
+        'General Expenses',
+        'Default board for tracking general expenses',
+        NULL,  -- No specific budget limit
+        NEW.id
+    )
+    RETURNING id INTO default_board_id;
+
+    -- Log the successful creation
+    RAISE NOTICE 'Created default data for user %: Profile, Categories, and General Expense Board (ID: %)',
+        NEW.id,
+        default_board_id;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -101,36 +153,50 @@ CREATE POLICY "Users can delete their own expense boards"
     USING (auth.uid() = created_by);
 
 -- Create categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS public.categories (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
-    icon TEXT,
-    color TEXT,
+    description TEXT,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
     is_default BOOLEAN DEFAULT false,
-    created_by UUID REFERENCES auth.users ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Enable Row Level Security for categories
-ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+-- Enable Row Level Security
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 
--- Create policies for categories
-CREATE POLICY "Users can view all categories"
-    ON categories FOR SELECT
-    USING (true);
+-- Create policies
+CREATE POLICY "Users can view their own categories and default categories"
+    ON public.categories FOR SELECT
+    USING (user_id = auth.uid() OR is_default = true);
 
 CREATE POLICY "Users can create their own categories"
-    ON categories FOR INSERT
-    WITH CHECK (auth.uid() = created_by);
+    ON public.categories FOR INSERT
+    WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY "Users can update their own categories"
-    ON categories FOR UPDATE
-    USING (auth.uid() = created_by);
+    ON public.categories FOR UPDATE
+    USING (user_id = auth.uid());
 
 CREATE POLICY "Users can delete their own categories"
-    ON categories FOR DELETE
-    USING (auth.uid() = created_by);
+    ON public.categories FOR DELETE
+    USING (user_id = auth.uid() AND is_default = false);
+
+-- Insert default categories
+INSERT INTO public.categories (name, description, icon, color, is_default)
+VALUES
+    ('Food', 'Food and dining expenses', 'food', '#FF6B6B', true),
+    ('Transport', 'Transportation costs', 'car', '#4ECDC4', true),
+    ('Shopping', 'Shopping and retail', 'shopping', '#45B7D1', true),
+    ('Entertainment', 'Entertainment and leisure', 'movie', '#96CEB4', true),
+    ('Health', 'Health and medical expenses', 'heart', '#FFEEAD', true),
+    ('Education', 'Education and learning', 'book', '#D4A5A5', true),
+    ('Housing', 'Housing and utilities', 'home', '#9B59B6', true),
+    ('Travel', 'Travel and tourism', 'airplane', '#3498DB', true)
+ON CONFLICT DO NOTHING;
 
 -- Create expenses table
 CREATE TABLE expenses (
@@ -261,12 +327,3 @@ CREATE POLICY "Users can manage settlements in their boards"
             AND expense_boards.created_by = auth.uid()
         )
     );
-
--- Insert default categories
-INSERT INTO categories (name, icon, color, is_default) VALUES
-('Food', 'food', '#FF6B6B', true),
-('Transport', 'car', '#4ECDC4', true),
-('Shopping', 'shopping', '#45B7D1', true),
-('Entertainment', 'movie', '#96CEB4', true),
-('Health', 'medical-bag', '#FFEEAD', true),
-('Education', 'book-open-variant', '#D4A5A5', true);

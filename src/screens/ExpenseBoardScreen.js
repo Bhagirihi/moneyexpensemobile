@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,81 +7,65 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { expenseBoardService } from "../services/expenseBoardService";
 
 const { width } = Dimensions.get("window");
 
-// Dummy data for expense boards
-const expenseBoards = [
-  {
-    id: 1,
-    name: "General",
-    icon: "view-grid",
-    color: "#6C5CE7",
-    totalExpenses: 2500,
-    budget: 5000,
-    totalTransactions: 12,
-  },
-  {
-    id: 2,
-    name: "GOA",
-    icon: "beach",
-    color: "#FF6B6B",
-    totalExpenses: 1500,
-    budget: 3000,
-    totalTransactions: 8,
-  },
-  {
-    id: 3,
-    name: "DAMAN",
-    icon: "city",
-    color: "#4ECDC4",
-    totalExpenses: 800,
-    budget: 2000,
-    totalTransactions: 5,
-  },
-  {
-    id: 4,
-    name: "MUMBAI",
-    icon: "city-variant",
-    color: "#45B7D1",
-    totalExpenses: 1200,
-    budget: 4000,
-    totalTransactions: 7,
-  },
-  {
-    id: 5,
-    name: "DELHI",
-    icon: "city-variant-outline",
-    color: "#96CEB4",
-    totalExpenses: 900,
-    budget: 2500,
-    totalTransactions: 6,
-  },
-];
-
 export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const [expenseBoards, setExpenseBoards] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchExpenseBoards();
+  }, []);
+
+  const fetchExpenseBoards = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching expense boards in screen...");
+      const boards = await expenseBoardService.getExpenseBoards();
+      console.log("Fetched boards:", boards);
+      setExpenseBoards(boards);
+    } catch (error) {
+      console.error("Error fetching expense boards:", error.message);
+      Alert.alert(
+        "Error",
+        "Failed to fetch expense boards. Please try again later."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderExpenseBoard = (board) => (
     <TouchableOpacity
       key={board.id}
       style={[styles.boardCard, { backgroundColor: theme.card }]}
       onPress={() =>
-        navigation.navigate("ExpenseBoardDetails", { boardName: board.name })
+        navigation.navigate("ExpenseBoardDetails", {
+          boardId: board.id,
+          boardName: board.name,
+        })
       }
     >
       <View style={styles.boardHeader}>
         <View
-          style={[styles.boardIcon, { backgroundColor: `${board.color}15` }]}
+          style={[
+            styles.boardIcon,
+            { backgroundColor: `${board.color || theme.primary}15` },
+          ]}
         >
           <MaterialCommunityIcons
-            name={board.icon}
+            name={board.icon || "view-grid"}
             size={24}
-            color={board.color}
+            color={board.color || theme.primary}
           />
         </View>
         <Text style={[styles.boardName, { color: theme.text }]}>
@@ -94,7 +78,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Total Expenses
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ${board.totalExpenses}
+            ₹{board.totalExpenses.toFixed(2)}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -102,7 +86,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Budget
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ${board.budget}
+            ₹{board.total_budget.toFixed(2)}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -121,11 +105,11 @@ export const ExpenseBoardScreen = ({ navigation }) => {
               styles.progressFill,
               {
                 backgroundColor:
-                  board.totalExpenses > board.budget
+                  board.totalExpenses > board.total_budget
                     ? theme.error
                     : theme.success,
                 width: `${Math.min(
-                  (board.totalExpenses / board.budget) * 100,
+                  (board.totalExpenses / board.total_budget) * 100,
                   100
                 )}%`,
               },
@@ -135,6 +119,34 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header
+          title="Expense Board"
+          onBack={() => navigation.goBack()}
+          rightComponent={
+            <TouchableOpacity
+              onPress={() => navigation.navigate("CreateExpenseBoard")}
+              style={styles.addButton}
+            >
+              <MaterialCommunityIcons
+                name="plus"
+                size={24}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+          }
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -160,7 +172,20 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {expenseBoards.map(renderExpenseBoard)}
+        {expenseBoards.length > 0 ? (
+          expenseBoards.map(renderExpenseBoard)
+        ) : (
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons
+              name="view-grid-outline"
+              size={48}
+              color={theme.textSecondary}
+            />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No expense boards found
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -234,5 +259,21 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    textAlign: "center",
   },
 });

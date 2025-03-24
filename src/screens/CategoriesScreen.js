@@ -15,7 +15,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { supabase } from "../config/supabase";
+import { categoryService } from "../services/supabaseService";
 import ListHeader from "../components/common/ListHeader";
 
 const DEFAULT_CATEGORIES = [
@@ -314,31 +314,26 @@ export const CategoriesScreen = ({ navigation }) => {
   const [errors, setErrors] = useState({});
 
   const fetchCategories = useCallback(async () => {
+    console.log("🔄 Starting to fetch categories...");
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      const { categories, error } = await categoryService.getCategories();
 
       if (error) throw error;
 
-      // If no categories exist, use default categories
-      if (!data || data.length === 0) {
+      if (!categories || categories.length === 0) {
+        console.log("ℹ️ No categories found, using default categories");
         setCategories(DEFAULT_CATEGORIES);
       } else {
-        setCategories(data);
+        console.log("✅ Setting fetched categories");
+        setCategories(categories);
       }
     } catch (error) {
+      console.error("❌ Error in fetchCategories:", error.message);
       Alert.alert("Error", "Failed to fetch categories");
-      // Fallback to default categories on error
+      console.log("⚠️ Falling back to default categories");
       setCategories(DEFAULT_CATEGORIES);
     } finally {
+      console.log("🏁 Category fetching process completed");
       setLoading(false);
     }
   }, []);
@@ -367,30 +362,22 @@ export const CategoriesScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
       const categoryData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
         color: formData.color.value,
         icon: formData.icon.name,
-        user_id: user.id,
         created_at: new Date().toISOString(),
       };
 
       if (editingCategory) {
-        const { error } = await supabase
-          .from("categories")
-          .update(categoryData)
-          .eq("id", editingCategory.id);
+        const { error } = await categoryService.updateCategory(
+          editingCategory.id,
+          categoryData
+        );
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("categories")
-          .insert([categoryData]);
+        const { error } = await categoryService.createCategory(categoryData);
         if (error) throw error;
       }
 
@@ -402,6 +389,7 @@ export const CategoriesScreen = ({ navigation }) => {
         `Category ${editingCategory ? "updated" : "created"} successfully`
       );
     } catch (error) {
+      console.error("❌ Error saving category:", error.message);
       Alert.alert("Error", "Failed to save category");
     } finally {
       setLoading(false);
@@ -420,14 +408,14 @@ export const CategoriesScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               setLoading(true);
-              const { error } = await supabase
-                .from("categories")
-                .delete()
-                .eq("id", categoryId);
+              const { error } = await categoryService.deleteCategory(
+                categoryId
+              );
               if (error) throw error;
               await fetchCategories();
               Alert.alert("Success", "Category deleted successfully");
             } catch (error) {
+              console.error("❌ Error deleting category:", error.message);
               Alert.alert("Error", "Failed to delete category");
             } finally {
               setLoading(false);
