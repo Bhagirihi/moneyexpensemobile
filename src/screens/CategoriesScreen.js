@@ -18,6 +18,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { categoryService } from "../services/categoryService";
 import ListHeader from "../components/common/ListHeader";
 import { showToast } from "../utils/toast";
+import { AddCategoryScreen } from "./AddCategoryScreen";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -304,15 +305,6 @@ export const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    color: CATEGORY_COLORS[0],
-    icon: CATEGORY_ICONS[0],
-  });
-  const [errors, setErrors] = useState({});
 
   const fetchCategories = useCallback(async () => {
     console.log("🔄 Starting to fetch categories...");
@@ -341,104 +333,19 @@ export const CategoriesScreen = ({ navigation }) => {
     fetchCategories();
   }, [fetchCategories]);
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.name.trim()) {
-      newErrors.name = "Category name is required";
-    }
-    if (formData.name.length > 50) {
-      newErrors.name = "Category name must be less than 50 characters";
-    }
-    if (formData.description.length > 200) {
-      newErrors.description = "Description must be less than 200 characters";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSave = async () => {
-    try {
-      if (!formData.name.trim()) {
-        showToast.error("Validation Error", "Category name is required");
-        return;
-      }
-
-      if (editingCategory) {
-        const { error } = await categoryService.updateCategory(
-          editingCategory.id,
-          formData
-        );
-        if (error) {
-          showToast.error("Failed to update category", error.message);
-          return;
-        }
-        showToast.success("Success", "Category updated successfully");
-      } else {
-        const { error } = await categoryService.createCategory(formData);
-        if (error) {
-          showToast.error("Failed to create category", error.message);
-          return;
-        }
-        showToast.success("Success", "Category created successfully");
-      }
-
-      setModalVisible(false);
-      setFormData({ name: "", icon: "📊", color: "#007AFF", description: "" });
-      setEditingCategory(null);
-      fetchCategories();
-    } catch (error) {
-      console.error("Error saving category:", error);
-      showToast.error("Failed to save category", error.message);
-    }
-  };
-
   const handleDelete = async (categoryId) => {
     try {
       const { error } = await categoryService.deleteCategory(categoryId);
       if (error) {
-        showToast.error("Failed to delete category", error.message);
+        showToast("Failed to delete category", "error");
         return;
       }
-      showToast.success("Success", "Category deleted successfully");
+      showToast("Category deleted successfully", "success");
       fetchCategories();
     } catch (error) {
       console.error("Error deleting category:", error);
-      showToast.error("Failed to delete category", error.message);
+      showToast("Failed to delete category", "error");
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      color: CATEGORY_COLORS[0],
-      icon: CATEGORY_ICONS[0],
-    });
-    setErrors({});
-    setEditingCategory(null);
-  };
-
-  const openModal = (category = null) => {
-    if (category) {
-      setEditingCategory(category);
-      setFormData({
-        name: category.name,
-        description: category.description || "",
-        color:
-          CATEGORY_COLORS.find((c) => c.value === category.color) ||
-          CATEGORY_COLORS[0],
-        icon:
-          CATEGORY_ICONS.find((i) => i.name === category.icon) ||
-          CATEGORY_ICONS[0],
-      });
-    } else {
-      resetForm();
-    }
-    setModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
   };
 
   const renderCategoryItem = ({ item }) => (
@@ -461,7 +368,7 @@ export const CategoriesScreen = ({ navigation }) => {
       <View style={styles.categoryActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => openModal(item)}
+          onPress={() => navigation.navigate("AddCategory", { category: item })}
         >
           <MaterialCommunityIcons
             name="pencil"
@@ -485,208 +392,6 @@ export const CategoriesScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderModal = () => (
-    <Modal
-      visible={modalVisible}
-      transparent
-      animationType="slide"
-      onRequestClose={closeModal}
-    >
-      <View style={styles.modalContainer}>
-        <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
-              {editingCategory ? "Edit Category" : "New Category"}
-            </Text>
-            <TouchableOpacity onPress={closeModal}>
-              <MaterialCommunityIcons
-                name="close"
-                size={24}
-                color={theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              Category Name
-            </Text>
-            <TextInput
-              style={[
-                errors.name ? styles.input : styles.input,
-                {
-                  backgroundColor: theme.background,
-                  color: theme.text,
-                  borderColor: errors.name ? theme.error : theme.border,
-                },
-              ]}
-              placeholder="Enter category name"
-              placeholderTextColor={theme.textSecondary}
-              value={formData.name}
-              onChangeText={(text) => {
-                setFormData((prev) => ({ ...prev, name: text }));
-                if (errors.name) {
-                  setErrors((prev) => ({ ...prev, name: undefined }));
-                }
-              }}
-              maxLength={50}
-            />
-            {errors.name && (
-              <Text style={[styles.errorText, { color: theme.error }]}>
-                {errors.name}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              Description
-            </Text>
-            <TextInput
-              style={[
-                errors.description ? styles.input : styles.input,
-                {
-                  backgroundColor: theme.background,
-                  color: theme.text,
-                  borderColor: errors.description ? theme.error : theme.border,
-                },
-              ]}
-              placeholder="Enter category description"
-              placeholderTextColor={theme.textSecondary}
-              value={formData.description}
-              onChangeText={(text) => {
-                setFormData((prev) => ({ ...prev, description: text }));
-                if (errors.description) {
-                  setErrors((prev) => ({ ...prev, description: undefined }));
-                }
-              }}
-              multiline
-              numberOfLines={3}
-              maxLength={200}
-            />
-            {errors.description && (
-              <Text style={[styles.errorText, { color: theme.error }]}>
-                {errors.description}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              Choose Color
-            </Text>
-            <View style={styles.colorList}>
-              {CATEGORY_COLORS.map((color) => (
-                <TouchableOpacity
-                  key={color.id}
-                  style={[
-                    styles.colorItem,
-                    { backgroundColor: color?.value || theme.background },
-                    formData.color.id === color.id && {
-                      borderWidth: 2,
-                      borderColor: theme.primary,
-                    },
-                  ]}
-                  onPress={() => setFormData((prev) => ({ ...prev, color }))}
-                >
-                  {formData.color.id === color.id && (
-                    <MaterialCommunityIcons
-                      name="check"
-                      size={20}
-                      color="#FFFFFF"
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              Choose Icon
-            </Text>
-            <View style={styles.iconList}>
-              {CATEGORY_ICONS.map((icon) => (
-                <TouchableOpacity
-                  key={icon.id}
-                  style={[
-                    styles.iconItem,
-                    {
-                      backgroundColor:
-                        formData.icon.id === icon.id
-                          ? theme.primary
-                          : theme.background,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                  onPress={() => setFormData((prev) => ({ ...prev, icon }))}
-                >
-                  <MaterialCommunityIcons
-                    name={icon.name}
-                    size={24}
-                    color={
-                      formData.icon.id === icon.id ? theme.white : theme.text
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.iconLabel,
-                      {
-                        color:
-                          formData.icon.id === icon.id
-                            ? theme.white
-                            : theme.text,
-                      },
-                    ]}
-                  >
-                    {icon.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                {
-                  backgroundColor: theme.background,
-                  borderWidth: 1,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={closeModal}
-            >
-              <Text style={[styles.modalButtonText, { color: theme.text }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                {
-                  backgroundColor: theme.primary,
-                  borderWidth: 0,
-                },
-              ]}
-              onPress={handleSave}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.white} />
-              ) : (
-                <Text style={[styles.modalButtonText, { color: theme.white }]}>
-                  {editingCategory ? "Update" : "Create"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-  console.log("categories", categories);
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -726,11 +431,10 @@ export const CategoriesScreen = ({ navigation }) => {
       </View>
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: theme.primary }]}
-        onPress={() => openModal()}
+        onPress={() => navigation.navigate("AddCategory")}
       >
         <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-      {renderModal()}
     </SafeAreaView>
   );
 };

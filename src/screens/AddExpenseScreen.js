@@ -78,7 +78,7 @@ export const AddExpenseScreen = ({ navigation }) => {
       };
 
       await expenseService.createExpense(expenseData);
-      showToast("Expense added successfully", "success");
+      showToast.success("Expense added successfully");
       navigation.goBack();
     } catch (error) {
       console.error("Error saving expense:", error);
@@ -86,6 +86,22 @@ export const AddExpenseScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateBoard = () => {
+    navigation.navigate("CreateExpenseBoard", {
+      onBoardCreated: (newBoardId) => {
+        setFormData({ ...formData, board: newBoardId });
+      },
+    });
+  };
+
+  const handleCreateCategory = () => {
+    navigation.navigate("CreateCategory", {
+      onCategoryCreated: (newCategoryId) => {
+        setFormData({ ...formData, category: newCategoryId });
+      },
+    });
   };
 
   const renderAmountInput = () => (
@@ -235,6 +251,7 @@ export const AddExpenseScreen = ({ navigation }) => {
             onSelectBoard={(boardId) =>
               setFormData({ ...formData, board: boardId })
             }
+            onCreateBoard={handleCreateBoard}
           />
           {renderAmountInput()}
           {renderDescriptionInput()}
@@ -243,6 +260,7 @@ export const AddExpenseScreen = ({ navigation }) => {
             onSelectCategory={(categoryId) =>
               setFormData({ ...formData, category: categoryId })
             }
+            onCreateCategory={handleCreateCategory}
           />
           {renderPaymentMethodSelector()}
           {renderDateSelector()}

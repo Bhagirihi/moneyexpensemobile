@@ -11,15 +11,18 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { categoryService } from "../services/categoryService";
 import { showToast } from "../utils/toast";
+import { useNavigation } from "@react-navigation/native";
 
 export const CategoryList = ({
   selectedCategory,
   onSelectCategory,
+  onCreateCategory,
   showLabel = true,
   style,
   containerStyle,
 }) => {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +49,17 @@ export const CategoryList = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateCategory = () => {
+    navigation.navigate("AddCategory", {
+      onCategoryCreated: (newCategoryId) => {
+        fetchCategories();
+        if (onCreateCategory) {
+          onCreateCategory(newCategoryId);
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -110,6 +124,34 @@ export const CategoryList = ({
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity
+          style={[
+            styles.addNewItem,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={handleCreateCategory}
+        >
+          <View
+            style={[
+              styles.addNewIcon,
+              {
+                backgroundColor: `${theme.primary}15`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={theme.primary}
+            />
+          </View>
+          <Text style={[styles.addNewText, { color: theme.text }]}>
+            Add New
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -159,6 +201,36 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   categoryName: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  addNewItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 10,
+    marginRight: 6,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    minWidth: 100,
+  },
+  addNewIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  addNewText: {
     fontSize: 13,
     fontWeight: "600",
   },

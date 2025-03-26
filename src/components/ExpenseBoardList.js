@@ -11,9 +11,15 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
+import { useNavigation } from "@react-navigation/native";
 
-export const ExpenseBoardList = ({ selectedBoard, onSelectBoard }) => {
+export const ExpenseBoardList = ({
+  selectedBoard,
+  onSelectBoard,
+  onCreateBoard,
+}) => {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,6 +97,34 @@ export const ExpenseBoardList = ({ selectedBoard, onSelectBoard }) => {
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity
+          style={[
+            styles.addNewItem,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={onCreateBoard}
+        >
+          <View
+            style={[
+              styles.addNewIcon,
+              {
+                backgroundColor: `${theme.primary}15`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={theme.primary}
+            />
+          </View>
+          <Text style={[styles.addNewText, { color: theme.text }]}>
+            Add New
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -140,6 +174,36 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   boardName: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  addNewItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 10,
+    marginRight: 6,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    minWidth: 100,
+  },
+  addNewIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  addNewText: {
     fontSize: 13,
     fontWeight: "600",
   },

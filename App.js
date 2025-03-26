@@ -26,6 +26,7 @@ import { AnalysisScreen } from "./src/screens/AnalysisScreen";
 import { NotificationScreen } from "./src/screens/NotificationScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
@@ -129,6 +130,10 @@ export default function App() {
                   <Stack.Screen
                     name="Categories"
                     component={CategoriesScreen}
+                  />
+                  <Stack.Screen
+                    name="AddCategory"
+                    component={AddCategoryScreen}
                   />
                   <Stack.Screen name="Analytics" component={AnalyticsScreen} />
                   <Stack.Screen name="Analysis" component={AnalysisScreen} />
