@@ -7,15 +7,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  Alert,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
 import { CategoryList } from "../components/CategoryList";
-import { ExpenseList } from "../components/ExpenseList";
+import ExpenseList from "../components/ExpenseList";
 import { expenseService } from "../services/expenseService";
+import { showToast } from "../utils/toast";
 
 const categories = [
   { id: 0, name: "All", icon: "view-grid", color: "#6C5CE7" },
@@ -61,52 +62,102 @@ export const ExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState({
     totalExpenses: 0,
-    totalBudget: 0,
-    remainingBalance: 0,
+    totalBudget: 2000.0,
+    remainingBalance: 2000.0,
   });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const calculateMonthlyStats = (expensesData) => {
+    const totalExpenses = expensesData.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    setMonthlyStats({
+      totalExpenses,
+      totalBudget: 2000.0,
+      remainingBalance: 2000.0 - totalExpenses,
+    });
+  };
 
   useEffect(() => {
     fetchExpenses();
   }, [selectedCategory]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (pageNum = 1) => {
     try {
       setLoading(true);
+      setError(null);
       console.log("Fetching expenses...");
-      const data = await expenseService.getExpenses(
-        selectedCategory === 0 ? null : categories[selectedCategory].name
+      const { data, hasMore: more } = await expenseService.getExpenses(
+        selectedCategory === 0 ? null : categories[selectedCategory].name,
+        pageNum,
+        10
       );
       console.log("Fetched expenses:", data);
 
-      if (data && data.length > 0) {
-        setExpenses(data);
-        // Calculate monthly stats
-        const totalExpenses = data.reduce(
-          (sum, expense) => sum + expense.amount,
-          0
-        );
-        setMonthlyStats({
-          totalExpenses,
-          totalBudget: 2000.0, // This should come from your budget settings
-          remainingBalance: 2000.0 - totalExpenses,
-        });
-      } else {
+      if (!data || data.length === 0) {
         setExpenses([]);
-        setMonthlyStats({
-          totalExpenses: 0,
-          totalBudget: 2000.0,
-          remainingBalance: 2000.0,
-        });
+        calculateMonthlyStats([]);
+        setHasMore(false);
+        setPage(1);
+        return;
       }
+
+      const newExpenses = pageNum === 1 ? data : [...expenses, ...data];
+      setExpenses(newExpenses);
+      calculateMonthlyStats(newExpenses);
+      setHasMore(more);
+      setPage(pageNum);
     } catch (error) {
       console.error("Error fetching expenses:", error.message);
-      Alert.alert("Error", "Failed to fetch expenses. Please try again later.");
+      setError("Failed to fetch expenses. Please try again later.");
+      showToast.error("Failed to fetch expenses", "Please try again later");
       setExpenses([]);
+      calculateMonthlyStats([]);
+      setHasMore(false);
+      setPage(1);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      fetchExpenses(page + 1);
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchExpenses(1);
+  };
+
+  const handleExpensePress = (expense) => {
+    navigation.navigate("ExpenseDetails", { expense });
+  };
+
+  const handleDeletePress = async (expenseId) => {
+    try {
+      await expenseService.deleteExpense(expenseId);
+      const updatedExpenses = expenses.filter(
+        (expense) => expense.id !== expenseId
+      );
+      setExpenses(updatedExpenses);
+      calculateMonthlyStats(updatedExpenses);
+      showToast.success(
+        "Expense deleted",
+        "The expense has been successfully deleted"
+      );
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      showToast.error("Failed to delete expense", "Please try again later");
     }
   };
 
@@ -131,62 +182,50 @@ export const ExpenseScreen = ({ navigation }) => {
             ₹{monthlyStats.totalExpenses.toFixed(2)}
           </Text>
         </View>
-        <View style={styles.statsItem}>
+        <View style={[styles.statsItem]}>
           <Text style={[styles.statsLabel, { color: theme.textSecondary }]}>
             Remaining
           </Text>
-          <Text style={[styles.statsValue, { color: theme.success }]}>
-            ₹{monthlyStats.remainingBalance.toFixed(2)}
-          </Text>
+          <View style={{ flexDirection: "column", alignItems: "left" }}>
+            <Text style={[styles.statsValue, { color: theme.success }]}>
+              ₹{monthlyStats.remainingBalance.toFixed(2)}
+            </Text>
+            <Text
+              style={[
+                styles.statsValue,
+                { color: theme.success, fontSize: 14 },
+              ]}
+            >
+              {`${Math.round(
+                (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
+              )}%`}
+            </Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.progressContainer}>
-        <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${
-                  (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
-                }%`,
-                backgroundColor: theme.primary,
-              },
-            ]}
-          />
-        </View>
-        <Text style={[styles.progressText, { color: theme.textSecondary }]}>
-          {Math.round(
-            (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
-          )}
-          % of budget used
-        </Text>
       </View>
     </View>
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
       <MaterialCommunityIcons
-        name="receipt-text-outline"
-        size={64}
-        color={theme.textSecondary}
+        name="alert-circle-outline"
+        size={48}
+        color={theme.error}
       />
-      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-        No expenses found
-      </Text>
+      <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
       <TouchableOpacity
-        style={[styles.addExpenseButton, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("AddExpense")}
+        style={[styles.retryButton, { backgroundColor: theme.primary }]}
+        onPress={() => fetchExpenses(1)}
       >
-        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
-        <Text style={[styles.addExpenseText, { color: theme.white }]}>
-          Add Your First Expense
+        <Text style={[styles.retryButtonText, { color: theme.white }]}>
+          Retry
         </Text>
       </TouchableOpacity>
     </View>
   );
 
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
@@ -212,29 +251,41 @@ export const ExpenseScreen = ({ navigation }) => {
         title="Expenses"
         onBack={() => navigation.goBack()}
         rightComponent={renderAddButton()}
-        showBack={false}
       />
       <View style={{ marginTop: 10 }}>{renderMonthlyStats()}</View>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.primary]}
+          />
+        }
+      >
         <CategoryList
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
+          showLabel={true}
         />
-        {expenses.length > 0 ? (
+
+        {error ? (
+          renderErrorState()
+        ) : (
           <ExpenseList
             expenses={expenses}
-            onExpensePress={(expense) => {
-              navigation.navigate("ExpenseDetails", { expenseId: expense.id });
-            }}
-            onSeeAllPress={() => {
-              navigation.navigate("AllExpenses");
-            }}
+            onExpensePress={handleExpensePress}
+            onDeletePress={handleDeletePress}
+            onSeeAllPress={() => navigation.navigate("AllExpenses")}
+            showHeader={true}
+            showEmptyState={true}
+            showAllButton={false}
+            navigation={navigation}
+            title="Transactions"
           />
-        ) : (
-          renderEmptyState()
         )}
       </ScrollView>
-      <FooterTab navigation={navigation} />
+      <FooterTab navigation={navigation} activeRoute="Expense" />
     </SafeAreaView>
   );
 };
@@ -251,9 +302,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   monthlyStats: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
+    justifyContent: "space-between",
+    marginHorizontal: 18,
+    marginBottom: 10,
+    padding: 8,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: {
@@ -267,10 +319,10 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
   },
   statsItem: {
     flex: 1,
+    alignItems: "center",
   },
   statsLabel: {
     fontSize: 14,
@@ -323,6 +375,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addExpenseText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    marginTop: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    marginTop: 12,
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },

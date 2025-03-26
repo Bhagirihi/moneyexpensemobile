@@ -3,46 +3,32 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
-import { categoryService } from "../services/categoryService";
+import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
 
-export const CategoryList = ({
-  selectedCategory,
-  onSelectCategory,
-  showLabel = true,
-  style,
-  containerStyle,
-}) => {
+export const ExpenseBoardList = ({ selectedBoard, onSelectBoard }) => {
   const { theme } = useTheme();
-  const [categories, setCategories] = useState([]);
+  const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCategories();
+    fetchBoards();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchBoards = async () => {
     try {
       setLoading(true);
-      const data = await categoryService.getCategories();
-
-      if (!data) {
-        console.log("No categories found");
-        setCategories([]);
-        return;
-      }
-
-      setCategories(data);
+      const data = await expenseBoardService.getExpenseBoards();
+      setBoards(data);
     } catch (error) {
-      console.error("Error fetching categories:", error);
-      showToast("Failed to fetch categories", "error");
-      setCategories([]);
+      console.error("Error fetching boards:", error);
+      showToast("Failed to fetch expense boards", "error");
     } finally {
       setLoading(false);
     }
@@ -50,63 +36,58 @@ export const CategoryList = ({
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, containerStyle]}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator color={theme.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.inputContainer, containerStyle]}>
-      {showLabel && (
-        <Text style={[styles.label, { color: theme.text }]}>Category</Text>
-      )}
+    <View style={styles.container}>
+      <Text style={[styles.label, { color: theme.text }]}>Expense Board</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.categoriesList, style]}
+        contentContainerStyle={styles.boardsList}
       >
-        {categories.map((category) => (
+        {boards.map((board) => (
           <TouchableOpacity
-            key={category.id}
+            key={board.id}
             style={[
-              styles.categoryItem,
+              styles.boardItem,
               {
                 backgroundColor:
-                  selectedCategory === category.id ? theme.primary : theme.card,
-                borderWidth: selectedCategory === category.id ? 2 : 1,
+                  selectedBoard === board.id ? theme.primary : theme.card,
+                borderWidth: selectedBoard === board.id ? 2 : 1,
                 borderColor:
-                  selectedCategory === category.id
-                    ? theme.primary
-                    : theme.border,
+                  selectedBoard === board.id ? theme.primary : theme.border,
               },
             ]}
-            onPress={() => onSelectCategory(category.id)}
+            onPress={() => onSelectBoard(board.id)}
           >
             <View
               style={[
-                styles.categoryIcon,
+                styles.boardIcon,
                 {
-                  backgroundColor: `${category.color}15`,
+                  backgroundColor: `${board.color}15`,
                 },
               ]}
             >
               <MaterialCommunityIcons
-                name={category.icon || "view-grid"}
+                name={board.icon || "view-grid"}
                 size={22}
-                color={category.color || theme.primary}
+                color={board.color || theme.primary}
               />
             </View>
             <Text
               style={[
-                styles.categoryName,
+                styles.boardName,
                 {
-                  color:
-                    selectedCategory === category.id ? theme.white : theme.text,
+                  color: selectedBoard === board.id ? theme.white : theme.text,
                 },
               ]}
             >
-              {category.name}
+              {board.name}
             </Text>
           </TouchableOpacity>
         ))}
@@ -116,7 +97,7 @@ export const CategoryList = ({
 };
 
 const styles = StyleSheet.create({
-  inputContainer: {
+  container: {
     padding: 12,
   },
   loadingContainer: {
@@ -131,10 +112,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     opacity: 0.8,
   },
-  categoriesList: {
+  boardsList: {
     paddingRight: 12,
   },
-  categoryItem: {
+  boardItem: {
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
@@ -150,7 +131,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     minWidth: 100,
   },
-  categoryIcon: {
+  boardIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -158,7 +139,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 6,
   },
-  categoryName: {
+  boardName: {
     fontSize: 13,
     fontWeight: "600",
   },

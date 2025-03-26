@@ -9,11 +9,13 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
 import { ConnectionStatus } from "../components/ConnectionStatus";
+import { showToast } from "../utils/toast";
 
 const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -49,27 +51,34 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-    if (validateForm()) {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) {
-          Alert.alert("Login Error", error.message);
-          return;
-        }
-
-        // If successful, App.js auth listener will handle navigation
-      } catch (error) {
-        Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      } finally {
-        setLoading(false);
+    try {
+      if (!validateForm()) {
+        showToast.error(
+          "Validation Error",
+          "Please fix the errors in the form"
+        );
+        return;
       }
-    } else {
-      Alert.alert("Validation Error", "Please fix the errors in the form");
+
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email.trim(),
+        password: formData.password.trim(),
+      });
+
+      if (error) {
+        console.error("Login error:", error);
+        showToast.error("Login Error", error.message);
+        return;
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      showToast.error(
+        "Error",
+        "An unexpected error occurred. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 

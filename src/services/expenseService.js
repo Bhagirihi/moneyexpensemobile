@@ -29,7 +29,7 @@ export const expenseService = {
         `,
           { count: "exact" }
         )
-        .eq("user_id", user.id)
+        .eq("created_by", user.id)
         .order("date", { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -44,6 +44,24 @@ export const expenseService = {
         throw error;
       }
 
+      // Get user profiles for all expenses
+      const userIds = [...new Set(data.map((expense) => expense.created_by))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name ")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError.message);
+        throw profilesError;
+      }
+
+      // Create a map of user IDs to profiles
+      const userMap = profiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+
       const hasMore = offset + limit < count;
       console.log("Fetched expenses:", {
         count,
@@ -57,6 +75,7 @@ export const expenseService = {
           ...expense,
           icon: expense.category?.icon || "receipt",
           color: expense.category?.color || "#6C5CE7",
+          created_by_profile: userMap[expense.created_by] || null,
         })),
         total: count,
         hasMore,
@@ -94,7 +113,7 @@ export const expenseService = {
         `
         )
         .eq("id", expenseId)
-        .eq("user_id", user.id)
+        .eq("created_by", user.id)
         .single();
 
       if (error) {
@@ -102,8 +121,23 @@ export const expenseService = {
         throw error;
       }
 
+      // Get the creator's profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name ")
+        .eq("id", data.created_by)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
+        throw profileError;
+      }
+
       console.log("Fetched expense:", data);
-      return data;
+      return {
+        ...data,
+        created_by_profile: profile,
+      };
     } catch (error) {
       console.error("Error in getExpenseById:", error.message);
       throw error;
@@ -127,7 +161,7 @@ export const expenseService = {
         .insert([
           {
             ...expenseData,
-            user_id: user.id,
+            created_by: user.id,
           },
         ])
         .select()
@@ -138,8 +172,23 @@ export const expenseService = {
         throw error;
       }
 
+      // Get the creator's profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
+        throw profileError;
+      }
+
       console.log("Created expense:", data);
-      return data;
+      return {
+        ...data,
+        created_by_profile: profile,
+      };
     } catch (error) {
       console.error("Error in createExpense:", error.message);
       throw error;
@@ -162,7 +211,7 @@ export const expenseService = {
         .from("expenses")
         .update(updates)
         .eq("id", expenseId)
-        .eq("user_id", user.id)
+        .eq("created_by", user.id)
         .select()
         .single();
 
@@ -171,8 +220,23 @@ export const expenseService = {
         throw error;
       }
 
+      // Get the creator's profile
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", data.created_by)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
+        throw profileError;
+      }
+
       console.log("Updated expense:", data);
-      return data;
+      return {
+        ...data,
+        created_by_profile: profile,
+      };
     } catch (error) {
       console.error("Error in updateExpense:", error.message);
       throw error;
@@ -195,7 +259,7 @@ export const expenseService = {
         .from("expenses")
         .delete()
         .eq("id", expenseId)
-        .eq("user_id", user.id);
+        .eq("created_by", user.id);
 
       if (error) {
         console.error("Error deleting expense:", error.message);
@@ -229,7 +293,7 @@ export const expenseService = {
       const { data, error } = await supabase
         .from("expenses")
         .select("amount")
-        .eq("user_id", user.id)
+        .eq("created_by", user.id)
         .gte(
           "date",
           new Date(

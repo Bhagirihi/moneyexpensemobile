@@ -3,7 +3,7 @@ import { supabase } from "../config/supabase";
 export const expenseBoardService = {
   async getExpenseBoards() {
     try {
-      console.log("Fetching expense boards...");
+      console.log("Fetching expense boards from Supabase...");
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -15,16 +15,8 @@ export const expenseBoardService = {
 
       const { data, error } = await supabase
         .from("expense_boards")
-        .select(
-          `
-          *,
-          expenses (
-            id,
-            amount
-          )
-        `
-        )
-        .eq("user_id", user.id)
+        .select("*")
+        .eq("created_by", user.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -33,14 +25,7 @@ export const expenseBoardService = {
       }
 
       console.log("Fetched expense boards:", data);
-      return data.map((board) => ({
-        ...board,
-        totalExpenses: board.expenses.reduce(
-          (sum, expense) => sum + expense.amount,
-          0
-        ),
-        totalTransactions: board.expenses.length,
-      }));
+      return data;
     } catch (error) {
       console.error("Error in getExpenseBoards:", error.message);
       throw error;
@@ -64,7 +49,7 @@ export const expenseBoardService = {
         .insert([
           {
             ...boardData,
-            user_id: user.id,
+            created_by: user.id,
           },
         ])
         .select()
@@ -85,11 +70,21 @@ export const expenseBoardService = {
 
   async updateExpenseBoard(boardId, updates) {
     try {
-      console.log("Updating expense board...");
+      console.log("Updating expense board:", boardId);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log("No user found");
+        throw new Error("No user found");
+      }
+
       const { data, error } = await supabase
         .from("expense_boards")
         .update(updates)
         .eq("id", boardId)
+        .eq("created_by", user.id)
         .select()
         .single();
 
@@ -108,11 +103,21 @@ export const expenseBoardService = {
 
   async deleteExpenseBoard(boardId) {
     try {
-      console.log("Deleting expense board...");
+      console.log("Deleting expense board:", boardId);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log("No user found");
+        throw new Error("No user found");
+      }
+
       const { error } = await supabase
         .from("expense_boards")
         .delete()
-        .eq("id", boardId);
+        .eq("id", boardId)
+        .eq("created_by", user.id);
 
       if (error) {
         console.error("Error deleting expense board:", error.message);

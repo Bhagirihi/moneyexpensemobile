@@ -13,6 +13,7 @@ import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
 import { CategoryList } from "../components/CategoryList";
+import { ExpenseBoardList } from "../components/ExpenseBoardList";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 
@@ -21,14 +22,6 @@ const paymentMethods = [
   { id: 2, name: "Card", icon: "credit-card", color: "#2196F3" },
   { id: 3, name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
   { id: 4, name: "Net Banking", icon: "bank", color: "#FF9800" },
-];
-
-const expenseBoards = [
-  { id: 1, name: "General", icon: "view-grid", color: "#6C5CE7" },
-  { id: 2, name: "GOA", icon: "beach", color: "#FF6B6B" },
-  { id: 3, name: "DAMAN", icon: "city", color: "#4ECDC4" },
-  { id: 4, name: "MUMBAI", icon: "city-variant", color: "#45B7D1" },
-  { id: 5, name: "DELHI", icon: "city-variant-outline", color: "#96CEB4" },
 ];
 
 export const AddExpenseScreen = ({ navigation }) => {
@@ -54,59 +47,6 @@ export const AddExpenseScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
-  const renderExpenseBoard = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Expense Board</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.boardsList}
-      >
-        {expenseBoards.map((board) => (
-          <TouchableOpacity
-            key={board.id}
-            style={[
-              styles.boardItem,
-              {
-                backgroundColor:
-                  formData.board === board.id ? theme.primary : theme.card,
-                borderWidth: formData.board === board.id ? 2 : 1,
-                borderColor:
-                  formData.board === board.id ? theme.primary : theme.border,
-              },
-            ]}
-            onPress={() => setFormData({ ...formData, board: board.id })}
-          >
-            <View
-              style={[
-                styles.boardIcon,
-                {
-                  backgroundColor: `${board.color}15`,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={board.icon}
-                size={22}
-                color={board.color}
-              />
-            </View>
-            <Text
-              style={[
-                styles.boardName,
-                {
-                  color: formData.board === board.id ? theme.white : theme.text,
-                },
-              ]}
-            >
-              {board.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
 
   const renderAmountInput = () => (
     <FormInput
@@ -242,7 +182,12 @@ export const AddExpenseScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {renderExpenseBoard()}
+          <ExpenseBoardList
+            selectedBoard={formData.board}
+            onSelectBoard={(boardId) =>
+              setFormData({ ...formData, board: boardId })
+            }
+          />
           {renderAmountInput()}
           {renderDescriptionInput()}
           <CategoryList
@@ -385,37 +330,6 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 15,
-    fontWeight: "600",
-  },
-  boardsList: {
-    paddingRight: 12,
-  },
-  boardItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderRadius: 10,
-    marginRight: 6,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    minWidth: 100,
-  },
-  boardIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 6,
-  },
-  boardName: {
-    fontSize: 13,
     fontWeight: "600",
   },
 });

@@ -18,6 +18,7 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { supabase } from "../config/supabase";
+import { showToast } from "../utils/toast";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -72,13 +73,16 @@ export const SettingsScreen = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
-      // Navigation will be handled automatically by App.js auth listener
+      if (error) {
+        console.error("Logout error:", error);
+        showToast.error("Error", "Failed to log out. Please try again.");
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to log out. Please try again.", [
-        { text: "OK" },
-      ]);
+      console.error("Unexpected error:", error);
+      showToast.error(
+        "Error",
+        "An unexpected error occurred. Please try again."
+      );
     }
   };
 

@@ -62,11 +62,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   leftSection: {
-    width: 40,
+    width: "20%",
     alignItems: "flex-start",
   },
   rightSection: {
-    minWidth: 120,
+    Width: "20%",
     alignItems: "flex-end",
   },
   backButton: {
@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     textAlign: "center",
-    marginHorizontal: 8,
+    width: "60%",
   },
 });

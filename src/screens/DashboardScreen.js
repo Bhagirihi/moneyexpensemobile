@@ -14,7 +14,8 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { tripService } from "../services/tripService";
+import { expenseBoardService } from "../services/expenseBoardService";
+import { expenseService } from "../services/expenseService";
 import ThemeToggle from "../components/ThemeToggle";
 import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
@@ -58,10 +59,11 @@ export const DashboardScreen = ({ navigation }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
+  const [hasBoards, setHasBoards] = useState(false);
   const [stats, setStats] = useState({
-    totalBudget: 5000,
-    totalExpenses: 190.5,
-    remainingBudget: 4809.5,
+    totalBudget: 0,
+    totalExpenses: 0,
+    remainingBudget: 0,
   });
 
   useEffect(() => {
@@ -96,17 +98,47 @@ export const DashboardScreen = ({ navigation }) => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [expensesData, statsData] = await Promise.all([
-        tripService.getExpenses(),
-        tripService.getDashboardStats(),
-      ]);
+      console.log("Fetching dashboard data...");
 
-      setExpenses(expensesData.length > 0 ? expensesData : dummyExpenses);
-      setStats(statsData);
+      // Fetch expense boards
+      const expenseBoards = await expenseBoardService.getExpenseBoards();
+      console.log("Fetched expense boards:", expenseBoards);
+
+      // Set whether user has any boards
+      setHasBoards(expenseBoards.length > 0);
+
+      // Calculate total budget and expenses from boards
+      const totalBudget = expenseBoards.reduce(
+        (sum, board) => sum + (board.total_budget || 0),
+        0
+      );
+      const totalExpenses = expenseBoards.reduce(
+        (sum, board) => sum + (board.totalExpenses || 0),
+        0
+      );
+      const remainingBudget = totalBudget - totalExpenses;
+
+      // Update stats
+      setStats({
+        totalBudget,
+        totalExpenses,
+        remainingBudget,
+      });
+
+      // Fetch recent transactions
+      const { data: transactionsData } = await expenseService.getExpenses(
+        null,
+        1,
+        4
+      );
+      console.log("Fetched recent transactions:", transactionsData);
+
+      // Update expenses state with fetched transactions
+      setExpenses(transactionsData || []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
-      // Use dummy data if fetch fails
-      setExpenses(dummyExpenses);
+      // Only clear expenses on error, keep other data
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
@@ -114,19 +146,6 @@ export const DashboardScreen = ({ navigation }) => {
 
   const renderBalanceCard = () => (
     <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
-      {/* <View style={styles.balanceHeader}>
-        <Text style={[styles.balanceTitle, { color: theme.white }]}>
-          Budget Overview
-        </Text>
-        <TouchableOpacity>
-          <MaterialCommunityIcons
-            name="eye-outline"
-            size={24}
-            color={theme.white}
-          />
-        </TouchableOpacity>
-      </View> */}
-
       <View style={styles.balanceMain}>
         <View style={styles.balanceRow}>
           <View style={styles.balanceLabelContainer}>
@@ -186,15 +205,17 @@ export const DashboardScreen = ({ navigation }) => {
             style={[
               styles.progressFill,
               {
-                width: `${(stats.totalExpenses / stats.totalBudget) * 100}%`,
+                width: `${
+                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+                }%`,
                 backgroundColor: theme.success,
               },
             ]}
           />
         </View>
         <Text style={[styles.progressText, { color: theme.white }]}>
-          {Math.round((stats.totalExpenses / stats.totalBudget) * 100)}% of
-          budget used
+          {Math.round((stats.totalExpenses / (stats.totalBudget || 1)) * 100)}%
+          of budget used
         </Text>
       </View>
     </View>
@@ -238,74 +259,20 @@ export const DashboardScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderNavigationOptions = () => (
-    <View style={styles.navigationSection}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        More Options
-      </Text>
-      <View style={styles.navigationGrid}>
-        <TouchableOpacity
-          style={[styles.navButton, { backgroundColor: theme.card }]}
-          onPress={() => navigation.navigate("Analytics")}
-        >
-          <MaterialCommunityIcons
-            name="chart-bar"
-            size={24}
-            color={theme.primary}
-          />
-          <Text style={[styles.navButtonText, { color: theme.text }]}>
-            Analytics
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, { backgroundColor: theme.card }]}
-          onPress={() => navigation.navigate("Analysis")}
-        >
-          <MaterialCommunityIcons
-            name="chart-line"
-            size={24}
-            color={theme.success}
-          />
-          <Text style={[styles.navButtonText, { color: theme.text }]}>
-            Analysis
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, { backgroundColor: theme.card }]}
-          onPress={() => navigation.navigate("Notification")}
-        >
-          <MaterialCommunityIcons name="bell" size={24} color={theme.warning} />
-          <Text style={[styles.navButtonText, { color: theme.text }]}>
-            Notifications
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, { backgroundColor: theme.card }]}
-          onPress={() => navigation.navigate("Profile")}
-        >
-          <MaterialCommunityIcons
-            name="account"
-            size={24}
-            color={theme.error}
-          />
-          <Text style={[styles.navButtonText, { color: theme.text }]}>
-            Profile
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navButton, { backgroundColor: theme.card }]}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <MaterialCommunityIcons
-            name="cog"
-            size={24}
-            color={theme.textSecondary}
-          />
-          <Text style={[styles.navButtonText, { color: theme.text }]}>
-            Settings
-          </Text>
-        </TouchableOpacity>
-      </View>
+  const renderTransactionsSection = () => (
+    <View style={styles.transactionsSection}>
+      <ExpenseList
+        expenses={expenses}
+        title="Recent Transactions"
+        onSeeAllPress={() => navigation.navigate("Expense")}
+        onExpensePress={(expense) => {
+          console.log("Expense pressed:", expense);
+        }}
+        showHeader={true}
+        showAllButton={true}
+        showEmptyState={true}
+        navigation={navigation}
+      />
     </View>
   );
 
@@ -385,22 +352,13 @@ export const DashboardScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       {renderHeader()}
-      {/* <Header
-        title={userProfile?.full_name || "John Doe"}
-        onBack={() => navigation.goBack()}
-        rightComponent={renderRightSection()}
-        showBack={false}
-      /> */}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {renderBalanceCard()}
         {renderQuickActions()}
-        <ExpenseList
-          expenses={expenses.slice(0, 4)}
-          onSeeAllPress={() => navigation.navigate("Expense")}
-          onExpensePress={(expense) => {
-            console.log("Expense pressed:", expense);
-          }}
-        />
+        {renderTransactionsSection()}
       </ScrollView>
       <FooterTab navigation={navigation} activeRoute="Home" />
     </SafeAreaView>
@@ -411,8 +369,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   header: {
     padding: 20,
+    paddingTop: 10,
   },
   headerContent: {
     flexDirection: "row",
@@ -435,14 +397,6 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
   },
-  // headerRight: {
-  //   flexDirection: "row",
-  //   alignItems: "center",
-  //   gap: 12,
-  // },
-  // notificationButton: {
-  //   padding: 4,
-  // },
   balanceCard: {
     marginHorizontal: 20,
     marginBottom: 20,
@@ -457,16 +411,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  balanceHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  balanceTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
   balanceMain: {
     marginBottom: 15,
   },
@@ -474,11 +418,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   remainingRow: {
-    marginTop: 4,
-    paddingTop: 8,
+    marginTop: 2,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: "rgba(255, 255, 255, 0.2)",
   },
@@ -540,36 +484,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
   },
-  navigationSection: {
-    padding: 20,
+  transactionsSection: {
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    marginBottom: 16,
   },
-  navigationGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+  seeAllButton: {
+    padding: 8,
   },
-  navButton: {
-    width: "48%",
-    padding: 16,
-    borderRadius: 15,
-    alignItems: "center",
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  navButtonText: {
-    marginTop: 8,
+  seeAllText: {
     fontSize: 14,
     fontWeight: "500",
   },
@@ -598,5 +529,29 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    marginTop: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 12,
+    textAlign: "center",
+  },
+  createButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  createButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });

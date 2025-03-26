@@ -1,124 +1,234 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
-  Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Header } from "../components/Header";
 import { ExpenseList } from "../components/ExpenseList";
-import { formatCurrency } from "../utils/formatters";
-
-const { width } = Dimensions.get("window");
-
-// Dummy data for expenses
-const expenses = [
-  {
-    id: 1,
-    category: "Food & Drinks",
-    amount: 120,
-    date: new Date(),
-    icon: "food",
-    color: "#FF6B6B",
-  },
-  {
-    id: 2,
-    category: "Shopping",
-    amount: 50,
-    date: new Date(),
-    icon: "shopping",
-    color: "#4ECDC4",
-  },
-  {
-    id: 3,
-    category: "Housing",
-    amount: 250,
-    date: new Date(Date.now() - 86400000), // Yesterday
-    icon: "home",
-    color: "#6C5CE7",
-  },
-  {
-    id: 4,
-    category: "Transportation",
-    amount: 80,
-    date: new Date(Date.now() - 86400000), // Yesterday
-    icon: "car",
-    color: "#45B7D1",
-  },
-];
-
-// Calculate total expenses
-const totalExpenses = expenses.reduce(
-  (sum, expense) => sum + expense.amount,
-  0
-);
+import { expenseBoardService } from "../services/expenseBoardService";
+import { expenseService } from "../services/expenseService";
+import { showToast } from "../utils/toast";
 
 export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
+  const { boardId } = route.params;
   const { theme } = useTheme();
-  const { boardName } = route.params;
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [board, setBoard] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState({
+    totalExpenses: 0,
+    totalBudget: 2000,
+    remainingBalance: 2000,
+  });
 
-  const renderSummaryCard = () => (
-    <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-            Total Expenses
-          </Text>
-          <Text style={[styles.summaryValue, { color: theme.text }]}>
-            {formatCurrency(totalExpenses)}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
-            Shared With
-          </Text>
-          <View style={styles.sharedUsersContainer}>
-            <View style={styles.avatarContainer}>
-              <View style={[styles.avatar, { backgroundColor: "#FF6B6B" }]}>
-                <Text style={styles.avatarText}>JD</Text>
-              </View>
-              <View style={[styles.avatar, { backgroundColor: "#4ECDC4" }]}>
-                <Text style={styles.avatarText}>AS</Text>
-              </View>
-              <View style={[styles.avatar, { backgroundColor: "#6C5CE7" }]}>
-                <Text style={styles.avatarText}>MK</Text>
-              </View>
-            </View>
-            <Text style={[styles.sharedCount, { color: theme.text }]}>+2</Text>
-          </View>
-        </View>
+  useEffect(() => {
+    fetchData();
+  }, [boardId]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [boardData, expensesData] = await Promise.all([
+        expenseBoardService.getExpenseBoardById(boardId),
+        expenseService.getExpenses(null, 1, 10),
+      ]);
+
+      if (!boardData) {
+        showToast("Expense board not found", "error");
+        navigation.goBack();
+        return;
+      }
+
+      setBoard(boardData);
+      setExpenses(expensesData.data);
+      setMonthlyStats(await expenseService.getMonthlyStats());
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showToast("Failed to fetch data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
+
+  const handleDeleteBoard = async () => {
+    try {
+      await expenseBoardService.deleteExpenseBoard(boardId);
+      showToast("Expense board deleted successfully", "success");
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error deleting board:", error);
+      showToast("Failed to delete expense board", "error");
+    }
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View
+        style={[
+          styles.emptyIconContainer,
+          { backgroundColor: `${theme.primary}15` },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="receipt-outline"
+          size={40}
+          color={theme.primary}
+        />
       </View>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>
+        No Transactions Found
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        Start adding your expenses to this board
+      </Text>
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: theme.primary }]}
+        onPress={() => navigation.navigate("AddExpense", { boardId })}
+      >
+        <MaterialCommunityIcons name="plus" size={20} color={theme.white} />
+        <Text style={[styles.addButtonText, { color: theme.white }]}>
+          Add Your First Transaction
+        </Text>
+      </TouchableOpacity>
     </View>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header title="Loading..." onBack={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!board) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header title="Not Found" onBack={() => navigation.goBack()} />
+        <View style={styles.errorContainer}>
+          <MaterialCommunityIcons
+            name="alert-circle-outline"
+            size={48}
+            color={theme.error}
+          />
+          <Text style={[styles.errorText, { color: theme.text }]}>
+            Expense board not found
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title={boardName || "Expense Board"}
+        title={board.name}
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity
-            onPress={() => navigation.navigate("AddExpense")}
-            style={styles.addButton}
+            style={styles.deleteButton}
+            onPress={handleDeleteBoard}
           >
             <MaterialCommunityIcons
-              name="plus"
+              name="delete-outline"
               size={24}
-              color={theme.primary}
+              color={theme.error}
             />
           </TouchableOpacity>
         }
       />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.content}>
+          <View style={[styles.statsCard, { backgroundColor: theme.card }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Total Expenses
+              </Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                ${monthlyStats.totalExpenses}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Budget
+              </Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                ${monthlyStats.totalBudget}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Remaining
+              </Text>
+              <Text
+                style={[
+                  styles.statValue,
+                  {
+                    color:
+                      monthlyStats.remainingBalance >= 0
+                        ? theme.success
+                        : theme.error,
+                  },
+                ]}
+              >
+                ${monthlyStats.remainingBalance}
+              </Text>
+            </View>
+          </View>
 
-      {renderSummaryCard()}
-      <ExpenseList expenses={expenses} showHeader={true} />
+          {expenses.length > 0 ? (
+            <ExpenseList
+              expenses={expenses}
+              onExpensePress={(expense) => {
+                console.log("Expense pressed:", expense);
+              }}
+              showHeader={false}
+            />
+          ) : (
+            renderEmptyState()
+          )}
+        </View>
+      </ScrollView>
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: theme.primary }]}
+        onPress={() => navigation.navigate("AddExpense", { boardId })}
+      >
+        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
+        <Text style={[styles.addButtonText, { color: theme.white }]}>
+          Add Expense
+        </Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -127,16 +237,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
+  content: {
+    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
-  addButton: {
-    padding: 8,
+  errorText: {
+    fontSize: 16,
+    marginTop: 12,
+    textAlign: "center",
   },
-  summaryCard: {
+  statsCard: {
+    flexDirection: "row",
     padding: 16,
-    borderRadius: 16,
-    margin: 16,
+    borderRadius: 12,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -146,50 +270,72 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  statItem: {
+    flex: 1,
     alignItems: "center",
   },
-  summaryItem: {
-    flex: 1,
-  },
-  summaryLabel: {
+  statLabel: {
     fontSize: 12,
     marginBottom: 4,
   },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: "600",
-  },
-  sharedUsersContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatarContainer: {
-    flexDirection: "row",
-    marginRight: 8,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: -8,
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  sharedCount: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  transactionsTitle: {
+  statValue: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: "#E0E0E0",
+    marginHorizontal: 8,
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    marginTop: 40,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    marginBottom: 24,
+    textAlign: "center",
+    opacity: 0.8,
   },
 });

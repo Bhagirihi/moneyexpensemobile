@@ -14,6 +14,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
+import { showToast } from "../utils/toast";
 
 const { width } = Dimensions.get("window");
 
@@ -29,16 +30,20 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const fetchExpenseBoards = async () => {
     try {
       setLoading(true);
-      console.log("Fetching expense boards in screen...");
-      const boards = await expenseBoardService.getExpenseBoards();
-      console.log("Fetched boards:", boards);
-      setExpenseBoards(boards);
+      console.log("Fetching expense boards in screen... ==>");
+      const data = await expenseBoardService.getExpenseBoards();
+
+      if (!data) {
+        console.error("No data received from service");
+        showToast.error("Failed to fetch boards", "No data received");
+        return;
+      }
+
+      console.log("Fetched boards =>", data);
+      setExpenseBoards(data);
     } catch (error) {
-      console.error("Error fetching expense boards:", error.message);
-      Alert.alert(
-        "Error",
-        "Failed to fetch expense boards. Please try again later."
-      );
+      console.error("Error in fetchBoards:", error);
+      showToast.error("Failed to fetch boards", error.message);
     } finally {
       setLoading(false);
     }
@@ -78,7 +83,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Total Expenses
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ₹{board.totalExpenses.toFixed(2)}
+            ₹{board?.totalExpenses?.toFixed(2)}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -86,7 +91,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Budget
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ₹{board.total_budget.toFixed(2)}
+            ₹{board?.total_budget?.toFixed(2)}
           </Text>
         </View>
         <View style={styles.statItem}>
@@ -94,7 +99,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Transactions
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            {board.totalTransactions}
+            {board?.totalTransactions}
           </Text>
         </View>
       </View>
@@ -105,11 +110,11 @@ export const ExpenseBoardScreen = ({ navigation }) => {
               styles.progressFill,
               {
                 backgroundColor:
-                  board.totalExpenses > board.total_budget
+                  board?.totalExpenses > board?.total_budget
                     ? theme.error
                     : theme.success,
                 width: `${Math.min(
-                  (board.totalExpenses / board.total_budget) * 100,
+                  (board?.totalExpenses / board?.total_budget) * 100,
                   100
                 )}%`,
               },

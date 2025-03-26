@@ -1,0 +1,222 @@
+TRIPEXPANSE DATABASE SCHEMA
+========================
+
+1. users
+--------
+- id: uuid (primary key)
+- email: string (unique)
+- full_name: string
+- password_hash: string
+- created_at: timestamp
+- updated_at: timestamp
+- is_verified: boolean
+- profile_picture_url: string (nullable)
+- last_login: timestamp
+- notification_preferences: jsonb
+- theme_preference: string
+- language_preference: string
+
+2. expense_boards
+----------------
+- id: uuid (primary key)
+- name: string
+- description: text
+- total_budget: decimal
+- created_by: uuid (foreign key -> users.id)
+- created_at: timestamp
+- updated_at: timestamp
+- share_code: string (unique)
+- is_archived: boolean
+- color: string
+- icon: string
+
+3. board_members
+---------------
+- id: uuid (primary key)
+- board_id: uuid (foreign key -> expense_boards.id)
+- user_id: uuid (foreign key -> users.id)
+- role: string (enum: 'owner', 'admin', 'member', 'viewer')
+- joined_at: timestamp
+- last_accessed: timestamp
+- UNIQUE(board_id, user_id)
+
+4. categories
+------------
+- id: uuid (primary key)
+- name: string
+- icon: string
+- color: string
+- created_by: uuid (foreign key -> users.id)
+- created_at: timestamp
+- updated_at: timestamp
+- is_default: boolean
+- is_archived: boolean
+- UNIQUE(name, created_by)
+
+5. expenses
+----------
+- id: uuid (primary key)
+- board_id: uuid (foreign key -> expense_boards.id)
+- category_id: uuid (foreign key -> categories.id)
+- description: string
+- amount: decimal
+- date: date
+- created_by: uuid (foreign key -> users.id)
+- created_at: timestamp
+- updated_at: timestamp
+- receipt_url: string (nullable)
+- notes: text (nullable)
+- tags: string[] (nullable)
+
+6. notifications
+---------------
+- id: uuid (primary key)
+- user_id: uuid (foreign key -> users.id)
+- type: string (enum: 'expense_added', 'board_shared', 'budget_exceeded', etc.)
+- title: string
+- message: text
+- is_read: boolean
+- created_at: timestamp
+- data: jsonb (nullable)
+
+7. budget_alerts
+---------------
+- id: uuid (primary key)
+- board_id: uuid (foreign key -> expense_boards.id)
+- user_id: uuid (foreign key -> users.id)
+- threshold_percentage: integer
+- is_active: boolean
+- created_at: timestamp
+- last_triggered: timestamp (nullable)
+
+8. recurring_expenses
+-------------------
+- id: uuid (primary key)
+- board_id: uuid (foreign key -> expense_boards.id)
+- category_id: uuid (foreign key -> categories.id)
+- description: string
+- amount: decimal
+- frequency: string (enum: 'daily', 'weekly', 'monthly', 'yearly')
+- start_date: date
+- end_date: date (nullable)
+- created_by: uuid (foreign key -> users.id)
+- created_at: timestamp
+- updated_at: timestamp
+- last_generated: timestamp (nullable)
+
+9. expense_attachments
+--------------------
+- id: uuid (primary key)
+- expense_id: uuid (foreign key -> expenses.id)
+- file_url: string
+- file_name: string
+- file_type: string
+- file_size: integer
+- uploaded_at: timestamp
+- uploaded_by: uuid (foreign key -> users.id)
+
+10. expense_comments
+------------------
+- id: uuid (primary key)
+- expense_id: uuid (foreign key -> expenses.id)
+- user_id: uuid (foreign key -> users.id)
+- comment: text
+- created_at: timestamp
+- updated_at: timestamp
+
+11. expense_shares
+----------------
+- id: uuid (primary key)
+- expense_id: uuid (foreign key -> expenses.id)
+- shared_by: uuid (foreign key -> users.id)
+- shared_with: uuid (foreign key -> users.id)
+- created_at: timestamp
+- expires_at: timestamp (nullable)
+- is_viewed: boolean
+
+12. user_preferences
+------------------
+- id: uuid (primary key)
+- user_id: uuid (foreign key -> users.id)
+- currency: string
+- date_format: string
+- number_format: string
+- default_board_id: uuid (foreign key -> expense_boards.id, nullable)
+- created_at: timestamp
+- updated_at: timestamp
+
+13. expense_tags
+--------------
+- id: uuid (primary key)
+- name: string
+- color: string
+- created_by: uuid (foreign key -> users.id)
+- created_at: timestamp
+- UNIQUE(name, created_by)
+
+14. expense_tag_relations
+------------------------
+- expense_id: uuid (foreign key -> expenses.id)
+- tag_id: uuid (foreign key -> expense_tags.id)
+- PRIMARY KEY (expense_id, tag_id)
+
+15. expense_export_history
+------------------------
+- id: uuid (primary key)
+- user_id: uuid (foreign key -> users.id)
+- board_id: uuid (foreign key -> expense_boards.id, nullable)
+- export_type: string (enum: 'csv', 'pdf', 'excel')
+- date_range_start: date
+- date_range_end: date
+- file_url: string
+- created_at: timestamp
+- status: string (enum: 'completed', 'failed', 'processing')
+
+16. expense_audit_logs
+--------------------
+- id: uuid (primary key)
+- expense_id: uuid (foreign key -> expenses.id)
+- user_id: uuid (foreign key -> users.id)
+- action: string (enum: 'created', 'updated', 'deleted', 'shared')
+- changes: jsonb
+- created_at: timestamp
+- ip_address: string (nullable)
+- user_agent: string (nullable)
+
+17. expense_categories_usage
+--------------------------
+- category_id: uuid (foreign key -> categories.id)
+- user_id: uuid (foreign key -> users.id)
+- usage_count: integer
+- last_used: timestamp
+- PRIMARY KEY (category_id, user_id)
+
+18. expense_board_statistics
+--------------------------
+- board_id: uuid (foreign key -> expense_boards.id)
+- total_expenses: integer
+- total_amount: decimal
+- average_amount: decimal
+- last_expense_date: timestamp
+- last_updated: timestamp
+- PRIMARY KEY (board_id)
+
+19. user_statistics
+-----------------
+- user_id: uuid (foreign key -> users.id)
+- total_boards: integer
+- total_expenses: integer
+- total_amount: decimal
+- last_activity: timestamp
+- last_updated: timestamp
+- PRIMARY KEY (user_id)
+
+20. expense_reminders
+-------------------
+- id: uuid (primary key)
+- expense_id: uuid (foreign key -> expenses.id)
+- user_id: uuid (foreign key -> users.id)
+- reminder_date: timestamp
+- is_sent: boolean
+- created_at: timestamp
+- sent_at: timestamp (nullable)

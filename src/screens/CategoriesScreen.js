@@ -15,8 +15,9 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { categoryService } from "../services/supabaseService";
+import { categoryService } from "../services/categoryService";
 import ListHeader from "../components/common/ListHeader";
+import { showToast } from "../utils/toast";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -316,22 +317,20 @@ export const CategoriesScreen = ({ navigation }) => {
   const fetchCategories = useCallback(async () => {
     console.log("🔄 Starting to fetch categories...");
     try {
-      const { categories, error } = await categoryService.getCategories();
+      const data = await categoryService.getCategories();
 
-      if (error) throw error;
-
-      if (!categories || categories.length === 0) {
-        console.log("ℹ️ No categories found, using default categories");
-        setCategories(DEFAULT_CATEGORIES);
-      } else {
-        console.log("✅ Setting fetched categories");
-        setCategories(categories);
+      if (!data) {
+        console.log("No categories found");
+        setCategories([]);
+        return;
       }
+
+      console.log("Fetched categories:", data);
+      setCategories(data);
     } catch (error) {
-      console.error("❌ Error in fetchCategories:", error.message);
-      Alert.alert("Error", "Failed to fetch categories");
-      console.log("⚠️ Falling back to default categories");
-      setCategories(DEFAULT_CATEGORIES);
+      console.error("Error in fetchCategories:", error);
+      showToast("Failed to fetch categories", "error");
+      setCategories([]);
     } finally {
       console.log("🏁 Category fetching process completed");
       setLoading(false);
@@ -358,72 +357,54 @@ export const CategoriesScreen = ({ navigation }) => {
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
-
     try {
-      setLoading(true);
-      const categoryData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        color: formData.color.value,
-        icon: formData.icon.name,
-        created_at: new Date().toISOString(),
-      };
+      if (!formData.name.trim()) {
+        showToast.error("Validation Error", "Category name is required");
+        return;
+      }
 
       if (editingCategory) {
         const { error } = await categoryService.updateCategory(
           editingCategory.id,
-          categoryData
+          formData
         );
-        if (error) throw error;
+        if (error) {
+          showToast.error("Failed to update category", error.message);
+          return;
+        }
+        showToast.success("Success", "Category updated successfully");
       } else {
-        const { error } = await categoryService.createCategory(categoryData);
-        if (error) throw error;
+        const { error } = await categoryService.createCategory(formData);
+        if (error) {
+          showToast.error("Failed to create category", error.message);
+          return;
+        }
+        showToast.success("Success", "Category created successfully");
       }
 
-      await fetchCategories();
       setModalVisible(false);
-      resetForm();
-      Alert.alert(
-        "Success",
-        `Category ${editingCategory ? "updated" : "created"} successfully`
-      );
+      setFormData({ name: "", icon: "📊", color: "#007AFF", description: "" });
+      setEditingCategory(null);
+      fetchCategories();
     } catch (error) {
-      console.error("❌ Error saving category:", error.message);
-      Alert.alert("Error", "Failed to save category");
-    } finally {
-      setLoading(false);
+      console.error("Error saving category:", error);
+      showToast.error("Failed to save category", error.message);
     }
   };
 
   const handleDelete = async (categoryId) => {
-    Alert.alert(
-      "Delete Category",
-      "Are you sure you want to delete this category?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              const { error } = await categoryService.deleteCategory(
-                categoryId
-              );
-              if (error) throw error;
-              await fetchCategories();
-              Alert.alert("Success", "Category deleted successfully");
-            } catch (error) {
-              console.error("❌ Error deleting category:", error.message);
-              Alert.alert("Error", "Failed to delete category");
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
+    try {
+      const { error } = await categoryService.deleteCategory(categoryId);
+      if (error) {
+        showToast.error("Failed to delete category", error.message);
+        return;
+      }
+      showToast.success("Success", "Category deleted successfully");
+      fetchCategories();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      showToast.error("Failed to delete category", error.message);
+    }
   };
 
   const resetForm = () => {
@@ -705,7 +686,7 @@ export const CategoriesScreen = ({ navigation }) => {
       </View>
     </Modal>
   );
-
+  console.log("categories", categories);
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}

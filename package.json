@@ -22,7 +22,8 @@
     "react-native-reanimated": "^3.17.1",
     "react-native-safe-area-context": "^5.3.0",
     "react-native-screens": "^4.9.2",
-    "react-native-svg": "^15.11.2"
+    "react-native-svg": "^15.11.2",
+    "react-native-toast-message": "^2.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

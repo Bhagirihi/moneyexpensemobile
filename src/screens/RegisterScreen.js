@@ -18,6 +18,7 @@ import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { signUpWithEmail } from "../config/supabase";
 import CustomModal from "../components/common/CustomModal";
+import { showToast } from "../utils/toast";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -88,34 +89,46 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
-    if (validateForm()) {
-      setLoading(true);
-      try {
-        const { data, error } = await signUpWithEmail(
-          formData.email,
-          formData.password,
-          {
-            full_name: formData.name,
-            mobile: formData.mobile,
-            avatar_url: null,
-            has_notifications: false,
-          }
+    try {
+      if (!validateForm()) {
+        showToast.error(
+          "Validation Error",
+          "Please fix the errors in the form"
         );
-
-        if (error) {
-          Alert.alert("Registration Error", error.message);
-          return;
-        }
-
-        // Show verification modal
-        setShowVerificationModal(true);
-      } catch (error) {
-        Alert.alert("Error", "An unexpected error occurred. Please try again.");
-      } finally {
-        setLoading(false);
+        return;
       }
-    } else {
-      Alert.alert("Validation Error", "Please fix the errors in the form");
+
+      setLoading(true);
+      const { error } = await signUpWithEmail(
+        formData.email,
+        formData.password,
+        {
+          full_name: formData.name,
+          mobile: formData.mobile,
+          avatar_url: null,
+          has_notifications: false,
+        }
+      );
+
+      if (error) {
+        console.error("Registration error:", error);
+        showToast.error("Registration Error", error.message);
+        return;
+      }
+
+      showToast.success(
+        "Success",
+        "Registration successful! Please check your email for verification."
+      );
+      navigation.navigate("Verification");
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      showToast.error(
+        "Error",
+        "An unexpected error occurred. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
