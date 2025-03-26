@@ -12,58 +12,52 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
-import { ExpenseList } from "../components/ExpenseList";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { formatCurrency } from "../utils/currencyFormatter";
+import ExpenseItem from "../components/ExpenseItem";
 
-export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
-  const { boardId } = route.params;
+export const ExpenseBoardDetailsScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const { boardId, boardName, totalExpenses, totalBudget, totalTransactions } =
+    route.params;
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [board, setBoard] = useState(null);
+
   const [expenses, setExpenses] = useState([]);
-  const [monthlyStats, setMonthlyStats] = useState({
-    totalExpenses: 0,
-    totalBudget: 2000,
-    remainingBalance: 2000,
-  });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch recent transactions
+      const { data: transactionsData } =
+        await expenseService.getExpensesbyBoardId(boardId, null, 1, 4);
+      console.log("Fetched recent transactions: BOARD --", transactionsData);
+      // Update expenses state with fetched transactions
+      setExpenses(transactionsData || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showToast("Error loading data", "error");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
   }, [boardId]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [boardData, expensesData] = await Promise.all([
-        expenseBoardService.getExpenseBoardById(boardId),
-        expenseService.getExpenses(null, 1, 10),
-      ]);
-
-      if (!boardData) {
-        showToast("Expense board not found", "error");
-        navigation.goBack();
-        return;
-      }
-
-      setBoard(boardData);
-      setExpenses(expensesData.data);
-      setMonthlyStats(await expenseService.getMonthlyStats());
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      showToast("Failed to fetch data", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
+  const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  };
+    fetchData();
+  }, []);
 
   const handleDeleteBoard = async () => {
     try {
@@ -94,7 +88,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
         No Transactions Found
       </Text>
       <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-        Start adding your expenses to this board
+        Start adding expenses to track your spending
       </Text>
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: theme.primary }]}
@@ -102,7 +96,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
       >
         <MaterialCommunityIcons name="plus" size={20} color={theme.white} />
         <Text style={[styles.addButtonText, { color: theme.white }]}>
-          Add Your First Transaction
+          Add First Transaction
         </Text>
       </TouchableOpacity>
     </View>
@@ -121,32 +115,14 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
     );
   }
 
-  if (!board) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
-        <Header title="Not Found" onBack={() => navigation.goBack()} />
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons
-            name="alert-circle-outline"
-            size={48}
-            color={theme.error}
-          />
-          <Text style={[styles.errorText, { color: theme.text }]}>
-            Expense board not found
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const remainingBudget = totalBudget - totalExpenses;
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title={board.name}
+        title={boardName}
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity
@@ -174,7 +150,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
                 Total Expenses
               </Text>
               <Text style={[styles.statValue, { color: theme.text }]}>
-                ${monthlyStats.totalExpenses}
+                {formatCurrency(totalExpenses)}
               </Text>
             </View>
             <View style={styles.statDivider} />
@@ -183,7 +159,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
                 Budget
               </Text>
               <Text style={[styles.statValue, { color: theme.text }]}>
-                ${monthlyStats.totalBudget}
+                {formatCurrency(totalBudget)}
               </Text>
             </View>
             <View style={styles.statDivider} />
@@ -195,26 +171,36 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
                 style={[
                   styles.statValue,
                   {
-                    color:
-                      monthlyStats.remainingBalance >= 0
-                        ? theme.success
-                        : theme.error,
+                    color: remainingBudget >= 0 ? theme.success : theme.error,
                   },
                 ]}
               >
-                ${monthlyStats.remainingBalance}
+                {formatCurrency(remainingBudget)}
               </Text>
             </View>
           </View>
 
           {expenses.length > 0 ? (
-            <ExpenseList
-              expenses={expenses}
-              onExpensePress={(expense) => {
-                console.log("Expense pressed:", expense);
-              }}
-              showHeader={false}
-            />
+            <View>
+              <Text style={styles.headerTitle}>Transactions</Text>
+              <View>
+                {expenses.map((expense) => (
+                  <ExpenseItem
+                    key={expense.id}
+                    expense={expense}
+                    onPress={() =>
+                      navigation.navigate("ExpenseDetails", {
+                        expenseId: expense.id,
+                      })
+                    }
+                    onDelete={() => {
+                      // Handle delete if needed
+                      console.log("Delete expense:", expense.id);
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
           ) : (
             renderEmptyState()
           )}
@@ -226,7 +212,7 @@ export const ExpenseBoardDetailsScreen = ({ route, navigation }) => {
       >
         <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
         <Text style={[styles.addButtonText, { color: theme.white }]}>
-          Add Expense
+          Add Transaction
         </Text>
       </TouchableOpacity>
     </SafeAreaView>
@@ -318,6 +304,14 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 40,
   },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    //   color: theme.text,
+    opacity: 0.8,
+    marginBottom: 8,
+    marginTop: 16,
+  },
   emptyIconContainer: {
     width: 80,
     height: 80,
@@ -337,5 +331,36 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
     opacity: 0.8,
+  },
+  expenseItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E0E0E0",
+  },
+  expenseIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  expenseInfo: {
+    flex: 1,
+  },
+  expenseTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  expenseDate: {
+    fontSize: 12,
+    color: "#666",
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

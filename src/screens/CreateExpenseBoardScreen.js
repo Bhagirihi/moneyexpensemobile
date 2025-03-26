@@ -18,9 +18,10 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { supabase } from "../config/supabase";
+import { expenseBoardService } from "../services/expenseBoardService";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
+import { showToast } from "../utils/toast";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -241,7 +242,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         title: "Share Expense Board Code",
       });
     } catch (error) {
-      Alert.alert("Error", "Failed to share code");
+      showToast("Failed to share code", "error");
     }
   };
 
@@ -256,13 +257,13 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
 
       const canOpen = await Linking.canOpenURL(url);
       if (!canOpen) {
-        Alert.alert("Error", "No email client found");
+        showToast("No email client found", "error");
         return;
       }
 
       await Linking.openURL(url);
     } catch (error) {
-      Alert.alert("Error", "Failed to open email client");
+      showToast("Failed to open email client", "error");
     }
   };
 
@@ -270,9 +271,9 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     try {
       const code = shareCode || generateShareCode();
       await Clipboard.setString(code);
-      Alert.alert("Success", "Share code copied to clipboard");
+      showToast("Share code copied to clipboard", "success");
     } catch (error) {
-      Alert.alert("Error", "Failed to copy share code");
+      showToast("Failed to copy share code", "error");
     }
   };
 
@@ -281,39 +282,21 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const boardData = {
+        name: boardName.trim(),
+        description: description.trim(),
+        color: selectedColor.value,
+        icon: selectedIcon.name,
+        total_budget: parseFloat(perPersonBudget),
+        share_code: shareCode || generateShareCode(),
+      };
 
-      if (!user) throw new Error("User not authenticated");
-
-      const { data, error } = await supabase
-        .from("expense_boards")
-        .insert([
-          {
-            name: boardName.trim(),
-            description: description.trim(),
-            color: selectedColor.value,
-            icon: selectedIcon.name,
-            created_by: user.id,
-            created_at: new Date().toISOString(),
-            per_person_budget: perPersonBudget
-              ? parseFloat(perPersonBudget)
-              : null,
-            share_code: shareCode || generateShareCode(),
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      Alert.alert("Success", "Expense board created successfully", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      await expenseBoardService.createExpenseBoard(boardData);
+      showToast.success("Expense board created successfully");
+      navigation.goBack();
     } catch (error) {
       console.error("Error creating board:", error);
-      Alert.alert("Error", "Failed to create board. Please try again.");
+      showToast("Failed to create board", "error");
     } finally {
       setLoading(false);
     }

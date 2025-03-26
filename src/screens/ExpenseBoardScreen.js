@@ -57,6 +57,9 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         navigation.navigate("ExpenseBoardDetails", {
           boardId: board.id,
           boardName: board.name,
+          totalExpenses: board.totalExpenses,
+          totalBudget: board.total_budget,
+          totalTransactions: board.totalTransactions,
         })
       }
     >
@@ -99,7 +102,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             Transactions
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
-            {board?.totalTransactions}
+            {board?.totalTransactions || 0}
           </Text>
         </View>
       </View>

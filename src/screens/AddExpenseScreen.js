@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -16,6 +17,8 @@ import { CategoryList } from "../components/CategoryList";
 import { ExpenseBoardList } from "../components/ExpenseBoardList";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
+import { expenseService } from "../services/expenseService";
+import { showToast } from "../utils/toast";
 
 const paymentMethods = [
   { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -36,13 +39,50 @@ export const AddExpenseScreen = ({ navigation }) => {
     board: null,
   });
 
+  const validateForm = () => {
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      showToast("Please enter a valid amount", "error");
+      return false;
+    }
+    if (!formData.description.trim()) {
+      showToast("Please enter a description", "error");
+      return false;
+    }
+    if (!formData.category) {
+      showToast("Please select a category", "error");
+      return false;
+    }
+    if (!formData.paymentMethod) {
+      showToast("Please select a payment method", "error");
+      return false;
+    }
+    if (!formData.board) {
+      showToast("Please select an expense board", "error");
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateForm()) return;
+
     setLoading(true);
     try {
-      // TODO: Implement save functionality
+      const expenseData = {
+        amount: parseFloat(formData.amount),
+        description: formData.description.trim(),
+        category_id: formData.category,
+        payment_method: formData.paymentMethod,
+        date: formData.date.toISOString(),
+        board_id: formData.board,
+      };
+
+      await expenseService.createExpense(expenseData);
+      showToast("Expense added successfully", "success");
       navigation.goBack();
     } catch (error) {
       console.error("Error saving expense:", error);
+      showToast("Failed to save expense", "error");
     } finally {
       setLoading(false);
     }
@@ -52,7 +92,14 @@ export const AddExpenseScreen = ({ navigation }) => {
     <FormInput
       label="Amount"
       value={formData.amount}
-      onChangeText={(text) => setFormData({ ...formData, amount: text })}
+      onChangeText={(text) => {
+        // Only allow numbers and decimal point
+        const numericValue = text.replace(/[^0-9.]/g, "");
+        // Ensure only one decimal point
+        const parts = numericValue.split(".");
+        if (parts.length > 2) return;
+        setFormData({ ...formData, amount: numericValue });
+      }}
       placeholder="Enter amount"
       keyboardType="numeric"
       prefix="$"
@@ -146,6 +193,7 @@ export const AddExpenseScreen = ({ navigation }) => {
         ]}
         onPress={() => {
           // TODO: Implement date picker
+          showToast("Date picker coming soon", "info");
         }}
       >
         <MaterialCommunityIcons

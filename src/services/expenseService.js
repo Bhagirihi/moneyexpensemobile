@@ -48,6 +48,95 @@ export const expenseService = {
       const userIds = [...new Set(data.map((expense) => expense.created_by))];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError.message);
+        throw profilesError;
+      }
+
+      // Create a map of user IDs to profiles
+      const userMap = profiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+
+      const hasMore = offset + limit < count;
+      console.log("Fetched expenses:", {
+        count,
+        currentPage: page,
+        hasMore,
+        totalItems: count,
+      });
+
+      return {
+        data: data.map((expense) => ({
+          ...expense,
+          icon: expense.category?.icon || "receipt",
+          color: expense.category?.color || "#6C5CE7",
+          created_by_profile: userMap[expense.created_by] || null,
+        })),
+        total: count,
+        hasMore,
+        currentPage: page,
+        totalPages: Math.ceil(count / limit),
+      };
+    } catch (error) {
+      console.error("Error in getExpenses:", error.message);
+      throw error;
+    }
+  },
+
+  async getExpensesbyBoardId(boardId, category = null, page = 1, limit = 10) {
+    try {
+      console.log("Fetching expenses from Supabase...", { page, limit });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log("No user found");
+        return { data: [], total: 0, hasMore: false };
+      }
+
+      // Calculate offset
+      const offset = (page - 1) * limit;
+
+      let query = supabase
+        .from("expenses")
+        .select(
+          `
+          *,
+          category:categories (
+            name,
+            icon,
+            color
+          )
+        `,
+          { count: "exact" }
+        )
+        .eq("created_by", user.id)
+        .eq("board_id", boardId)
+        .order("date", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (category) {
+        query = query.eq("category", category);
+      }
+
+      const { data, error, count } = await query;
+      console.log("Fetched expenses:", data, "and BOARD ID:", boardId);
+
+      if (error) {
+        console.error("Error fetching expenses:", error.message);
+        throw error;
+      }
+
+      // Get user profiles for all expenses
+      const userIds = [...new Set(data.map((expense) => expense.created_by))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
         .select("id, full_name ")
         .in("id", userIds);
 
