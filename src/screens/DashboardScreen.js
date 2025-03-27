@@ -11,6 +11,7 @@ import {
   Alert,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../config/supabase";
@@ -395,8 +396,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    padding: 20,
-    paddingTop: 10,
+    padding: Platform.OS === "android" ? 12 : 20,
+    paddingTop: Platform.OS === "android" ? 24 : 10,
   },
   headerContent: {
     flexDirection: "row",
@@ -408,21 +409,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   welcomeText: {
-    fontSize: 16,
+    fontSize: Platform.OS === "android" ? 14 : 16,
     opacity: 0.7,
   },
   nameText: {
-    fontSize: 24,
+    fontSize: Platform.OS === "android" ? 20 : 24,
     fontWeight: "bold",
   },
   notificationButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: Platform.OS === "android" ? 6 : 8,
+    marginLeft: Platform.OS === "android" ? 6 : 8,
   },
   balanceCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
+    marginBottom: Platform.OS === "android" ? 16 : 20,
+    padding: Platform.OS === "android" ? 16 : 20,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: {
