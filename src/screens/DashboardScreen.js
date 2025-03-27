@@ -10,16 +10,19 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
+import { dashboardService } from "../services/dashboardService";
 import ThemeToggle from "../components/ThemeToggle";
 import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
 import ExpenseList from "../components/ExpenseList";
+import { showToast } from "../utils/toast";
 
 const { width } = Dimensions.get("window");
 
@@ -58,6 +61,7 @@ export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [hasBoards, setHasBoards] = useState(false);
   const [stats, setStats] = useState({
@@ -66,45 +70,46 @@ export const DashboardScreen = ({ navigation }) => {
     remainingBudget: 0,
   });
 
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const cleanup = dashboardService.subscribeToChanges(fetchDashboardData);
+    return cleanup;
+  }, []);
+
   useEffect(() => {
     fetchUserProfile();
     fetchDashboardData();
   }, []);
 
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchUserProfile(), fetchDashboardData()]);
+    setRefreshing(false);
+  }, []);
+
   const fetchUserProfile = async () => {
     try {
-      console.log("Fetching user profile...");
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log("User data from auth:", user);
 
       if (user) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
+        const { data, error } = await dashboardService.getUserProfile(user.id);
         if (error) throw error;
-        console.log("User profile data:", data);
         setUserProfile(data);
       }
     } catch (error) {
       console.error("Error fetching profile:", error.message);
+      showToast("Failed to load profile", "error");
     }
   };
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      console.log("Fetching dashboard data...");
 
       // Fetch expense boards
       const expenseBoards = await expenseBoardService.getExpenseBoards();
-      console.log("Fetched expense boards:", expenseBoards);
-
-      // Set whether user has any boards
       setHasBoards(expenseBoards.length > 0);
 
       // Calculate total budget and expenses from boards
@@ -126,18 +131,17 @@ export const DashboardScreen = ({ navigation }) => {
       });
 
       // Fetch recent transactions
-      const { data: transactionsData } = await expenseService.getExpenses(
-        null,
-        1,
-        4
-      );
-      console.log("Fetched recent transactions:", transactionsData);
+      const { data: transactionsData, error: transactionsError } =
+        await dashboardService.getRecentTransactions();
 
-      // Update expenses state with fetched transactions
-      setExpenses(transactionsData || []);
+      if (transactionsError) {
+        throw transactionsError;
+      }
+
+      setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
-      // Only clear expenses on error, keep other data
+      showToast("Failed to load dashboard data", "error");
       setExpenses([]);
     } finally {
       setLoading(false);
@@ -281,7 +285,12 @@ export const DashboardScreen = ({ navigation }) => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
-        <ActivityIndicator size="large" color={theme.primary} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.text }]}>
+            Loading dashboard...
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -355,6 +364,9 @@ export const DashboardScreen = ({ navigation }) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {renderBalanceCard()}
         {renderQuickActions()}
@@ -368,6 +380,16 @@ export const DashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
   scrollContent: {
     flexGrow: 1,

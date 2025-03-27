@@ -114,7 +114,7 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
       </View>
       <View style={styles.expenseInfo}>
         <View style={styles.expenseHeader}>
-          <Text style={styles.expenseName}>{expense.category.name}</Text>
+          <Text style={styles.expenseName}>{expense?.category?.name}</Text>
           <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
         </View>
         <View style={styles.expenseDetails}>
@@ -126,7 +126,7 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
               style={styles.metaIcon}
             />
             <Text style={styles.expenseCreator}>
-              {expense.created_by_profile.full_name || "Unknown"}
+              {expense?.created_by_profile?.full_name || "Unknown"}
             </Text>
           </View>
           <View style={styles.expenseMeta}>

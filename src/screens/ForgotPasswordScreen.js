@@ -2,212 +2,237 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  StatusBar,
-  Alert,
+  SafeAreaView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { supabase } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { showToast } from "../utils/toast";
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const { theme } = useTheme();
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+  });
+  const [errors, setErrors] = useState({});
 
   const validateForm = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim()) {
-      setError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setError("Invalid email format");
-      return false;
+    const newErrors = {};
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email";
     }
-    return true;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleResetPassword = () => {
-    if (validateForm()) {
-      // Implement password reset logic here
-      console.log("Password reset attempted for:", email);
-      Alert.alert(
-        "Reset Link Sent",
-        "Please check your email for password reset instructions",
-        [{ text: "OK" }]
+  const handleResetPassword = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        formData.email.trim(),
+        {
+          redirectTo: "yourapp://reset-password",
+        }
       );
-    } else {
-      Alert.alert("Validation Error", "Please enter a valid email address", [
-        { text: "OK" },
-      ]);
+
+      if (error) throw error;
+      showToast(
+        "Password reset instructions have been sent to your email",
+        "success"
+      );
+      navigation.navigate("Login");
+    } catch (error) {
+      console.error("Reset password error:", error.message);
+      showToast(error.message || "Failed to send reset instructions", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar
-        barStyle={theme.dark ? "light-content" : "dark-content"}
-        backgroundColor={theme.background}
-      />
-
-      {/* Mountain Illustration */}
-      <View style={styles.illustrationContainer}>
-        <View style={[styles.mountain, { backgroundColor: theme.primary }]} />
-        <View style={styles.birds}>
-          <Text style={{ color: theme.text }}>✢</Text>
-          <Text style={{ color: theme.text }}>✢</Text>
-        </View>
-      </View>
-
-      {/* Header Text */}
-      <Text style={[styles.title, { color: theme.text }]}>Reset Password</Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-        enter your email to reset password
-      </Text>
-
-      {/* Input Field */}
-      <View style={styles.inputContainer}>
-        <View
-          style={[
-            styles.inputWrapper,
-            {
-              backgroundColor: theme.secondary,
-              borderColor: error ? theme.error || "#ff0000" : "transparent",
-              borderWidth: error ? 1 : 0,
-            },
-          ]}
-        >
-          <TextInput
-            style={[styles.input, { color: theme.text }]}
-            placeholder="Enter your email"
-            placeholderTextColor={theme.textSecondary}
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (error) {
-                setError("");
-              }
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <MaterialCommunityIcons
-            name="email-outline"
-            size={24}
-            color={theme.textSecondary}
-          />
-        </View>
-        {error ? (
-          <Text style={[styles.errorText, { color: theme.error || "#ff0000" }]}>
-            {error}
-          </Text>
-        ) : null}
-      </View>
-
-      {/* Reset Button */}
-      <TouchableOpacity
-        style={[styles.resetButton, { backgroundColor: theme.primary }]}
-        onPress={handleResetPassword}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoid}
       >
-        <Text style={[styles.resetButtonText, { color: theme.background }]}>
-          Reset Password
-        </Text>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={24}
-          color={theme.background}
-        />
-      </TouchableOpacity>
-
-      {/* Back to Login */}
-      <View style={styles.backContainer}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Login")}
-          style={styles.backButton}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={theme.textSecondary}
-          />
-          <Text style={[styles.backText, { color: theme.textSecondary }]}>
-            Back to Login
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <View style={styles.header}>
+            <MaterialCommunityIcons
+              name="lock-reset"
+              size={64}
+              color={theme.primary}
+            />
+            <Text style={[styles.title, { color: theme.text }]}>
+              Reset Password
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Enter your email to receive reset instructions
+            </Text>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: errors.email ? theme.error : theme.border,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter your email"
+                  placeholderTextColor={theme.textSecondary}
+                  value={formData.email}
+                  onChangeText={(text) => {
+                    setFormData((prev) => ({ ...prev, email: text }));
+                    if (errors.email) {
+                      setErrors((prev) => ({ ...prev, email: undefined }));
+                    }
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              {errors.email && (
+                <Text style={[styles.errorText, { color: theme.error }]}>
+                  {errors.email}
+                </Text>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.resetButton, { backgroundColor: theme.primary }]}
+              onPress={handleResetPassword}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.white} />
+              ) : (
+                <Text style={[styles.resetButtonText, { color: theme.white }]}>
+                  Send Reset Instructions
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.backContainer}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Login")}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons
+                  name="arrow-left"
+                  size={20}
+                  color={theme.textSecondary}
+                />
+                <Text style={[styles.backText, { color: theme.textSecondary }]}>
+                  Back to Login
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
   },
-  illustrationContainer: {
-    height: 120,
-    marginTop: 20,
-    marginBottom: 20,
-    position: "relative",
-  },
-  mountain: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    transform: [{ rotate: "45deg" }],
-    position: "absolute",
-    right: "40%",
-  },
-  birds: {
-    flexDirection: "row",
-    position: "absolute",
-    right: "30%",
-    top: 10,
-    gap: 5,
+  header: {
+    alignItems: "center",
+    marginTop: 40,
+    marginBottom: 40,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
+    marginTop: 16,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    marginBottom: 32,
+    textAlign: "center",
+    opacity: 0.7,
+  },
+  form: {
+    gap: 20,
   },
   inputContainer: {
-    marginBottom: 32,
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
     flex: 1,
+    height: 48,
     fontSize: 16,
   },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
   resetButton: {
-    flexDirection: "row",
+    height: 48,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    height: 56,
-    borderRadius: 12,
-    marginBottom: 24,
+    marginTop: 8,
   },
   resetButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    marginRight: 8,
   },
   backContainer: {
-    position: "absolute",
-    bottom: 40,
-    left: 0,
-    right: 0,
     alignItems: "center",
+    marginTop: 16,
   },
   backButton: {
     flexDirection: "row",
@@ -215,13 +240,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 14,
     marginLeft: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
   },
 });
 
