@@ -116,6 +116,9 @@ export const expenseService = {
             name,
             icon,
             color
+          ),
+          expense_boards (
+            name
           )
         `,
           { count: "exact" }
@@ -168,6 +171,7 @@ export const expenseService = {
           ...expense,
           icon: expense.category?.icon || "receipt",
           color: expense.category?.color || "#6C5CE7",
+          board: expense.expense_boards?.name || "Default Board",
           created_by_profile: userMap[expense.created_by] || null,
         })),
         total: count,
