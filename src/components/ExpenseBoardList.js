@@ -34,7 +34,7 @@ export const ExpenseBoardList = ({
       setBoards(data);
     } catch (error) {
       console.error("Error fetching boards:", error);
-      showToast("Failed to fetch expense boards", "error");
+      showToast.error("Failed to fetch expense boards");
     } finally {
       setLoading(false);
     }

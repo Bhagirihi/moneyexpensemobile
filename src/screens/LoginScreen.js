@@ -51,10 +51,10 @@ export const LoginScreen = ({ navigation }) => {
       });
 
       if (error) throw error;
-      showToast("Login successful", "success");
+      showToast.success("Login successful");
     } catch (error) {
       console.error("Login error:", error.message);
-      showToast(error.message || "Failed to login", "error");
+      showToast.error(error.message || "Failed to login");
     } finally {
       setLoading(false);
     }

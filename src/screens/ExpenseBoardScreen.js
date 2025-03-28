@@ -9,6 +9,9 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Modal,
+  Share,
+  Clipboard,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
@@ -22,6 +25,8 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState(null);
 
   useEffect(() => {
     fetchExpenseBoards();
@@ -48,6 +53,154 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  const handleShareBoard = async (board) => {
+    setSelectedBoard(board);
+    setShowShareModal(true);
+  };
+
+  const handleCopyCode = () => {
+    if (selectedBoard) {
+      Clipboard.setString(selectedBoard.id);
+      showToast.success("Success", "Board code copied to clipboard");
+    }
+  };
+
+  const handleShareViaEmail = async () => {
+    if (selectedBoard) {
+      try {
+        const message = `Join my expense board "${selectedBoard.name}" on TripExpanse!\n\nBoard Code: ${selectedBoard.id}\n\nClick here to join: https://tripexpanse.app/join/${selectedBoard.id}`;
+        await Share.share({
+          message,
+          subject: `Join my expense board: ${selectedBoard.name}`,
+        });
+      } catch (error) {
+        console.error("Error sharing via email:", error);
+      }
+    }
+  };
+
+  const handleShareViaSocial = async () => {
+    if (selectedBoard) {
+      try {
+        const message = `Join my expense board "${selectedBoard.name}" on TripExpanse!\n\nBoard Code: ${selectedBoard.id}\n\nClick here to join: https://tripexpanse.app/join/${selectedBoard.id}`;
+        await Share.share({
+          message,
+        });
+      } catch (error) {
+        console.error("Error sharing via social:", error);
+      }
+    }
+  };
+
+  const renderShareModal = () => (
+    <Modal
+      visible={showShareModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowShareModal(false)}
+    >
+      <View
+        style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+      >
+        <View
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.cardBackground },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Share Expense Board
+            </Text>
+            <TouchableOpacity onPress={() => setShowShareModal(false)}>
+              <MaterialCommunityIcons
+                name="close"
+                size={24}
+                color={theme.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {selectedBoard && (
+            <View style={styles.shareContent}>
+              <View style={styles.boardInfo}>
+                <View
+                  style={[
+                    styles.boardIcon,
+                    {
+                      backgroundColor: `${
+                        selectedBoard.color || theme.primary
+                      }15`,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={selectedBoard.icon || "view-grid"}
+                    size={24}
+                    color={selectedBoard.color || theme.primary}
+                  />
+                </View>
+                <Text style={[styles.boardName, { color: theme.text }]}>
+                  {selectedBoard.name}
+                </Text>
+              </View>
+
+              <View style={styles.codeContainer}>
+                <Text
+                  style={[styles.codeLabel, { color: theme.textSecondary }]}
+                >
+                  Board Code
+                </Text>
+                <View style={[styles.codeBox, { backgroundColor: theme.card }]}>
+                  <Text style={[styles.codeText, { color: theme.text }]}>
+                    {selectedBoard.id}
+                  </Text>
+                  <TouchableOpacity onPress={handleCopyCode}>
+                    <MaterialCommunityIcons
+                      name="content-copy"
+                      size={20}
+                      color={theme.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.shareOptions}>
+                <TouchableOpacity
+                  style={[styles.shareOption, { backgroundColor: theme.card }]}
+                  onPress={handleShareViaEmail}
+                >
+                  <MaterialCommunityIcons
+                    name="email"
+                    size={24}
+                    color={theme.primary}
+                  />
+                  <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                    Share via Email
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.shareOption, { backgroundColor: theme.card }]}
+                  onPress={handleShareViaSocial}
+                >
+                  <MaterialCommunityIcons
+                    name="share-variant"
+                    size={24}
+                    color={theme.primary}
+                  />
+                  <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                    Share via Social Apps
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 
   const renderExpenseBoard = (board) => (
     <TouchableOpacity
@@ -79,6 +232,19 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         <Text style={[styles.boardName, { color: theme.text }]}>
           {board.name}
         </Text>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            handleShareBoard(board);
+          }}
+          style={styles.shareButton}
+        >
+          <MaterialCommunityIcons
+            name="share-variant"
+            size={20}
+            color={theme.primary}
+          />
+        </TouchableOpacity>
       </View>
       <View style={styles.boardStats}>
         <View style={styles.statItem}>
@@ -195,6 +361,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+      {renderShareModal()}
     </SafeAreaView>
   );
 };
@@ -238,6 +405,7 @@ const styles = StyleSheet.create({
   boardName: {
     fontSize: 18,
     fontWeight: "600",
+    flex: 1,
   },
   boardStats: {
     flexDirection: "row",
@@ -283,5 +451,69 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  shareContent: {
+    padding: 8,
+  },
+  boardInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  codeContainer: {
+    marginBottom: 24,
+  },
+  codeLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  codeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 8,
+  },
+  codeText: {
+    fontSize: 16,
+    fontFamily: "monospace",
+  },
+  shareOptions: {
+    gap: 12,
+  },
+  shareOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  shareOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  shareButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 });

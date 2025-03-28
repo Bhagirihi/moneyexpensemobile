@@ -14,6 +14,7 @@ import {
   Share,
   Linking,
   Clipboard,
+  Modal,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
@@ -194,6 +195,66 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     opacity: 0.1,
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  shareContent: {
+    padding: 8,
+  },
+  boardInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  codeContainer: {
+    marginBottom: 24,
+  },
+  codeLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  codeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 8,
+  },
+  codeText: {
+    fontSize: 16,
+    fontFamily: "monospace",
+  },
+  shareOptions: {
+    gap: 12,
+  },
+  shareOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  shareOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
 });
 
 export const CreateExpenseBoardScreen = ({ navigation }) => {
@@ -206,6 +267,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
   const [perPersonBudget, setPerPersonBudget] = useState("");
   const [shareCode, setShareCode] = useState("");
   const [errors, setErrors] = useState({});
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const validateForm = useCallback(() => {
     const newErrors = {};
@@ -235,46 +297,39 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     return code;
   }, []);
 
-  const handleShareCode = async () => {
-    try {
-      const code = shareCode || generateShareCode();
-      await Share.share({
-        message: `Join my expense board using this code: ${code}`,
-        title: "Share Expense Board Code",
-      });
-    } catch (error) {
-      showToast("Failed to share code", "error");
-    }
+  const handleShareBoard = () => {
+    setShowShareModal(true);
   };
 
-  const handleShareEmail = async () => {
+  const handleCopyCode = () => {
+    const code = shareCode || generateShareCode();
+    Clipboard.setString(code);
+    showToast.success("Success", "Board code copied to clipboard");
+  };
+
+  const handleShareViaEmail = async () => {
     try {
       const code = shareCode || generateShareCode();
       const subject = `Join my expense board: ${boardName}`;
-      const body = `Hi! I've created an expense board called "${boardName}". You can join it using this code: ${code}`;
-      const url = `mailto:?subject=${encodeURIComponent(
-        subject
-      )}&body=${encodeURIComponent(body)}`;
-
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        showToast("No email client found", "error");
-        return;
-      }
-
-      await Linking.openURL(url);
+      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${code}\n\nClick here to join: https://tripexpanse.app/join/${code}`;
+      await Share.share({
+        message,
+        subject,
+      });
     } catch (error) {
-      showToast("Failed to open email client", "error");
+      console.error("Error sharing via email:", error);
     }
   };
 
-  const handleCopyShareCode = async () => {
+  const handleShareViaSocial = async () => {
     try {
       const code = shareCode || generateShareCode();
-      await Clipboard.setString(code);
-      showToast("Share code copied to clipboard", "success");
+      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${code}\n\nClick here to join: https://tripexpanse.app/join/${code}`;
+      await Share.share({
+        message,
+      });
     } catch (error) {
-      showToast("Failed to copy share code", "error");
+      console.error("Error sharing via social:", error);
     }
   };
 
@@ -298,7 +353,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       navigation.goBack();
     } catch (error) {
       console.error("Error creating board:", error);
-      showToast("Failed to create board", "error");
+      showToast.error("Failed to create board");
     } finally {
       setLoading(false);
     }
@@ -404,7 +459,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       onChangeText={(text) => {
         var numericValue = text.replace(/[^0-9.]/g, "");
 
-        setPerPersonBudget(formatNumber(numericValue));
+        setPerPersonBudget(numericValue);
         if (errors.perPersonBudget) {
           setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
         }
@@ -481,54 +536,124 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderShareModal = () => (
+    <Modal
+      visible={showShareModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowShareModal(false)}
+    >
+      <View
+        style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+      >
+        <View
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.cardBackground },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Share Expense Board
+            </Text>
+            <TouchableOpacity onPress={() => setShowShareModal(false)}>
+              <MaterialCommunityIcons
+                name="close"
+                size={24}
+                color={theme.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.shareContent}>
+            <View style={styles.boardInfo}>
+              <View
+                style={[
+                  styles.boardIcon,
+                  { backgroundColor: `${selectedColor.value}15` },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={selectedIcon.name}
+                  size={24}
+                  color={selectedColor.value}
+                />
+              </View>
+              <Text style={[styles.boardName, { color: theme.text }]}>
+                {boardName || "New Expense Board"}
+              </Text>
+            </View>
+
+            <View style={styles.codeContainer}>
+              <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
+                Board Code
+              </Text>
+              <View style={[styles.codeBox, { backgroundColor: theme.card }]}>
+                <Text style={[styles.codeText, { color: theme.text }]}>
+                  {shareCode || generateShareCode()}
+                </Text>
+                <TouchableOpacity onPress={handleCopyCode}>
+                  <MaterialCommunityIcons
+                    name="content-copy"
+                    size={20}
+                    color={theme.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.shareOptions}>
+              <TouchableOpacity
+                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                onPress={handleShareViaEmail}
+              >
+                <MaterialCommunityIcons
+                  name="email"
+                  size={24}
+                  color={theme.primary}
+                />
+                <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                  Share via Email
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                onPress={handleShareViaSocial}
+              >
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={24}
+                  color={theme.primary}
+                />
+                <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                  Share via Social Apps
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderShareOptions = () => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.text }]}>Share Board</Text>
-      <View style={getShareCodeContainerStyle()}>
-        <Text style={getShareCodeTextStyle()}>
-          {shareCode || generateShareCode()}
+      <TouchableOpacity
+        style={[styles.shareButton, { backgroundColor: theme.primary }]}
+        onPress={handleShareBoard}
+      >
+        <MaterialCommunityIcons
+          name="share-variant"
+          size={20}
+          color={theme.white}
+          style={styles.shareIcon}
+        />
+        <Text style={[styles.shareButtonText, { color: theme.white }]}>
+          Share Board
         </Text>
-        <TouchableOpacity
-          style={getCopyButtonStyle()}
-          onPress={handleCopyShareCode}
-        >
-          <MaterialCommunityIcons
-            name="content-copy"
-            size={20}
-            color={theme.white}
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.shareContainer}>
-        <TouchableOpacity
-          style={[styles.shareButton, { backgroundColor: theme.primary }]}
-          onPress={handleShareCode}
-        >
-          <MaterialCommunityIcons
-            name="qrcode"
-            size={20}
-            color={theme.white}
-            style={styles.shareIcon}
-          />
-          <Text style={[styles.shareButtonText, { color: theme.white }]}>
-            Share Code
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.shareButton, { backgroundColor: theme.primary }]}
-          onPress={handleShareEmail}
-        >
-          <MaterialCommunityIcons
-            name="email"
-            size={20}
-            color={theme.white}
-            style={styles.shareIcon}
-          />
-          <Text style={[styles.shareButtonText, { color: theme.white }]}>
-            Share Email
-          </Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 
@@ -568,6 +693,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         loading={loading}
         style={styles.createButton}
       />
+      {renderShareModal()}
     </SafeAreaView>
   );
 };

@@ -81,14 +81,13 @@ const RegisterScreen = ({ navigation }) => {
 
       if (signUpError) throw signUpError;
 
-      showToast(
-        "Registration successful! Please check your email to verify your account.",
-        "success"
+      showToast.success(
+        "Registration successful! Please check your email to verify your account."
       );
       navigation.navigate("Login");
     } catch (error) {
       console.error("Registration error:", error.message);
-      showToast(error.message || "Failed to register", "error");
+      showToast.error(error.message || "Failed to register");
     } finally {
       setLoading(false);
     }

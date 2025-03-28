@@ -44,7 +44,7 @@ export const CategoryList = ({
       setCategories(data);
     } catch (error) {
       console.error("Error fetching categories:", error);
-      showToast("Failed to fetch categories", "error");
+      showToast.error("Failed to fetch categories");
       setCategories([]);
     } finally {
       setLoading(false);

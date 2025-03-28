@@ -14,6 +14,7 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useAppSettings } from "../context/AppSettingsContext";
 import { supabase } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
@@ -24,11 +25,13 @@ import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
 import ExpenseList from "../components/ExpenseList";
 import { showToast } from "../utils/toast";
+import { formatCurrency } from "../utils/formatters";
 
 const { width } = Dimensions.get("window");
 
 export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { currency } = useAppSettings();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +73,7 @@ export const DashboardScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error.message);
-      showToast("Failed to load profile", "error");
+      showToast.error("Failed to load profile");
     }
   };
 
@@ -111,7 +114,7 @@ export const DashboardScreen = ({ navigation }) => {
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
-      showToast("Failed to load dashboard data", "error");
+      showToast.error("Failed to load dashboard data");
       setExpenses([]);
     } finally {
       setLoading(false);
@@ -134,7 +137,7 @@ export const DashboardScreen = ({ navigation }) => {
             </Text>
           </View>
           <Text style={[styles.balanceValue, { color: theme.white }]}>
-            ${stats.totalBudget.toFixed(2)}
+            {formatCurrency(stats.totalBudget)}
           </Text>
         </View>
 
@@ -151,7 +154,7 @@ export const DashboardScreen = ({ navigation }) => {
             </Text>
           </View>
           <Text style={[styles.balanceValue, { color: theme.white }]}>
-            ${stats.totalExpenses.toFixed(2)}
+            {formatCurrency(stats.totalExpenses)}
           </Text>
         </View>
 
@@ -168,7 +171,7 @@ export const DashboardScreen = ({ navigation }) => {
             </Text>
           </View>
           <Text style={[styles.balanceValue, { color: theme.success }]}>
-            ${stats.remainingBudget.toFixed(2)}
+            {formatCurrency(stats.remainingBudget)}
           </Text>
         </View>
       </View>
@@ -236,7 +239,7 @@ export const DashboardScreen = ({ navigation }) => {
   const renderTransactionsSection = () => (
     <View style={styles.transactionsSection}>
       <ExpenseList
-        expenses={expenses}
+        expenses={expenses.slice(0, 3)}
         title="Recent Transactions"
         onSeeAllPress={() => navigation.navigate("Expense")}
         onExpensePress={(expense) => {
@@ -246,6 +249,8 @@ export const DashboardScreen = ({ navigation }) => {
         showAllButton={true}
         showEmptyState={true}
         navigation={navigation}
+        maxItems={4}
+        containerStyle={styles.transactionsList}
       />
     </View>
   );
@@ -331,15 +336,16 @@ export const DashboardScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       {renderHeader()}
+      {renderBalanceCard()}
+      {renderQuickActions()}
       <ScrollView
+        bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {renderBalanceCard()}
-        {renderQuickActions()}
         {renderTransactionsSection()}
       </ScrollView>
       <FooterTab navigation={navigation} activeRoute="Home" />
@@ -478,6 +484,11 @@ const styles = StyleSheet.create({
   },
   transactionsSection: {
     paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  transactionsList: {
+    maxHeight: 320, // Height to fit 4 transactions
+    marginTop: 12,
   },
   sectionHeader: {
     flexDirection: "row",

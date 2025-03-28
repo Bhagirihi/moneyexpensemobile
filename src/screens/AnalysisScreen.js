@@ -224,6 +224,14 @@ export const AnalysisScreen = ({ navigation, route }) => {
               : "positive"
           }
           style={styles.summaryItem}
+          valueStyle={{
+            fontSize: 16,
+            color:
+              analysisData.totalExpense > analysisData.totalBudget
+                ? theme.error
+                : theme.success,
+            fontWeight: "800",
+          }}
         />
       </View>
     </Card>
@@ -556,8 +564,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   summaryItem: {
-    width: (width - 64) / 2,
+    width: (width - 64) / 2.1,
     marginBottom: 16,
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   participantItem: {
     flexDirection: "row",

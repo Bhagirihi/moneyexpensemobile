@@ -106,18 +106,18 @@ export const AddCategoryScreen = ({ navigation, route }) => {
       const { error } = await categoryService.createCategory(categoryData);
 
       if (error) {
-        showToast(error.message || "Failed to create category", "error");
+        showToast.error(error.message || "Failed to create category");
         return;
       }
 
-      showToast("Category created successfully", "success");
+      showToast.success("Category created successfully");
       if (route.params?.onCategoryCreated) {
         route.params.onCategoryCreated(formData.id);
       }
       navigation.goBack();
     } catch (error) {
       console.error("Error saving category:", error);
-      showToast("An unexpected error occurred", "error");
+      showToast.error("An unexpected error occurred");
     } finally {
       setLoading(false);
     }

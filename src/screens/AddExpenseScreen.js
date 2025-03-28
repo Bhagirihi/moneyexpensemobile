@@ -41,23 +41,23 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const validateForm = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      showToast("Please enter a valid amount", "error");
+      showToast.error("Please enter a valid amount");
       return false;
     }
     if (!formData.description.trim()) {
-      showToast("Please enter a description", "error");
+      showToast.error("Please enter a description");
       return false;
     }
     if (!formData.category) {
-      showToast("Please select a category", "error");
+      showToast.error("Please select a category");
       return false;
     }
     if (!formData.paymentMethod) {
-      showToast("Please select a payment method", "error");
+      showToast.error("Please select a payment method");
       return false;
     }
     if (!formData.board) {
-      showToast("Please select an expense board", "error");
+      showToast.error("Please select an expense board");
       return false;
     }
     return true;
@@ -209,7 +209,7 @@ export const AddExpenseScreen = ({ navigation }) => {
         ]}
         onPress={() => {
           // TODO: Implement date picker
-          showToast("Date picker coming soon", "info");
+          showToast.info("Date picker coming soon");
         }}
       >
         <MaterialCommunityIcons

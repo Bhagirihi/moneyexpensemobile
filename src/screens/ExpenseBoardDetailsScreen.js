@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -43,7 +44,7 @@ export const ExpenseBoardDetailsScreen = () => {
       setExpenses(transactionsData || []);
     } catch (error) {
       console.error("Error fetching data:", error);
-      showToast("Error loading data", "error");
+      showToast.error("Error loading data");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -67,6 +68,18 @@ export const ExpenseBoardDetailsScreen = () => {
     } catch (error) {
       console.error("Error deleting board:", error);
       showToast.error("Failed to delete expense board");
+    }
+  };
+
+  const handleShareBoard = async () => {
+    try {
+      // TODO: Implement share functionality
+      console.log("Share board:", boardId);
+      // You can implement sharing logic here
+      // For example, generate a shareable link or use the device's share sheet
+    } catch (error) {
+      console.error("Error sharing board:", error);
+      showToast.error("Failed to share board");
     }
   };
 
@@ -206,15 +219,49 @@ export const ExpenseBoardDetailsScreen = () => {
           )}
         </View>
       </ScrollView>
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("AddExpense", { boardId })}
-      >
-        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
-        <Text style={[styles.addButtonText, { color: theme.white }]}>
-          Add Transaction
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.bottomButtons}>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.card }]}
+            onPress={() => navigation.navigate("AddExpense", { boardId })}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={24}
+              color={theme.primary}
+            />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>
+              Add
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.card }]}
+            onPress={() => navigation.navigate("Analysis", { boardId })}
+          >
+            <MaterialCommunityIcons
+              name="chart-bar"
+              size={24}
+              color={theme.primary}
+            />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>
+              Analysis
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: theme.card }]}
+            onPress={handleShareBoard}
+          >
+            <MaterialCommunityIcons
+              name="share-variant"
+              size={24}
+              color={theme.primary}
+            />
+            <Text style={[styles.actionButtonText, { color: theme.text }]}>
+              Share
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };
@@ -276,12 +323,41 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 8,
   },
+  bottomButtons: {
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 32 : 16,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    margin: 16,
     borderRadius: 12,
     shadowColor: "#000",
     shadowOffset: {
@@ -297,13 +373,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 8,
   },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-    marginTop: 40,
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -311,6 +380,13 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     marginBottom: 8,
     marginTop: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    marginTop: 40,
   },
   emptyIconContainer: {
     width: 80,

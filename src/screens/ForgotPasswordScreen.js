@@ -48,14 +48,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
       );
 
       if (error) throw error;
-      showToast(
-        "Password reset instructions have been sent to your email",
-        "success"
+      showToast.success(
+        "Password reset instructions have been sent to your email"
       );
       navigation.navigate("Login");
     } catch (error) {
       console.error("Reset password error:", error.message);
-      showToast(error.message || "Failed to send reset instructions", "error");
+      showToast.error(error.message || "Failed to send reset instructions");
     } finally {
       setLoading(false);
     }

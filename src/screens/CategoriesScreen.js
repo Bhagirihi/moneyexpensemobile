@@ -321,7 +321,7 @@ export const CategoriesScreen = ({ navigation }) => {
       setCategories(data);
     } catch (error) {
       console.error("Error in fetchCategories:", error);
-      showToast("Failed to fetch categories", "error");
+      showToast.error("Failed to fetch categories");
       setCategories([]);
     } finally {
       console.log("🏁 Category fetching process completed");
@@ -337,14 +337,14 @@ export const CategoriesScreen = ({ navigation }) => {
     try {
       const { error } = await categoryService.deleteCategory(categoryId);
       if (error) {
-        showToast("Failed to delete category", "error");
+        showToast.error("Failed to delete category");
         return;
       }
-      showToast("Category deleted successfully", "success");
+      showToast.success("Category deleted successfully");
       fetchCategories();
     } catch (error) {
       console.error("Error deleting category:", error);
-      showToast("Failed to delete category", "error");
+      showToast.error("Failed to delete category");
     }
   };
 

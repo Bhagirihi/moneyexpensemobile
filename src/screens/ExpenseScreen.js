@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useAppSettings } from "../context/AppSettingsContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
@@ -17,6 +18,7 @@ import { CategoryList } from "../components/CategoryList";
 import ExpenseList from "../components/ExpenseList";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
+import { formatCurrency } from "../utils/formatters";
 
 const categories = [
   { id: 0, name: "All", icon: "view-grid", color: "#6C5CE7" },
@@ -179,7 +181,7 @@ export const ExpenseScreen = ({ navigation }) => {
             Total Expenses
           </Text>
           <Text style={[styles.statsValue, { color: theme.text }]}>
-            ₹{monthlyStats.totalExpenses.toFixed(2)}
+            {formatCurrency(monthlyStats.totalExpenses)}
           </Text>
         </View>
         <View style={[styles.statsItem]}>
@@ -188,7 +190,7 @@ export const ExpenseScreen = ({ navigation }) => {
           </Text>
           <View style={{ flexDirection: "column", alignItems: "left" }}>
             <Text style={[styles.statsValue, { color: theme.success }]}>
-              ₹{monthlyStats.remainingBalance.toFixed(2)}
+              {formatCurrency(monthlyStats.remainingBalance)}
             </Text>
             <Text
               style={[

@@ -2,6 +2,7 @@ import React, { memo, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { formatCurrency } from "../utils/formatters";
 
 const formatDate = (date) => {
   const today = new Date();
@@ -119,7 +120,9 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
               ? expense.category
               : expense.category?.name || "Uncategorized"}
           </Text>
-          <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
+          <Text style={styles.expenseAmount}>
+            {formatCurrency(expense.amount)}
+          </Text>
         </View>
         <View style={styles.expenseDetails}>
           <View style={styles.expenseMeta}>

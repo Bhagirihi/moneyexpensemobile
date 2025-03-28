@@ -1,137 +1,143 @@
+import { useAppSettings } from "../context/AppSettingsContext";
+
 /**
  * Format a number as currency
  * @param {number} amount - The amount to format
- * @param {string} currency - The currency code (default: 'INR')
- * @param {string} locale - The locale to use (default: 'en-IN')
+ * @param {string} currency - The currency code (default: null)
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount, currency = "INR", locale = "en-IN") => {
-  try {
-    // Handle null, undefined, or invalid amounts
-    if (!amount && amount !== 0) return currency === "USD" ? "$0.00" : "₹0.00";
+export const formatCurrency = (amount, currency = null) => {
+  const { currency: selectedCurrency } = useAppSettings();
+  const currencyToUse = currency || selectedCurrency;
 
-    // Convert to number if string
-    const numericAmount =
-      typeof amount === "string" ? parseFloat(amount) : amount;
+  const currencyConfig = {
+    USD: { locale: "en-US", currency: "USD" },
+    EUR: { locale: "en-EU", currency: "EUR" },
+    GBP: { locale: "en-GB", currency: "GBP" },
+    INR: { locale: "en-IN", currency: "INR" },
+  };
 
-    // Format using Intl.NumberFormat
-    const formatter = new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
 
-    return formatter.format(numericAmount);
-  } catch (error) {
-    console.error("Error formatting currency:", error);
-    return currency === "USD" ? "$0.00" : "₹0.00";
-  }
+  return new Intl.NumberFormat(config.locale, {
+    style: "currency",
+    currency: config.currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 /**
  * Format a number as compact currency (e.g., $1.2K, $1.2M)
  * @param {number} amount - The amount to format
- * @param {string} currency - The currency code (default: 'INR')
- * @param {string} locale - The locale to use (default: 'en-IN')
+ * @param {string} currency - The currency code (default: null)
  * @returns {string} Formatted compact currency string
  */
-export const formatCompactCurrency = (
-  amount,
-  currency = "INR",
-  locale = "en-IN"
-) => {
-  try {
-    if (!amount && amount !== 0) return currency === "USD" ? "$0" : "₹0";
+export const formatCompactCurrency = (amount, currency = null) => {
+  const { currency: selectedCurrency } = useAppSettings();
+  const currencyToUse = currency || selectedCurrency;
 
-    const numericAmount =
-      typeof amount === "string" ? parseFloat(amount) : amount;
+  const currencyConfig = {
+    USD: { locale: "en-US", currency: "USD" },
+    EUR: { locale: "en-EU", currency: "EUR" },
+    GBP: { locale: "en-GB", currency: "GBP" },
+    INR: { locale: "en-IN", currency: "INR" },
+  };
 
-    const formatter = new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency,
-      notation: "compact",
-      maximumFractionDigits: 1,
-    });
+  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
 
-    return formatter.format(numericAmount);
-  } catch (error) {
-    console.error("Error formatting compact currency:", error);
-    return currency === "USD" ? "$0" : "₹0";
-  }
+  return new Intl.NumberFormat(config.locale, {
+    style: "currency",
+    currency: config.currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(amount);
 };
 
 /**
  * Parse a currency string back to a number
  * @param {string} currencyString - The formatted currency string
+ * @param {string} currency - The currency code (default: null)
  * @returns {number} The parsed number
  */
-export const parseCurrency = (currencyString) => {
-  try {
-    return parseFloat(currencyString.replace(/[^0-9.-]+/g, ""));
-  } catch (error) {
-    console.error("Error parsing currency:", error);
-    return 0;
-  }
+export const parseCurrency = (currencyString, currency = null) => {
+  const { currency: selectedCurrency } = useAppSettings();
+  const currencyToUse = currency || selectedCurrency;
+
+  const currencyConfig = {
+    USD: { locale: "en-US", currency: "USD" },
+    EUR: { locale: "en-EU", currency: "EUR" },
+    GBP: { locale: "en-GB", currency: "GBP" },
+    INR: { locale: "en-IN", currency: "INR" },
+  };
+
+  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
+
+  // Remove currency symbol and any non-numeric characters except decimal point
+  const cleanString = currencyString.replace(/[^0-9.-]/g, "");
+  return parseFloat(cleanString);
 };
 
 /**
  * Format a date to a readable string
  * @param {Date|string} date - The date to format
- * @param {string} locale - The locale to use (default: 'en-IN')
+ * @param {string} format - The format to use (default: 'medium')
  * @returns {string} Formatted date string
  */
-export const formatDate = (date, locale = "en-IN") => {
-  try {
-    if (!date) return "";
+export const formatDate = (date, format = "medium") => {
+  const { language } = useAppSettings();
+  const locale = language === "en" ? "en-US" : "en-IN";
 
-    const dateObj = typeof date === "string" ? new Date(date) : date;
-
-    return dateObj.toLocaleDateString(locale, {
-      year: "numeric",
+  const options = {
+    short: {
       month: "short",
       day: "numeric",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return "";
-  }
+      year: "numeric",
+    },
+    medium: {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    },
+    long: {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    },
+  };
+
+  return new Intl.DateTimeFormat(locale, options[format]).format(
+    new Date(date)
+  );
 };
 
 /**
  * Format a percentage
  * @param {number} value - The value to format as percentage
- * @param {number} decimals - Number of decimal places (default: 1)
  * @returns {string} Formatted percentage string
  */
-export const formatPercentage = (value, decimals = 1) => {
-  try {
-    if (!value && value !== 0) return "0%";
+export const formatPercentage = (value) => {
+  const { language } = useAppSettings();
+  const locale = language === "en" ? "en-US" : "en-IN";
 
-    const numericValue = typeof value === "string" ? parseFloat(value) : value;
-    return `${numericValue.toFixed(decimals)}%`;
-  } catch (error) {
-    console.error("Error formatting percentage:", error);
-    return "0%";
-  }
+  return new Intl.NumberFormat(locale, {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value / 100);
 };
 
 /**
  * Format a number with thousands separators
- * @param {number} value - The number to format
- * @param {string} locale - The locale to use (default: 'en-IN')
+ * @param {number} number - The number to format
  * @returns {string} Formatted number string
  */
-export const formatNumber = (value, locale = "en-IN") => {
-  try {
-    if (!value && value !== 0) return "0";
+export const formatNumber = (number) => {
+  const { language } = useAppSettings();
+  const locale = language === "en" ? "en-US" : "en-IN";
 
-    const formatter = new Intl.NumberFormat(locale);
-    return formatter.format(value);
-  } catch (error) {
-    console.error("Error formatting number:", error);
-    return "0";
-  }
+  return new Intl.NumberFormat(locale).format(number);
 };
 
 export const formatDateTime = (date, locale = "en-IN") => {
