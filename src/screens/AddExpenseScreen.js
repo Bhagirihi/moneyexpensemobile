@@ -19,17 +19,19 @@ import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const paymentMethods = [
-  { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
-  { id: 2, name: "Card", icon: "credit-card", color: "#2196F3" },
-  { id: 3, name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
-  { id: 4, name: "Net Banking", icon: "bank", color: "#FF9800" },
+  { id: "cash", name: "Cash", icon: "cash", color: "#4CAF50" },
+  { id: "card", name: "Card", icon: "credit-card", color: "#2196F3" },
+  { id: "upi", name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
+  { id: "net_banking", name: "Net Banking", icon: "bank", color: "#FF9800" },
 ];
 
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -102,6 +104,13 @@ export const AddExpenseScreen = ({ navigation }) => {
         setFormData({ ...formData, category: newCategoryId });
       },
     });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setFormData({ ...formData, date: selectedDate });
+    }
   };
 
   const renderAmountInput = () => (
@@ -211,10 +220,7 @@ export const AddExpenseScreen = ({ navigation }) => {
             borderColor: theme.border,
           },
         ]}
-        onPress={() => {
-          // TODO: Implement date picker
-          showToast.info("Date picker coming soon");
-        }}
+        onPress={() => setShowDatePicker(true)}
       >
         <MaterialCommunityIcons
           name="calendar"
@@ -225,6 +231,15 @@ export const AddExpenseScreen = ({ navigation }) => {
           {formData.date.toLocaleDateString()}
         </Text>
       </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker
+          value={formData.date}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
     </View>
   );
 
@@ -250,24 +265,67 @@ export const AddExpenseScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <ExpenseBoardList
-            selectedBoard={formData.board}
-            onSelectBoard={(boardId) => {
-              console.log("Selected Board ID:", boardId);
-              setFormData({ ...formData, board: boardId });
-            }}
-            onCreateBoard={handleCreateBoard}
-          />
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Expense Board
+              </Text>
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.primary }]}
+                onPress={handleCreateBoard}
+              >
+                <MaterialCommunityIcons
+                  name="plus"
+                  size={20}
+                  color={theme.white}
+                />
+                <Text style={[styles.addButtonText, { color: theme.white }]}>
+                  New
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <ExpenseBoardList
+              selectedBoard={formData.board}
+              onSelectBoard={(boardId) => {
+                console.log("Selected Board ID:", boardId);
+                setFormData({ ...formData, board: boardId });
+              }}
+              onCreateBoard={handleCreateBoard}
+            />
+          </View>
+
           {renderDateSelector()}
           {renderAmountInput()}
           {renderPaymentMethodSelector()}
-          <CategoryList
-            selectedCategory={formData.category}
-            onSelectCategory={(categoryId) =>
-              setFormData({ ...formData, category: categoryId })
-            }
-            onCreateCategory={handleCreateCategory}
-          />
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Category
+              </Text>
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.primary }]}
+                onPress={handleCreateCategory}
+              >
+                <MaterialCommunityIcons
+                  name="plus"
+                  size={20}
+                  color={theme.white}
+                />
+                <Text style={[styles.addButtonText, { color: theme.white }]}>
+                  New
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <CategoryList
+              selectedCategory={formData.category}
+              onSelectCategory={(categoryId) =>
+                setFormData({ ...formData, category: categoryId })
+              }
+              onCreateCategory={handleCreateCategory}
+            />
+          </View>
+
           {renderDescriptionInput()}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -285,6 +343,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputContainer: {
     padding: 12,
