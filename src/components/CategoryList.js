@@ -80,6 +80,34 @@ export const CategoryList = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[styles.categoriesList, style]}
       >
+        <TouchableOpacity
+          style={[
+            styles.addNewItem,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={handleCreateCategory}
+        >
+          <View
+            style={[
+              styles.addNewIcon,
+              {
+                backgroundColor: `${theme.primary}15`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={theme.primary}
+            />
+          </View>
+          <Text style={[styles.addNewText, { color: theme.text }]}>
+            Add New
+          </Text>
+        </TouchableOpacity>
         {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
@@ -124,34 +152,6 @@ export const CategoryList = ({
             </Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity
-          style={[
-            styles.addNewItem,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-          onPress={handleCreateCategory}
-        >
-          <View
-            style={[
-              styles.addNewIcon,
-              {
-                backgroundColor: `${theme.primary}15`,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="plus"
-              size={22}
-              color={theme.primary}
-            />
-          </View>
-          <Text style={[styles.addNewText, { color: theme.text }]}>
-            Add New
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );

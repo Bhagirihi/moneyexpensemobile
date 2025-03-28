@@ -19,19 +19,17 @@ import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 const paymentMethods = [
-  { id: "cash", name: "Cash", icon: "cash", color: "#4CAF50" },
-  { id: "card", name: "Card", icon: "credit-card", color: "#2196F3" },
-  { id: "upi", name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
-  { id: "net_banking", name: "Net Banking", icon: "bank", color: "#FF9800" },
+  { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
+  { id: 2, name: "Card", icon: "credit-card", color: "#2196F3" },
+  { id: 3, name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
+  { id: 4, name: "Net Banking", icon: "bank", color: "#FF9800" },
 ];
 
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -46,10 +44,7 @@ export const AddExpenseScreen = ({ navigation }) => {
       showToast.error("Please enter a valid amount");
       return false;
     }
-    if (!formData.description.trim()) {
-      showToast.error("Please enter a description");
-      return false;
-    }
+
     if (!formData.category) {
       showToast.error("Please select a category");
       return false;
@@ -106,13 +101,6 @@ export const AddExpenseScreen = ({ navigation }) => {
     });
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setFormData({ ...formData, date: selectedDate });
-    }
-  };
-
   const renderAmountInput = () => (
     <View style={styles.inputContainer}>
       <FormInput
@@ -136,12 +124,13 @@ export const AddExpenseScreen = ({ navigation }) => {
   const renderDescriptionInput = () => (
     <View style={styles.inputContainer}>
       <FormInput
-        label="Description"
+        label="Description (Optional)"
         value={formData.description}
         onChangeText={(text) => setFormData({ ...formData, description: text })}
         placeholder="Enter description"
         multiline
-        numberOfLines={3}
+        numberOfLines={7}
+        inputStyle={styles.descriptionInput}
       />
     </View>
   );
@@ -161,18 +150,18 @@ export const AddExpenseScreen = ({ navigation }) => {
               styles.categoryItem,
               {
                 backgroundColor:
-                  formData.paymentMethod === method.id
+                  formData.paymentMethod === method.name
                     ? theme.primary
                     : theme.card,
-                borderWidth: formData.paymentMethod === method.id ? 2 : 1,
+                borderWidth: formData.paymentMethod === method.name ? 2 : 1,
                 borderColor:
-                  formData.paymentMethod === method.id
+                  formData.paymentMethod === method.name
                     ? theme.primary
                     : theme.border,
               },
             ]}
             onPress={() =>
-              setFormData({ ...formData, paymentMethod: method.id })
+              setFormData({ ...formData, paymentMethod: method.name })
             }
           >
             <View
@@ -220,7 +209,10 @@ export const AddExpenseScreen = ({ navigation }) => {
             borderColor: theme.border,
           },
         ]}
-        onPress={() => setShowDatePicker(true)}
+        onPress={() => {
+          // TODO: Implement date picker
+          showToast.info("Date picker coming soon");
+        }}
       >
         <MaterialCommunityIcons
           name="calendar"
@@ -231,15 +223,6 @@ export const AddExpenseScreen = ({ navigation }) => {
           {formData.date.toLocaleDateString()}
         </Text>
       </TouchableOpacity>
-      {showDatePicker && (
-        <DateTimePicker
-          value={formData.date}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
-      )}
     </View>
   );
 
@@ -265,67 +248,24 @@ export const AddExpenseScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Expense Board
-              </Text>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.primary }]}
-                onPress={handleCreateBoard}
-              >
-                <MaterialCommunityIcons
-                  name="plus"
-                  size={20}
-                  color={theme.white}
-                />
-                <Text style={[styles.addButtonText, { color: theme.white }]}>
-                  New
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <ExpenseBoardList
-              selectedBoard={formData.board}
-              onSelectBoard={(boardId) => {
-                console.log("Selected Board ID:", boardId);
-                setFormData({ ...formData, board: boardId });
-              }}
-              onCreateBoard={handleCreateBoard}
-            />
-          </View>
-
+          <ExpenseBoardList
+            selectedBoard={formData.board}
+            onSelectBoard={(boardId) => {
+              console.log("Selected Board ID:", boardId);
+              setFormData({ ...formData, board: boardId });
+            }}
+            onCreateBoard={handleCreateBoard}
+          />
           {renderDateSelector()}
           {renderAmountInput()}
           {renderPaymentMethodSelector()}
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Category
-              </Text>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.primary }]}
-                onPress={handleCreateCategory}
-              >
-                <MaterialCommunityIcons
-                  name="plus"
-                  size={20}
-                  color={theme.white}
-                />
-                <Text style={[styles.addButtonText, { color: theme.white }]}>
-                  New
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <CategoryList
-              selectedCategory={formData.category}
-              onSelectCategory={(categoryId) =>
-                setFormData({ ...formData, category: categoryId })
-              }
-              onCreateCategory={handleCreateCategory}
-            />
-          </View>
-
+          <CategoryList
+            selectedCategory={formData.category}
+            onSelectCategory={(categoryId) =>
+              setFormData({ ...formData, category: categoryId })
+            }
+            onCreateCategory={handleCreateCategory}
+          />
           {renderDescriptionInput()}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -344,33 +284,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
-  section: {
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
-  },
-  addButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
   inputContainer: {
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   label: {
     fontSize: 13,
@@ -406,7 +322,7 @@ const styles = StyleSheet.create({
   descriptionInput: {
     padding: 12,
     borderRadius: 10,
-    height: 80,
+    height: 100,
     textAlignVertical: "top",
     shadowColor: "#000",
     shadowOffset: {

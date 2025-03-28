@@ -53,7 +53,7 @@ const FormInput = memo(
             ...errorStyle,
           },
         }),
-      [theme, error]
+      [theme, error, style, inputStyle, labelStyle, errorStyle]
     );
 
     return (

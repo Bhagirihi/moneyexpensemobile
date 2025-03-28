@@ -56,6 +56,34 @@ export const ExpenseBoardList = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.boardsList}
       >
+        <TouchableOpacity
+          style={[
+            styles.addNewItem,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={onCreateBoard}
+        >
+          <View
+            style={[
+              styles.addNewIcon,
+              {
+                backgroundColor: `${theme.primary}15`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="plus"
+              size={22}
+              color={theme.primary}
+            />
+          </View>
+          <Text style={[styles.addNewText, { color: theme.text }]}>
+            Add New
+          </Text>
+        </TouchableOpacity>
         {boards.map((board) => (
           <TouchableOpacity
             key={board.id}
@@ -97,34 +125,6 @@ export const ExpenseBoardList = ({
             </Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity
-          style={[
-            styles.addNewItem,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-          onPress={onCreateBoard}
-        >
-          <View
-            style={[
-              styles.addNewIcon,
-              {
-                backgroundColor: `${theme.primary}15`,
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="plus"
-              size={22}
-              color={theme.primary}
-            />
-          </View>
-          <Text style={[styles.addNewText, { color: theme.text }]}>
-            Add New
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
