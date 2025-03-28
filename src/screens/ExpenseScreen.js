@@ -188,19 +188,76 @@ export const ExpenseScreen = ({ navigation }) => {
           <Text style={[styles.statsLabel, { color: theme.textSecondary }]}>
             Remaining
           </Text>
-          <View style={{ flexDirection: "column", alignItems: "left" }}>
-            <Text style={[styles.statsValue, { color: theme.success }]}>
-              {formatCurrency(monthlyStats.remainingBalance)}
+          <Text
+            style={[
+              styles.statsValue,
+              {
+                color:
+                  monthlyStats.remainingBalance >= 0
+                    ? theme.success
+                    : theme.error,
+              },
+            ]}
+          >
+            {formatCurrency(monthlyStats.remainingBalance)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Combined Progress Bar */}
+      <View style={styles.combinedProgressContainer}>
+        <View style={styles.progressLabels}>
+          <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+            Budget Usage
+          </Text>
+          <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+            {`${Math.round(
+              (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
+            )}%`}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.combinedProgressBar,
+            { backgroundColor: theme.background },
+          ]}
+        >
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.round(
+                  (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
+                )}%`,
+                backgroundColor: theme.primary,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.remainingFill,
+              {
+                width: `100%`,
+                backgroundColor: theme.success,
+              },
+            ]}
+          />
+        </View>
+        <View style={styles.progressLegend}>
+          <View style={styles.legendItem}>
+            <View
+              style={[styles.legendColor, { backgroundColor: theme.primary }]}
+            />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+              Used
             </Text>
-            <Text
-              style={[
-                styles.statsValue,
-                { color: theme.success, fontSize: 14 },
-              ]}
-            >
-              {`${Math.round(
-                (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
-              )}%`}
+          </View>
+          <View style={styles.legendItem}>
+            <View
+              style={[styles.legendColor, { backgroundColor: theme.success }]}
+            />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+              Remaining
             </Text>
           </View>
         </View>
@@ -307,7 +364,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginHorizontal: 18,
     marginBottom: 10,
-    padding: 8,
+    padding: 16,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: {
@@ -321,6 +378,8 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
   },
   statsItem: {
     flex: 1,
@@ -328,28 +387,61 @@ const styles = StyleSheet.create({
   },
   statsLabel: {
     fontSize: 14,
-    marginBottom: 4,
+    marginBottom: 8,
+    fontWeight: "500",
   },
   statsValue: {
     fontSize: 24,
     fontWeight: "bold",
   },
-  progressContainer: {
-    marginTop: 10,
+  combinedProgressContainer: {
+    width: "100%",
+    marginTop: 8,
   },
-  progressBar: {
-    height: 6,
-    borderRadius: 3,
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  combinedProgressBar: {
+    height: 12,
+    borderRadius: 6,
     overflow: "hidden",
-    marginBottom: 6,
+    flexDirection: "row",
+    marginBottom: 8,
   },
   progressFill: {
     height: "100%",
-    borderRadius: 3,
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
   },
-  progressText: {
+  remainingFill: {
+    height: "100%",
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  progressLegend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
     fontSize: 12,
-    textAlign: "center",
+    fontWeight: "500",
   },
   loadingContainer: {
     flex: 1,
