@@ -30,16 +30,30 @@ export const dashboardService = {
             name,
             color,
             icon
-          ),
-          expense_boards (
-            name
-          )
-        `
+          )`
         )
         .order("created_at", { ascending: false })
         .limit(limit);
 
       if (error) throw error;
+      console.log("DATA", data);
+
+      // Get unique user IDs from expenses
+      const userIds = [...new Set(data.map((expense) => expense.created_by))];
+
+      // Fetch profiles for all users
+      const profilePromises = userIds.map((userId) =>
+        this.getUserProfile(userId)
+      );
+      const profileResults = await Promise.all(profilePromises);
+
+      // Create a map of user IDs to profiles
+      const userMap = profileResults.reduce((acc, result) => {
+        if (result.data) {
+          acc[result.data.id] = result.data;
+        }
+        return acc;
+      }, {});
 
       // Transform the data to match the expected format
       const transformedTransactions = data.map((expense) => ({
@@ -51,6 +65,7 @@ export const dashboardService = {
         icon: expense.categories?.icon || "dots-horizontal",
         color: expense.categories?.color || "#45B7D1",
         board: expense.expense_boards?.name || "Default Board",
+        created_by_profile: userMap[expense.created_by] || null,
       }));
 
       return { data: transformedTransactions, error: null };

@@ -114,7 +114,11 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
       </View>
       <View style={styles.expenseInfo}>
         <View style={styles.expenseHeader}>
-          <Text style={styles.expenseName}>{expense?.category?.name}</Text>
+          <Text style={styles.expenseName}>
+            {typeof expense.category === "string"
+              ? expense.category
+              : expense.category?.name || "Uncategorized"}
+          </Text>
           <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
         </View>
         <View style={styles.expenseDetails}>

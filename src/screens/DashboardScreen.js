@@ -27,37 +27,6 @@ import { showToast } from "../utils/toast";
 
 const { width } = Dimensions.get("window");
 
-// Dummy data for when no data is found
-const dummyExpenses = [
-  {
-    id: 1,
-    category: "Food",
-    amount: 45.5,
-    date: "2024-03-20T12:00:00",
-    description: "Lunch at Restaurant",
-    icon: "food",
-    color: "#FF6B6B",
-  },
-  {
-    id: 2,
-    category: "Transport",
-    amount: 25.0,
-    date: "2024-03-19T15:30:00",
-    description: "Bus Ticket",
-    icon: "car",
-    color: "#4ECDC4",
-  },
-  {
-    id: 3,
-    category: "Shopping",
-    amount: 120.0,
-    date: "2024-03-18T10:15:00",
-    description: "Souvenirs",
-    icon: "shopping",
-    color: "#45B7D1",
-  },
-];
-
 export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [userProfile, setUserProfile] = useState(null);
@@ -138,7 +107,7 @@ export const DashboardScreen = ({ navigation }) => {
       if (transactionsError) {
         throw transactionsError;
       }
-
+      console.log("transactionsData", transactionsData);
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
