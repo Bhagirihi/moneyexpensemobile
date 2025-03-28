@@ -136,6 +136,7 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
               {expense?.created_by_profile?.full_name || "Unknown"}
             </Text>
           </View>
+
           <View style={styles.expenseMeta}>
             <MaterialCommunityIcons
               name="calendar-outline"
@@ -145,6 +146,17 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
             />
             <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
           </View>
+        </View>
+        <View style={[styles.expenseMeta, { marginVertical: 5 }]}>
+          <MaterialCommunityIcons
+            name="view-grid"
+            size={14}
+            color={theme.textSecondary}
+            style={styles.metaIcon}
+          />
+          <Text style={styles.expenseCreator}>
+            {expense?.board || "Unknown"}
+          </Text>
         </View>
       </View>
       <TouchableOpacity

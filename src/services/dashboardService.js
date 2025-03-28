@@ -30,6 +30,9 @@ export const dashboardService = {
             name,
             color,
             icon
+          ),
+          expense_boards (
+            name
           )`
         )
         .order("created_at", { ascending: false })

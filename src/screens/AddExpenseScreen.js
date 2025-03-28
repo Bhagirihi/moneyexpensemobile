@@ -105,32 +105,36 @@ export const AddExpenseScreen = ({ navigation }) => {
   };
 
   const renderAmountInput = () => (
-    <FormInput
-      label="Amount"
-      value={formData.amount}
-      onChangeText={(text) => {
-        // Only allow numbers and decimal point
-        const numericValue = text.replace(/[^0-9.]/g, "");
-        // Ensure only one decimal point
-        const parts = numericValue.split(".");
-        if (parts.length > 2) return;
-        setFormData({ ...formData, amount: numericValue });
-      }}
-      placeholder="Enter amount"
-      keyboardType="numeric"
-      prefix="$"
-    />
+    <View style={styles.inputContainer}>
+      <FormInput
+        label="Amount"
+        value={formData.amount}
+        onChangeText={(text) => {
+          // Only allow numbers and decimal point
+          const numericValue = text.replace(/[^0-9.]/g, "");
+          // Ensure only one decimal point
+          const parts = numericValue.split(".");
+          if (parts.length > 2) return;
+          setFormData({ ...formData, amount: numericValue });
+        }}
+        placeholder="Enter amount"
+        keyboardType="numeric"
+        prefix="$"
+      />
+    </View>
   );
 
   const renderDescriptionInput = () => (
-    <FormInput
-      label="Description"
-      value={formData.description}
-      onChangeText={(text) => setFormData({ ...formData, description: text })}
-      placeholder="Enter description"
-      multiline
-      numberOfLines={3}
-    />
+    <View style={styles.inputContainer}>
+      <FormInput
+        label="Description"
+        value={formData.description}
+        onChangeText={(text) => setFormData({ ...formData, description: text })}
+        placeholder="Enter description"
+        multiline
+        numberOfLines={3}
+      />
+    </View>
   );
 
   const renderPaymentMethodSelector = () => (
@@ -254,8 +258,9 @@ export const AddExpenseScreen = ({ navigation }) => {
             }}
             onCreateBoard={handleCreateBoard}
           />
+          {renderDateSelector()}
           {renderAmountInput()}
-          {renderDescriptionInput()}
+          {renderPaymentMethodSelector()}
           <CategoryList
             selectedCategory={formData.category}
             onSelectCategory={(categoryId) =>
@@ -263,8 +268,7 @@ export const AddExpenseScreen = ({ navigation }) => {
             }
             onCreateCategory={handleCreateCategory}
           />
-          {renderPaymentMethodSelector()}
-          {renderDateSelector()}
+          {renderDescriptionInput()}
         </ScrollView>
       </KeyboardAvoidingView>
       {renderSaveButton()}
