@@ -16,7 +16,7 @@ import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { formatCurrency } from "../utils/currencyFormatter";
+import { formatCurrency } from "../utils/formatters";
 import ExpenseItem from "../components/ExpenseItem";
 
 export const ExpenseBoardDetailsScreen = () => {

@@ -2,19 +2,20 @@
  * Format a number as currency
  * @param {number} amount - The amount to format
  * @param {string} currency - The currency code (default: 'INR')
+ * @param {string} locale - The locale to use (default: 'en-IN')
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount, currency = "INR") => {
+export const formatCurrency = (amount, currency = "INR", locale = "en-IN") => {
   try {
     // Handle null, undefined, or invalid amounts
-    if (!amount && amount !== 0) return "₹0.00";
+    if (!amount && amount !== 0) return currency === "USD" ? "$0.00" : "₹0.00";
 
     // Convert to number if string
     const numericAmount =
       typeof amount === "string" ? parseFloat(amount) : amount;
 
     // Format using Intl.NumberFormat
-    const formatter = new Intl.NumberFormat("en-IN", {
+    const formatter = new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
@@ -24,22 +25,69 @@ export const formatCurrency = (amount, currency = "INR") => {
     return formatter.format(numericAmount);
   } catch (error) {
     console.error("Error formatting currency:", error);
-    return "₹0.00";
+    return currency === "USD" ? "$0.00" : "₹0.00";
+  }
+};
+
+/**
+ * Format a number as compact currency (e.g., $1.2K, $1.2M)
+ * @param {number} amount - The amount to format
+ * @param {string} currency - The currency code (default: 'INR')
+ * @param {string} locale - The locale to use (default: 'en-IN')
+ * @returns {string} Formatted compact currency string
+ */
+export const formatCompactCurrency = (
+  amount,
+  currency = "INR",
+  locale = "en-IN"
+) => {
+  try {
+    if (!amount && amount !== 0) return currency === "USD" ? "$0" : "₹0";
+
+    const numericAmount =
+      typeof amount === "string" ? parseFloat(amount) : amount;
+
+    const formatter = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    });
+
+    return formatter.format(numericAmount);
+  } catch (error) {
+    console.error("Error formatting compact currency:", error);
+    return currency === "USD" ? "$0" : "₹0";
+  }
+};
+
+/**
+ * Parse a currency string back to a number
+ * @param {string} currencyString - The formatted currency string
+ * @returns {number} The parsed number
+ */
+export const parseCurrency = (currencyString) => {
+  try {
+    return parseFloat(currencyString.replace(/[^0-9.-]+/g, ""));
+  } catch (error) {
+    console.error("Error parsing currency:", error);
+    return 0;
   }
 };
 
 /**
  * Format a date to a readable string
  * @param {Date|string} date - The date to format
+ * @param {string} locale - The locale to use (default: 'en-IN')
  * @returns {string} Formatted date string
  */
-export const formatDate = (date) => {
+export const formatDate = (date, locale = "en-IN") => {
   try {
     if (!date) return "";
 
     const dateObj = typeof date === "string" ? new Date(date) : date;
 
-    return dateObj.toLocaleDateString("en-IN", {
+    return dateObj.toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -71,13 +119,14 @@ export const formatPercentage = (value, decimals = 1) => {
 /**
  * Format a number with thousands separators
  * @param {number} value - The number to format
+ * @param {string} locale - The locale to use (default: 'en-IN')
  * @returns {string} Formatted number string
  */
-export const formatNumber = (value) => {
+export const formatNumber = (value, locale = "en-IN") => {
   try {
     if (!value && value !== 0) return "0";
 
-    const formatter = new Intl.NumberFormat("en-IN");
+    const formatter = new Intl.NumberFormat(locale);
     return formatter.format(value);
   } catch (error) {
     console.error("Error formatting number:", error);
