@@ -62,11 +62,11 @@ export const ExpenseBoardDetailsScreen = () => {
   const handleDeleteBoard = async () => {
     try {
       await expenseBoardService.deleteExpenseBoard(boardId);
-      showToast("Expense board deleted successfully", "success");
+      showToast.success("Expense board deleted successfully");
       navigation.goBack();
     } catch (error) {
       console.error("Error deleting board:", error);
-      showToast("Failed to delete expense board", "error");
+      showToast.error("Failed to delete expense board");
     }
   };
 

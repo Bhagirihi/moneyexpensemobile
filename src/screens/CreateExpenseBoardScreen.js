@@ -22,6 +22,7 @@ import { expenseBoardService } from "../services/expenseBoardService";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { showToast } from "../utils/toast";
+import { formatNumber } from "../utils/formatters";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -219,7 +220,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     }
     if (
       !perPersonBudget ||
-      isNaN(perPersonBudget) ||
+      isNaN(parseFloat(perPersonBudget)) ||
       parseFloat(perPersonBudget) <= 0
     ) {
       newErrors.perPersonBudget = "Please enter a valid budget amount";
@@ -291,7 +292,8 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         share_code: shareCode || generateShareCode(),
       };
 
-      await expenseBoardService.createExpenseBoard(boardData);
+      const newBoard = await expenseBoardService.createExpenseBoard(boardData);
+      console.log("Created Board ID:", newBoard.id);
       showToast.success("Expense board created successfully");
       navigation.goBack();
     } catch (error) {
@@ -400,14 +402,17 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       label="Per Person Budget"
       value={perPersonBudget}
       onChangeText={(text) => {
-        setPerPersonBudget(text);
+        var numericValue = text.replace(/[^0-9.]/g, "");
+
+        setPerPersonBudget(formatNumber(numericValue));
         if (errors.perPersonBudget) {
           setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
         }
       }}
       placeholder="Enter budget amount"
       keyboardType="numeric"
-      prefix="$"
+      prefix="₹"
+      suffix={perPersonBudget ? formatNumber(parseFloat(perPersonBudget)) : ""}
       error={errors.perPersonBudget}
     />
   );
@@ -531,7 +536,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Create Expense Board" onBack={() => navigation.goBack()} />
+      <Header title="Expense Board" onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}

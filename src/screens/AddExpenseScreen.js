@@ -82,7 +82,7 @@ export const AddExpenseScreen = ({ navigation }) => {
       navigation.goBack();
     } catch (error) {
       console.error("Error saving expense:", error);
-      showToast("Failed to save expense", "error");
+      showToast.error("Failed to save expense");
     } finally {
       setLoading(false);
     }
@@ -248,9 +248,10 @@ export const AddExpenseScreen = ({ navigation }) => {
         >
           <ExpenseBoardList
             selectedBoard={formData.board}
-            onSelectBoard={(boardId) =>
-              setFormData({ ...formData, board: boardId })
-            }
+            onSelectBoard={(boardId) => {
+              console.log("Selected Board ID:", boardId);
+              setFormData({ ...formData, board: boardId });
+            }}
             onCreateBoard={handleCreateBoard}
           />
           {renderAmountInput()}
