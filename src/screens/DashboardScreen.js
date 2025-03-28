@@ -26,6 +26,7 @@ import { Header } from "../components/Header";
 import ExpenseList from "../components/ExpenseList";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
+import { notificationService } from "../services/notificationService";
 
 const { width } = Dimensions.get("window");
 
@@ -42,6 +43,7 @@ export const DashboardScreen = ({ navigation }) => {
     totalExpenses: 0,
     remainingBudget: 0,
   });
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -52,6 +54,17 @@ export const DashboardScreen = ({ navigation }) => {
   useEffect(() => {
     fetchUserProfile();
     fetchDashboardData();
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const subscription = notificationService.subscribeToNotifications(() => {
+      fetchUnreadCount();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const onRefresh = React.useCallback(async () => {
@@ -118,6 +131,15 @@ export const DashboardScreen = ({ navigation }) => {
       setExpenses([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
     }
   };
 
@@ -311,19 +333,23 @@ export const DashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate("Notification")}
             style={styles.notificationButton}
           >
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={24}
-              color={theme.text}
-            />
-            {userProfile?.has_notifications && (
+            {unreadCount > 0 && (
               <View
                 style={[
                   styles.notificationBadge,
                   { backgroundColor: theme.error },
                 ]}
-              />
+              >
+                <Text style={styles.notificationCount}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
             )}
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={24}
+              color={theme.text}
+            />
           </TouchableOpacity>
           <ThemeToggle />
         </View>
@@ -527,11 +553,19 @@ const styles = StyleSheet.create({
   },
   notificationBadge: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  notificationCount: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
   },
   emptyContainer: {
     flex: 1,
