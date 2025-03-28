@@ -156,12 +156,17 @@ export const AddCategoryScreen = ({ navigation, route }) => {
       </View>
     </View>
   );
+  const sortedIcons = CATEGORY_ICONS.sort((a, b) => {
+    if (a.id === "other") return 1; // Push "other" to the end
+    if (b.id === "other") return -1;
+    return a.label.length - b.label.length; // Sort by label length
+  });
 
   const renderIconPicker = () => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.text }]}>Choose Icon</Text>
       <View style={styles.iconList}>
-        {CATEGORY_ICONS.map((icon) => (
+        {sortedIcons.map((icon) => (
           <TouchableOpacity
             key={icon.id}
             style={[styles.iconItem, getIconStyle(icon.id)]}
@@ -230,6 +235,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
                 backgroundColor: theme.card,
                 color: theme.text,
                 borderColor: errors.description ? theme.error : theme.border,
+                height: 100,
               },
             ]}
             placeholder="Enter category description (optional)"
@@ -321,13 +327,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   iconItem: {
-    width: 60,
+    width: "auto",
+    minWidth: 80,
     height: 60,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     margin: 4,
-    padding: 8,
+    padding: 10,
     borderWidth: 1,
   },
   iconLabel: {

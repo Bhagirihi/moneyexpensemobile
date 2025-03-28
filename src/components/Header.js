@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  SafeAreaView,
+} from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 
@@ -21,7 +27,7 @@ export const Header = ({
   };
 
   return (
-    <View
+    <SafeAreaView
       style={[
         styles.header,
         { borderBottomColor: theme.border },
@@ -43,13 +49,14 @@ export const Header = ({
           </TouchableOpacity>
         )}
       </View>
-
-      <Text style={[styles.title, { color: theme.text }, titleStyle]}>
-        {title}
-      </Text>
+      <View style={styles.titleSection}>
+        <Text style={[styles.title, { color: theme.text }, titleStyle]}>
+          {title}
+        </Text>
+      </View>
 
       <View style={styles.rightSection}>{renderRightSection()}</View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -57,24 +64,28 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    height: "auto",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
   },
   leftSection: {
     width: "20%",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   rightSection: {
     Width: "20%",
-    alignItems: "flex-end",
+    alignItems: "center",
+  },
+  titleSection: {
+    width: "60%",
+    alignItems: "center",
   },
   backButton: {
     padding: 4,
   },
   title: {
-    flex: 1,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
     width: "60%",
