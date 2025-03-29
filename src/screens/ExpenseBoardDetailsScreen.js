@@ -13,6 +13,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
+import ShareModal from "../components/ShareModal";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
@@ -31,6 +32,7 @@ export const ExpenseBoardDetailsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const [expenses, setExpenses] = useState([]);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -71,49 +73,9 @@ export const ExpenseBoardDetailsScreen = () => {
     }
   };
 
-  const handleShareBoard = async () => {
-    try {
-      // TODO: Implement share functionality
-      console.log("Share board:", boardId);
-      // You can implement sharing logic here
-      // For example, generate a shareable link or use the device's share sheet
-    } catch (error) {
-      console.error("Error sharing board:", error);
-      showToast.error("Failed to share board");
-    }
+  const handleShareBoard = () => {
+    setShowShareModal(true);
   };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View
-        style={[
-          styles.emptyIconContainer,
-          { backgroundColor: `${theme.primary}15` },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name="receipt-outline"
-          size={40}
-          color={theme.primary}
-        />
-      </View>
-      <Text style={[styles.emptyTitle, { color: theme.text }]}>
-        No Transactions Found
-      </Text>
-      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-        Start adding expenses to track your spending
-      </Text>
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: theme.primary }]}
-        onPress={() => navigation.navigate("AddExpense", { boardId })}
-      >
-        <MaterialCommunityIcons name="plus" size={20} color={theme.white} />
-        <Text style={[styles.addButtonText, { color: theme.white }]}>
-          Add First Transaction
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   if (loading) {
     return (
@@ -138,16 +100,28 @@ export const ExpenseBoardDetailsScreen = () => {
         title={boardName}
         onBack={() => navigation.goBack()}
         rightComponent={
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDeleteBoard}
-          >
-            <MaterialCommunityIcons
-              name="delete-outline"
-              size={24}
-              color={theme.error}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleShareBoard}
+            >
+              <MaterialCommunityIcons
+                name="share-variant"
+                size={24}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleDeleteBoard}
+            >
+              <MaterialCommunityIcons
+                name="delete-outline"
+                size={24}
+                color={theme.error}
+              />
+            </TouchableOpacity>
+          </View>
         }
       />
       <ScrollView
@@ -353,21 +327,16 @@ export const ExpenseBoardDetailsScreen = () => {
               Analysis
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: theme.card }]}
-            onPress={handleShareBoard}
-          >
-            <MaterialCommunityIcons
-              name="share-variant"
-              size={24}
-              color={theme.primary}
-            />
-            <Text style={[styles.actionButtonText, { color: theme.text }]}>
-              Share
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        boardName={boardName}
+        boardId={boardId}
+        boardColor={theme.primary}
+        boardIcon="view-grid"
+      />
     </SafeAreaView>
   );
 };
@@ -604,5 +573,13 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerButton: {
+    padding: 8,
   },
 });

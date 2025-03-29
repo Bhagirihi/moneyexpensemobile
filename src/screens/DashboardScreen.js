@@ -180,7 +180,7 @@ export const DashboardScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        <View style={[styles.balanceRow, styles.remainingRow]}>
+        {/* <View style={[styles.balanceRow, styles.remainingRow]}>
           <View style={styles.balanceLabelContainer}>
             <MaterialCommunityIcons
               name="cash-check"
@@ -195,7 +195,7 @@ export const DashboardScreen = ({ navigation }) => {
           <Text style={[styles.balanceValue, { color: theme.success }]}>
             {formatCurrency(stats.remainingBudget)}
           </Text>
-        </View>
+        </View> */}
       </View>
 
       <View style={styles.combinedProgressContainer}>

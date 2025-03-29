@@ -22,6 +22,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
+import ShareModal from "../components/ShareModal";
 import { showToast } from "../utils/toast";
 import { formatNumber } from "../utils/formatters";
 
@@ -536,107 +537,6 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderShareModal = () => (
-    <Modal
-      visible={showShareModal}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowShareModal(false)}
-    >
-      <View
-        style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
-      >
-        <View
-          style={[
-            styles.modalContent,
-            { backgroundColor: theme.cardBackground },
-          ]}
-        >
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Share Expense Board
-            </Text>
-            <TouchableOpacity onPress={() => setShowShareModal(false)}>
-              <MaterialCommunityIcons
-                name="close"
-                size={24}
-                color={theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.shareContent}>
-            <View style={styles.boardInfo}>
-              <View
-                style={[
-                  styles.boardIcon,
-                  { backgroundColor: `${selectedColor.value}15` },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={selectedIcon.name}
-                  size={24}
-                  color={selectedColor.value}
-                />
-              </View>
-              <Text style={[styles.boardName, { color: theme.text }]}>
-                {boardName || "New Expense Board"}
-              </Text>
-            </View>
-
-            <View style={styles.codeContainer}>
-              <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
-                Board Code
-              </Text>
-              <View style={[styles.codeBox, { backgroundColor: theme.card }]}>
-                <Text style={[styles.codeText, { color: theme.text }]}>
-                  {shareCode || generateShareCode()}
-                </Text>
-                <TouchableOpacity onPress={handleCopyCode}>
-                  <MaterialCommunityIcons
-                    name="content-copy"
-                    size={20}
-                    color={theme.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.shareOptions}>
-              <TouchableOpacity
-                style={[styles.shareOption, { backgroundColor: theme.card }]}
-                onPress={handleShareViaEmail}
-              >
-                <MaterialCommunityIcons
-                  name="email"
-                  size={24}
-                  color={theme.primary}
-                />
-                <Text style={[styles.shareOptionText, { color: theme.text }]}>
-                  Share via Email
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.shareOption, { backgroundColor: theme.card }]}
-                onPress={handleShareViaSocial}
-              >
-                <MaterialCommunityIcons
-                  name="share-variant"
-                  size={24}
-                  color={theme.primary}
-                />
-                <Text style={[styles.shareOptionText, { color: theme.text }]}>
-                  Share via Social Apps
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   const renderShareOptions = () => (
     <View style={styles.inputContainer}>
       <Text style={[styles.label, { color: theme.text }]}>Share Board</Text>
@@ -693,7 +593,14 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         loading={loading}
         style={styles.createButton}
       />
-      {renderShareModal()}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        boardName={boardName || "New Expense Board"}
+        boardId={shareCode || generateShareCode()}
+        boardColor={selectedColor.value}
+        boardIcon={selectedIcon.name}
+      />
     </SafeAreaView>
   );
 };
