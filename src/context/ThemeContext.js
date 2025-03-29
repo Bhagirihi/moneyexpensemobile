@@ -29,6 +29,7 @@ const lightTheme = {
   secondary: "#6366F1", // Indigo for secondary actions
   background: "#FFFFFF", // Pure white for clean look
   card: "#F8FAFC", // Very light gray for cards
+  cardBackground: "#FFFFFF", // White background for cards
   text: "#1E293B", // Dark slate for primary text
   textSecondary: "#64748B", // Medium gray for secondary text
   border: "#E2E8F0", // Light gray for borders
@@ -43,6 +44,11 @@ const lightTheme = {
     radius: 4,
     elevation: 2,
   },
+  // Additional colors for SettingsScreen
+  errorLight: "#FEE2E2", // Light red for error backgrounds
+  primaryLight: "#DBEAFE", // Light blue for primary backgrounds
+  textLight: "#94A3B8", // Light text color
+  borderLight: "#E2E8F0", // Light border color
 };
 
 const darkTheme = {
@@ -50,6 +56,7 @@ const darkTheme = {
   secondary: "#6366F1",
   background: "#0F172A",
   card: "#1E293B",
+  cardBackground: "#1E293B", // Dark background for cards
   text: "#F8FAFC",
   textSecondary: "#CBD5E1",
   border: "#334155",
@@ -64,6 +71,11 @@ const darkTheme = {
     radius: 4,
     elevation: 2,
   },
+  // Additional colors for SettingsScreen
+  errorLight: "#7F1D1D", // Dark red for error backgrounds
+  primaryLight: "#1E40AF", // Dark blue for primary backgrounds
+  textLight: "#64748B", // Dark text color
+  borderLight: "#334155", // Dark border color
 };
 
 const ThemeContext = createContext();

@@ -12,6 +12,8 @@ import {
   Modal,
   FlatList,
   Alert,
+  Share,
+  Clipboard,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -32,6 +34,8 @@ export const SettingsScreen = ({ navigation }) => {
   const [monthlyBudget, setMonthlyBudget] = useState(0);
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showShareAppModal, setShowShareAppModal] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
 
   // Sample data - Replace with actual data from your backend
   const languages = [
@@ -73,6 +77,7 @@ export const SettingsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchData();
+    generateReferralCode();
   }, []);
 
   const fetchData = async () => {
@@ -115,6 +120,43 @@ export const SettingsScreen = ({ navigation }) => {
     }
   };
 
+  const generateReferralCode = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const code = user.id.substring(0, 8).toUpperCase();
+        setReferralCode(code);
+      }
+    } catch (error) {
+      console.error("Error generating referral code:", error);
+    }
+  };
+
+  const handleShareApp = async (method) => {
+    try {
+      const message = `Join TripExpanse - The Smart Expense Tracking App!\n\nUse my referral code: ${referralCode}\n\nDownload now: https://tripexpanse.app/download\n\nTrack your expenses smarter with TripExpanse!`;
+
+      if (method === "email") {
+        await Share.share({
+          message,
+          subject: "Join TripExpanse - Smart Expense Tracking",
+        });
+      } else if (method === "social") {
+        await Share.share({
+          message,
+        });
+      } else if (method === "copy") {
+        await Clipboard.setString(referralCode);
+        showToast.success("Success", "Referral code copied to clipboard");
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
+      showToast.error("Error", "Failed to share");
+    }
+  };
+
   const handleUpdateBudget = async () => {
     try {
       const newBudget = parseFloat(editValue);
@@ -141,7 +183,11 @@ export const SettingsScreen = ({ navigation }) => {
   const handleEdit = (item) => {
     setEditingItem(item);
     setEditValue(item.subtitle || "");
-    setEditModalVisible(true);
+    if (item.title === "Share With") {
+      setShowShareAppModal(true);
+    } else {
+      setEditModalVisible(true);
+    }
   };
 
   const handleLogout = async () => {
@@ -175,7 +221,7 @@ export const SettingsScreen = ({ navigation }) => {
           key={lang.code}
           style={[
             styles.selectorItem,
-            { borderBottomColor: `${theme.text}15` },
+            { borderBottomColor: theme.borderLight },
           ]}
           onPress={() => {
             updateLanguage(lang.code);
@@ -212,7 +258,7 @@ export const SettingsScreen = ({ navigation }) => {
           key={curr.code}
           style={[
             styles.selectorItem,
-            { borderBottomColor: `${theme.text}15` },
+            { borderBottomColor: theme.borderLight },
           ]}
           onPress={() => {
             updateCurrency(curr.code);
@@ -256,7 +302,7 @@ export const SettingsScreen = ({ navigation }) => {
       </View>
       <View style={styles.modalButtons}>
         <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: theme.error + "15" }]}
+          style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
           onPress={() => setEditModalVisible(false)}
         >
           <Text style={[styles.modalButtonText, { color: theme.error }]}>
@@ -297,7 +343,7 @@ export const SettingsScreen = ({ navigation }) => {
             <View
               style={[
                 styles.iconContainer,
-                { backgroundColor: `${theme.primary}15` },
+                { backgroundColor: theme.primaryLight },
               ]}
             >
               <MaterialCommunityIcons
@@ -371,7 +417,7 @@ export const SettingsScreen = ({ navigation }) => {
             <View
               style={[
                 styles.featureIcon,
-                { backgroundColor: `${theme.primary}15` },
+                { backgroundColor: theme.primaryLight },
               ]}
             >
               <MaterialCommunityIcons
@@ -421,7 +467,7 @@ export const SettingsScreen = ({ navigation }) => {
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: `${theme.text}10` },
+          { color: theme.text, backgroundColor: theme.textLight },
         ]}
         placeholder="Current Password"
         placeholderTextColor={theme.textSecondary}
@@ -430,7 +476,7 @@ export const SettingsScreen = ({ navigation }) => {
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: `${theme.text}10` },
+          { color: theme.text, backgroundColor: theme.textLight },
         ]}
         placeholder="New Password"
         placeholderTextColor={theme.textSecondary}
@@ -439,7 +485,7 @@ export const SettingsScreen = ({ navigation }) => {
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: `${theme.text}10` },
+          { color: theme.text, backgroundColor: theme.textLight },
         ]}
         placeholder="Confirm New Password"
         placeholderTextColor={theme.textSecondary}
@@ -447,7 +493,7 @@ export const SettingsScreen = ({ navigation }) => {
       />
       <View style={styles.modalButtons}>
         <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: theme.error + "15" }]}
+          style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
           onPress={() => setEditModalVisible(false)}
         >
           <Text style={[styles.modalButtonText, { color: theme.error }]}>
@@ -508,6 +554,105 @@ export const SettingsScreen = ({ navigation }) => {
     );
   };
 
+  const renderShareAppModal = () => (
+    <Modal
+      visible={showShareAppModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowShareAppModal(false)}
+    >
+      <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
+        <View
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.cardBackground },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Share TripExpanse
+            </Text>
+            <TouchableOpacity onPress={() => setShowShareAppModal(false)}>
+              <MaterialCommunityIcons
+                name="close"
+                size={24}
+                color={theme.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.shareContent}>
+            <View style={styles.appInfo}>
+              <View
+                style={[
+                  styles.appIcon,
+                  { backgroundColor: theme.primaryLight },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="wallet-outline"
+                  size={32}
+                  color={theme.primary}
+                />
+              </View>
+              <Text style={[styles.appName, { color: theme.text }]}>
+                TripExpanse
+              </Text>
+            </View>
+
+            <View style={styles.codeContainer}>
+              <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
+                Your Referral Code
+              </Text>
+              <View style={[styles.codeBox, { backgroundColor: theme.card }]}>
+                <Text style={[styles.codeText, { color: theme.text }]}>
+                  {referralCode}
+                </Text>
+                <TouchableOpacity onPress={() => handleShareApp("copy")}>
+                  <MaterialCommunityIcons
+                    name="content-copy"
+                    size={20}
+                    color={theme.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.shareOptions}>
+              <TouchableOpacity
+                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                onPress={() => handleShareApp("email")}
+              >
+                <MaterialCommunityIcons
+                  name="email"
+                  size={24}
+                  color={theme.primary}
+                />
+                <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                  Share via Email
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                onPress={() => handleShareApp("social")}
+              >
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={24}
+                  color={theme.primary}
+                />
+                <Text style={[styles.shareOptionText, { color: theme.text }]}>
+                  Share via Social Apps
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   const renderSettingItem = ({
     icon,
     title,
@@ -522,7 +667,7 @@ export const SettingsScreen = ({ navigation }) => {
         styles.settingItem,
         showBorder && {
           borderBottomWidth: 1,
-          borderBottomColor: `${theme.text}15`,
+          borderBottomColor: theme.borderLight,
         },
       ]}
       onPress={() => {
@@ -538,7 +683,7 @@ export const SettingsScreen = ({ navigation }) => {
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
+            { backgroundColor: theme.primaryLight },
           ]}
         >
           <MaterialCommunityIcons name={icon} size={22} color={theme.primary} />
@@ -711,9 +856,9 @@ export const SettingsScreen = ({ navigation }) => {
             }),
             renderSettingItem({
               icon: "share-variant-outline",
-              title: "Shared With",
-              subtitle: "Manage who can access your expense data",
-              onPress: () => {},
+              title: "Share With",
+              subtitle: "Share TripExpanse with friends",
+              onPress: () => handleEdit({ title: "Share With" }),
               showBorder: false,
               editable: false,
             }),
@@ -734,7 +879,7 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: theme.error + "15" }]}
+          style={[styles.logoutButton, { backgroundColor: theme.errorLight }]}
           onPress={handleLogout}
         >
           <MaterialCommunityIcons name="logout" size={20} color={theme.error} />
@@ -744,6 +889,7 @@ export const SettingsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </ScrollView>
       {renderEditModal()}
+      {renderShareAppModal()}
     </SafeAreaView>
   );
 };
@@ -1019,5 +1165,57 @@ const styles = StyleSheet.create({
   memberEmail: {
     fontSize: 14,
     marginBottom: 4,
+  },
+  shareContent: {
+    padding: 8,
+  },
+  appInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  appIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  appName: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  codeContainer: {
+    marginBottom: 24,
+  },
+  codeLabel: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  codeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 8,
+  },
+  codeText: {
+    fontSize: 16,
+    fontFamily: "monospace",
+  },
+  shareOptions: {
+    gap: 12,
+  },
+  shareOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  shareOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
