@@ -8,12 +8,7 @@ const ThemeToggle = () => {
 
   return (
     <TouchableOpacity
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDarkMode ? theme.cardBackground : theme.secondary,
-        },
-      ]}
+      style={[styles.container, { borderColor: theme.border }]}
       activeOpacity={0.8}
       onPress={toggleTheme}
     >
@@ -31,6 +26,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 1,
+
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
