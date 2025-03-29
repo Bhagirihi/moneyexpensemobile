@@ -29,6 +29,7 @@ import ExpenseList from "../components/ExpenseList";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
+import BalloonIllustration from "../components/BalloonIllustration";
 
 const { width } = Dimensions.get("window");
 
@@ -371,7 +372,7 @@ export const DashboardScreen = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        style={[styles.container, { backgroundColor: theme.primary }]}
       >
         <Animated.View
           style={[
@@ -382,40 +383,19 @@ export const DashboardScreen = ({ navigation }) => {
             },
           ]}
         >
-          <Animated.View
-            style={[
-              styles.loadingIconContainer,
-              { backgroundColor: `${theme.primary}15` },
-              {
-                transform: [
-                  { scale: pulseAnim },
-                  {
-                    rotate: rotateAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ["0deg", "360deg"],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="wallet-outline"
-              size={60}
-              color={theme.primary}
-            />
-          </Animated.View>
-          <Animated.Text
-            style={[
-              styles.loadingText,
-              {
-                color: theme.text,
-                opacity: fadeAnim,
-              },
-            ]}
-          >
-            Loading your expenses...
-          </Animated.Text>
+          <View style={styles.illustrationContainer}>
+            <BalloonIllustration width={200} height={200} color="#FFFFFF" />
+            <Animated.Text
+              style={[
+                styles.exploreText,
+                {
+                  opacity: fadeAnim,
+                },
+              ]}
+            >
+              Loading expenses...
+            </Animated.Text>
+          </View>
         </Animated.View>
       </SafeAreaView>
     );
@@ -503,6 +483,7 @@ export const DashboardScreen = ({ navigation }) => {
       >
         {renderTransactionsSection()}
       </ScrollView>
+
       <FooterTab navigation={navigation} activeRoute="Home" />
     </SafeAreaView>
   );
@@ -516,19 +497,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 24,
   },
-  loadingIconContainer: {
-    width: 80,
-    height: 80,
+  illustrationContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-
-    borderRadius: 40,
   },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: "500",
+  exploreText: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginTop: 20,
   },
   scrollContent: {
     flexGrow: 1,

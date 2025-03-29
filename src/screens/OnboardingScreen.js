@@ -8,6 +8,7 @@ import {
   FlatList,
   Animated,
   StatusBar,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -19,23 +20,26 @@ import ThemeToggle from "../components/ThemeToggle";
 
 const { width, height } = Dimensions.get("window");
 
+// Create animated FlatList component
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
+
 const slides = [
   {
     id: "1",
-    title: "Explore the\nworld easily",
-    subtitle: "To your desire",
+    title: "Track Your\nTravel Expenses",
+    subtitle: "Keep all your travel costs in one place",
     Illustration: ExploreWorldIllustration,
   },
   {
     id: "2",
-    title: "Reach the\nunknown spot",
-    subtitle: "To your destination",
+    title: "Split Bills\nEasily",
+    subtitle: "Share expenses with travel companions",
     Illustration: ReachSpotIllustration,
   },
   {
     id: "3",
-    title: "Make connects\nwith explora",
-    subtitle: "Start your travel trip",
+    title: "Plan Your\nBudget",
+    subtitle: "Set budgets and track your spending",
     Illustration: ConnectIllustration,
   },
 ];
@@ -45,6 +49,15 @@ const OnboardingScreen = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const slidesRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const viewableItemsChanged = useRef(({ viewableItems }) => {
     setCurrentIndex(viewableItems[0]?.index || 0);
@@ -60,15 +73,40 @@ const OnboardingScreen = ({ navigation }) => {
     }
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({ item, index }) => {
     const { Illustration } = item;
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
+
+    const opacity = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.4, 1, 0.4],
+    });
+
+    const scale = scrollX.interpolate({
+      inputRange,
+      outputRange: [0.8, 1, 0.8],
+    });
+
     return (
-      <View style={[styles.slide, { backgroundColor: theme.background }]}>
+      <Animated.View
+        style={[
+          styles.slide,
+          {
+            backgroundColor: theme.background,
+            opacity,
+            transform: [{ scale }],
+          },
+        ]}
+      >
         <View style={styles.illustrationContainer}>
           <Illustration
             width={width * 0.8}
             height={width * 0.8}
-            color={theme.illustrationPrimary}
+            color={theme.primary}
           />
         </View>
         <View style={styles.textContainer}>
@@ -79,7 +117,7 @@ const OnboardingScreen = ({ navigation }) => {
             {item.subtitle}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -92,8 +130,15 @@ const OnboardingScreen = ({ navigation }) => {
       <View style={styles.themeToggleContainer}>
         <ThemeToggle />
       </View>
-      <View style={styles.content}>
-        <FlatList
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <AnimatedFlatList
           data={slides}
           renderItem={renderItem}
           horizontal
@@ -104,7 +149,7 @@ const OnboardingScreen = ({ navigation }) => {
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { x: scrollX } } }],
             {
-              useNativeDriver: false,
+              useNativeDriver: true,
             }
           )}
           onViewableItemsChanged={viewableItemsChanged}
@@ -115,7 +160,7 @@ const OnboardingScreen = ({ navigation }) => {
         <View style={styles.footer}>
           <View style={styles.indicatorContainer}>
             {slides.map((_, index) => (
-              <View
+              <Animated.View
                 key={index.toString()}
                 style={[
                   styles.dot,
@@ -131,27 +176,19 @@ const OnboardingScreen = ({ navigation }) => {
             ))}
           </View>
           <TouchableOpacity
-            style={[
-              styles.nextButton,
-              { backgroundColor: theme.nextButtonBackground },
-            ]}
+            style={[styles.nextButton, { backgroundColor: theme.primary }]}
             onPress={scrollTo}
           >
             <View
-              style={[
-                styles.nextButtonInner,
-                { backgroundColor: theme.nextButtonInner },
-              ]}
+              style={[styles.nextButtonInner, { backgroundColor: theme.white }]}
             >
-              <Text
-                style={[styles.nextButtonText, { color: theme.nextButtonText }]}
-              >
-                →
+              <Text style={[styles.nextButtonText, { color: theme.primary }]}>
+                {currentIndex === slides.length - 1 ? "Get Started" : "→"}
               </Text>
             </View>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 };
@@ -164,7 +201,7 @@ const styles = StyleSheet.create({
   },
   themeToggleContainer: {
     position: "absolute",
-    top: 50,
+    top: Platform.OS === "ios" ? 50 : 20,
     right: 20,
     zIndex: 1,
   },
@@ -175,6 +212,7 @@ const styles = StyleSheet.create({
     width,
     paddingHorizontal: 20,
     paddingTop: height * 0.1,
+    alignItems: "center",
   },
   illustrationContainer: {
     height: height * 0.5,
@@ -183,22 +221,26 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     paddingTop: 40,
+    alignItems: "center",
   },
   title: {
     fontSize: 36,
     fontWeight: "bold",
     marginBottom: 8,
     lineHeight: 38,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
+    textAlign: "center",
+    opacity: 0.8,
   },
   footer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingBottom: Platform.OS === "ios" ? 30 : 20,
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -219,6 +261,11 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   nextButtonInner: {
     width: 40,
@@ -229,6 +276,7 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     fontSize: 20,
+    fontWeight: "600",
   },
 });
 

@@ -111,6 +111,7 @@ export default function App() {
                 {session ? (
                   // Protected routes
                   <>
+                    <Stack.Screen name="Welcome" component={WelcomeScreen} />
                     <Stack.Screen
                       name="Dashboard"
                       component={DashboardScreen}
@@ -155,12 +156,12 @@ export default function App() {
                 ) : (
                   // Public routes
                   <>
-                    <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Welcome" component={WelcomeScreen} />
                     <Stack.Screen
                       name="Onboarding"
                       component={OnboardingScreen}
                     />
+                    <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
                     <Stack.Screen
                       name="ForgotPassword"
