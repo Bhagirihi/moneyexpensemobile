@@ -1,13 +1,99 @@
-import React, { createContext, useState, useContext } from "react";
-import { lightTheme, darkTheme } from "../theme/theme";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Backup of the current theme
+const currentTheme = {
+  primary: "#6C63FF",
+  secondary: "#4CAF50",
+  background: "#FFFFFF",
+  card: "#F5F5F5",
+  text: "#333333",
+  textSecondary: "#666666",
+  border: "#E0E0E0",
+  error: "#FF3B30",
+  success: "#34C759",
+  warning: "#FF9500",
+  white: "#FFFFFF",
+  overlay: "rgba(0, 0, 0, 0.5)",
+  shadow: {
+    color: "#000",
+    opacity: 0.1,
+    radius: 4,
+    elevation: 2,
+  },
+};
+
+// New professional light theme
+const lightTheme = {
+  primary: "#2563EB", // Modern, trustworthy blue
+  secondary: "#6366F1", // Indigo for secondary actions
+  background: "#FFFFFF", // Pure white for clean look
+  card: "#F8FAFC", // Very light gray for cards
+  text: "#1E293B", // Dark slate for primary text
+  textSecondary: "#64748B", // Medium gray for secondary text
+  border: "#E2E8F0", // Light gray for borders
+  error: "#EF4444", // Red for errors
+  success: "#10B981", // Green for success
+  warning: "#F59E0B", // Amber for warnings
+  white: "#FFFFFF", // Pure white
+  overlay: "rgba(0, 0, 0, 0.5)", // Semi-transparent black for overlays
+  shadow: {
+    color: "#000",
+    opacity: 0.1,
+    radius: 4,
+    elevation: 2,
+  },
+};
+
+const darkTheme = {
+  primary: "#3B82F6",
+  secondary: "#6366F1",
+  background: "#0F172A",
+  card: "#1E293B",
+  text: "#F8FAFC",
+  textSecondary: "#CBD5E1",
+  border: "#334155",
+  error: "#EF4444",
+  success: "#10B981",
+  warning: "#F59E0B",
+  white: "#FFFFFF",
+  overlay: "rgba(0, 0, 0, 0.7)",
+  shadow: {
+    color: "#000",
+    opacity: 0.3,
+    radius: 4,
+    elevation: 2,
+  },
+};
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
+  useEffect(() => {
+    loadThemePreference();
+  }, []);
+
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem("theme");
+      if (savedTheme !== null) {
+        setIsDarkMode(savedTheme === "dark");
+      }
+    } catch (error) {
+      console.error("Error loading theme preference:", error);
+    }
+  };
+
+  const toggleTheme = async () => {
+    try {
+      const newTheme = !isDarkMode;
+      setIsDarkMode(newTheme);
+      await AsyncStorage.setItem("theme", newTheme ? "dark" : "light");
+    } catch (error) {
+      console.error("Error saving theme preference:", error);
+    }
   };
 
   const theme = isDarkMode ? darkTheme : lightTheme;
