@@ -158,44 +158,150 @@ export const ExpenseBoardDetailsScreen = () => {
       >
         <View style={styles.content}>
           <View style={[styles.statsCard, { backgroundColor: theme.card }]}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Total Expenses
-              </Text>
-              <Text style={[styles.statValue, { color: theme.text }]}>
-                {formatCurrency(totalExpenses)}
-              </Text>
+            <View style={styles.statsMain}>
+              <View style={styles.statsRow}>
+                <View style={styles.statsLabelContainer}>
+                  <MaterialCommunityIcons
+                    name="wallet-outline"
+                    size={20}
+                    color={theme.text}
+                    style={styles.statsIcon}
+                  />
+                  <Text style={[styles.statsLabel, { color: theme.text }]}>
+                    Budget
+                  </Text>
+                </View>
+                <Text style={[styles.statsValue, { color: theme.text }]}>
+                  {formatCurrency(totalBudget)}
+                </Text>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statsLabelContainer}>
+                  <MaterialCommunityIcons
+                    name="cash-remove"
+                    size={20}
+                    color={theme.text}
+                    style={styles.statsIcon}
+                  />
+                  <Text style={[styles.statsLabel, { color: theme.text }]}>
+                    Spent
+                  </Text>
+                </View>
+                <Text style={[styles.statsValue, { color: theme.text }]}>
+                  {formatCurrency(totalExpenses)}
+                </Text>
+              </View>
+
+              <View style={[styles.statsRow, styles.remainingRow]}>
+                <View style={styles.statsLabelContainer}>
+                  <MaterialCommunityIcons
+                    name="cash-check"
+                    size={20}
+                    color={remainingBudget >= 0 ? theme.success : theme.error}
+                    style={styles.statsIcon}
+                  />
+                  <Text
+                    style={[
+                      styles.statsLabel,
+                      {
+                        color:
+                          remainingBudget >= 0 ? theme.success : theme.error,
+                      },
+                    ]}
+                  >
+                    Remaining
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.statsValue,
+                    {
+                      color: remainingBudget >= 0 ? theme.success : theme.error,
+                    },
+                  ]}
+                >
+                  {formatCurrency(remainingBudget)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Budget
-              </Text>
-              <Text style={[styles.statValue, { color: theme.text }]}>
-                {formatCurrency(totalBudget)}
-              </Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-                Remaining
-              </Text>
-              <Text
+
+            <View style={styles.combinedProgressContainer}>
+              <View style={styles.progressLabels}>
+                <Text style={[styles.progressLabel, { color: theme.text }]}>
+                  Budget Usage
+                </Text>
+                <Text style={[styles.progressLabel, { color: theme.text }]}>
+                  {`${Math.round((totalExpenses / (totalBudget || 1)) * 100)}%`}
+                </Text>
+              </View>
+              <View
                 style={[
-                  styles.statValue,
-                  {
-                    color: remainingBudget >= 0 ? theme.success : theme.error,
-                  },
+                  styles.combinedProgressBar,
+                  { backgroundColor: theme.border },
                 ]}
               >
-                {formatCurrency(remainingBudget)}
-              </Text>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.round(
+                        (totalExpenses / (totalBudget || 1)) * 100
+                      )}%`,
+                      backgroundColor:
+                        remainingBudget >= 0 ? theme.error : theme.error,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.remainingFill,
+                    {
+                      width: `100%`,
+                      backgroundColor:
+                        remainingBudget >= 0 ? theme.success : theme.error,
+                    },
+                  ]}
+                />
+              </View>
+              <View style={styles.progressLegend}>
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendColor,
+                      {
+                        backgroundColor:
+                          remainingBudget >= 0 ? theme.error : theme.error,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.legendText, { color: theme.text }]}>
+                    Used
+                  </Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View
+                    style={[
+                      styles.legendColor,
+                      {
+                        backgroundColor:
+                          remainingBudget >= 0 ? theme.success : theme.error,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.legendText, { color: theme.text }]}>
+                    Remaining
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
           {expenses.length > 0 ? (
             <View>
-              <Text style={styles.headerTitle}>Transactions</Text>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>
+                Transactions
+              </Text>
               <View>
                 {expenses.map((expense) => (
                   <ExpenseItem
@@ -290,7 +396,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   statsCard: {
-    flexDirection: "row",
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
@@ -303,22 +408,83 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  statItem: {
-    flex: 1,
+  statsMain: {
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  remainingRow: {
+    marginTop: 2,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+  },
+  statsLabelContainer: {
+    flexDirection: "row",
     alignItems: "center",
   },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 4,
+  statsIcon: {
+    marginRight: 8,
   },
-  statValue: {
-    fontSize: 18,
+  statsLabel: {
+    fontSize: 16,
+    opacity: 0.9,
+  },
+  statsValue: {
+    fontSize: 16,
     fontWeight: "600",
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: "#E0E0E0",
-    marginHorizontal: 8,
+  combinedProgressContainer: {
+    width: "100%",
+  },
+  progressLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  combinedProgressBar: {
+    height: 12,
+    borderRadius: 6,
+    overflow: "hidden",
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: "100%",
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
+  },
+  remainingFill: {
+    height: "100%",
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  progressLegend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   deleteButton: {
     padding: 8,

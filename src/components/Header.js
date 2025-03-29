@@ -50,7 +50,11 @@ export const Header = ({
         )}
       </View>
       <View style={styles.titleSection}>
-        <Text style={[styles.title, { color: theme.text }, titleStyle]}>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="middle"
+          style={[styles.title, { color: theme.text }, titleStyle]}
+        >
           {title}
         </Text>
       </View>
@@ -70,15 +74,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   leftSection: {
-    width: "20%",
+    width: "10%",
     alignItems: "center",
   },
   rightSection: {
-    Width: "20%",
+    Width: "10%",
     alignItems: "center",
   },
   titleSection: {
-    width: "60%",
+    width: "80%",
     alignItems: "center",
   },
   backButton: {
