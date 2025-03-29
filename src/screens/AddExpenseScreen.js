@@ -21,10 +21,10 @@ import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
 
 const paymentMethods = [
-  { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
-  { id: 2, name: "Card", icon: "credit-card", color: "#2196F3" },
-  { id: 3, name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
-  { id: 4, name: "Net Banking", icon: "bank", color: "#FF9800" },
+  { value: "cash", name: "Cash", icon: "cash", color: "#4CAF50" },
+  { value: "card", name: "Card", icon: "credit-card", color: "#2196F3" },
+  { value: "upi", name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
+  { value: "net_banking", name: "Net Banking", icon: "bank", color: "#FF9800" },
 ];
 
 export const AddExpenseScreen = ({ navigation }) => {
@@ -147,23 +147,23 @@ export const AddExpenseScreen = ({ navigation }) => {
       >
         {paymentMethods.map((method) => (
           <TouchableOpacity
-            key={method.id}
+            key={method.value}
             style={[
               styles.categoryItem,
               {
                 backgroundColor:
-                  formData.paymentMethod === method.id
+                  formData.paymentMethod === method.value
                     ? theme.primary
                     : theme.card,
-                borderWidth: formData.paymentMethod === method.id ? 2 : 1,
+                borderWidth: formData.paymentMethod === method.value ? 2 : 1,
                 borderColor:
-                  formData.paymentMethod === method.id
+                  formData.paymentMethod === method.value
                     ? theme.primary
                     : theme.border,
               },
             ]}
             onPress={() =>
-              setFormData({ ...formData, paymentMethod: method.id })
+              setFormData({ ...formData, paymentMethod: method.value })
             }
           >
             <View
@@ -185,7 +185,7 @@ export const AddExpenseScreen = ({ navigation }) => {
                 styles.categoryName,
                 {
                   color:
-                    formData.paymentMethod === method.id
+                    formData.paymentMethod === method.value
                       ? theme.white
                       : theme.text,
                 },
