@@ -123,7 +123,7 @@ export const DashboardScreen = ({ navigation }) => {
       if (transactionsError) {
         throw transactionsError;
       }
-      console.log("transactionsData ==>", transactionsData);
+      console.log("transactionsData ==> payment_method", transactionsData);
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);

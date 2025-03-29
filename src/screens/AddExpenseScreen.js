@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
+import { Ionicons } from "@expo/vector-icons";
 
 const paymentMethods = [
   { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -38,6 +40,9 @@ export const AddExpenseScreen = ({ navigation }) => {
     date: new Date(),
     board: null,
   });
+  const [showNewBoardModal, setShowNewBoardModal] = useState(false);
+  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
+  const [datePickerModalVisible, setDatePickerModalVisible] = useState(false);
 
   const validateForm = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
@@ -226,50 +231,139 @@ export const AddExpenseScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderSaveButton = () => (
-    <FormButton
-      title="Save Expense"
-      onPress={handleSave}
-      loading={loading}
-      style={styles.saveButton}
+  const renderExpenseBoardSelector = () => (
+    <ExpenseBoardList
+      selectedBoard={formData.board}
+      onSelectBoard={(boardId) => {
+        console.log("Selected Board ID:", boardId);
+        setFormData({ ...formData, board: boardId });
+      }}
+      onCreateBoard={handleCreateBoard}
     />
   );
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+  const renderCategorySelector = () => (
+    <CategoryList
+      selectedCategory={formData.category}
+      onSelectCategory={(categoryId) =>
+        setFormData({ ...formData, category: categoryId })
+      }
+      onCreateCategory={handleCreateCategory}
+    />
+  );
+
+  const renderNewBoardModal = () => (
+    <TouchableOpacity
+      style={styles.newButton}
+      onPress={() => setShowNewBoardModal(true)}
     >
-      <Header title="Add Expense" onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+      <Text style={styles.newButtonText}>New Board</Text>
+    </TouchableOpacity>
+  );
+
+  const renderNewCategoryModal = () => (
+    <TouchableOpacity
+      style={styles.newButton}
+      onPress={() => setShowNewCategoryModal(true)}
+    >
+      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+      <Text style={styles.newButtonText}>New Category</Text>
+    </TouchableOpacity>
+  );
+
+  const renderDatePickerModal = () => (
+    <TouchableOpacity
+      style={styles.datePickerModal}
+      onPress={() => setDatePickerModalVisible(true)}
+    >
+      <Text style={styles.datePickerText}>
+        {formData.date.toLocaleDateString()}
+      </Text>
+      <MaterialCommunityIcons
+        name="calendar"
+        size={20}
+        color={theme.textSecondary}
+      />
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          <ExpenseBoardList
-            selectedBoard={formData.board}
-            onSelectBoard={(boardId) => {
-              console.log("Selected Board ID:", boardId);
-              setFormData({ ...formData, board: boardId });
-            }}
-            onCreateBoard={handleCreateBoard}
-          />
-          {renderDateSelector()}
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add Expense</Text>
+      </View>
+
+      <View style={styles.newButtonsContainer}>
+        <TouchableOpacity
+          style={styles.newButton}
+          onPress={() => setShowNewBoardModal(true)}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+          <Text style={styles.newButtonText}>New Board</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.newButton}
+          onPress={() => setShowNewCategoryModal(true)}
+        >
+          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
+          <Text style={styles.newButtonText}>New Category</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Amount</Text>
           {renderAmountInput()}
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Category</Text>
+          {renderCategorySelector()}
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Expense Board</Text>
+          {renderExpenseBoardSelector()}
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
           {renderPaymentMethodSelector()}
-          <CategoryList
-            selectedCategory={formData.category}
-            onSelectCategory={(categoryId) =>
-              setFormData({ ...formData, category: categoryId })
-            }
-            onCreateCategory={handleCreateCategory}
-          />
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Date</Text>
+          {renderDateSelector()}
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Description</Text>
           {renderDescriptionInput()}
-        </ScrollView>
-      </KeyboardAvoidingView>
-      {renderSaveButton()}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: theme.primary }]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={theme.white} />
+          ) : (
+            <Text style={styles.saveButtonText}>Save Expense</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {renderNewBoardModal()}
+      {renderNewCategoryModal()}
+      {renderDatePickerModal()}
     </SafeAreaView>
   );
 };
@@ -278,11 +372,54 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 16,
+  },
+  newButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 16,
+  },
+  newButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  newButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  formSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
   },
   inputContainer: {
     paddingHorizontal: 12,
@@ -401,5 +538,18 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  datePickerModal: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+
+    borderWidth: 1,
+  },
+  datePickerText: {
+    fontSize: 15,
+    marginRight: 8,
+    fontWeight: "500",
   },
 });

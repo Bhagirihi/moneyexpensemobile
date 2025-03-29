@@ -68,6 +68,7 @@ export const dashboardService = {
         icon: expense.categories?.icon || "dots-horizontal",
         color: expense.categories?.color || "#45B7D1",
         board: expense.expense_boards?.name || "Default Board",
+        payment_method: expense.payment_method || "Unknown",
         created_by_profile: userMap[expense.created_by] || null,
       }));
 

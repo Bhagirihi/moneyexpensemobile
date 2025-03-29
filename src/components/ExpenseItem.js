@@ -147,16 +147,39 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
             <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
           </View>
         </View>
-        <View style={[styles.expenseMeta, { marginVertical: 5 }]}>
-          <MaterialCommunityIcons
-            name="view-grid"
-            size={14}
-            color={theme.textSecondary}
-            style={styles.metaIcon}
-          />
-          <Text style={styles.expenseCreator}>
-            {expense?.board || "Unknown"}
-          </Text>
+        <View
+          style={[
+            styles.expenseMeta,
+            { marginVertical: 5, justifyContent: "space-between" },
+          ]}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <MaterialCommunityIcons
+              name="view-grid"
+              size={14}
+              color={theme.textSecondary}
+              style={styles.metaIcon}
+            />
+            <Text style={styles.expenseCreator}>
+              {expense?.board || "Unknown"}
+            </Text>
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <MaterialCommunityIcons
+              name="view-grid"
+              size={14}
+              color={theme.textSecondary}
+              style={styles.metaIcon}
+            />
+            <Text style={styles.expenseCreator}>
+              {expense?.payment_method || "Unknown"}
+            </Text>
+          </View>
         </View>
       </View>
       <TouchableOpacity
