@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   SafeAreaView,
   RefreshControl,
   Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -44,6 +46,10 @@ export const DashboardScreen = ({ navigation }) => {
     remainingBudget: 0,
   });
   const [unreadCount, setUnreadCount] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -66,6 +72,53 @@ export const DashboardScreen = ({ navigation }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (loading) {
+      // Fade and scale animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Continuous pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Continuous rotation animation
+      Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [loading]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -320,12 +373,50 @@ export const DashboardScreen = ({ navigation }) => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.text }]}>
-            Loading dashboard...
-          </Text>
-        </View>
+        <Animated.View
+          style={[
+            styles.loadingContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.loadingIconContainer,
+              { backgroundColor: `${theme.primary}15` },
+              {
+                transform: [
+                  { scale: pulseAnim },
+                  {
+                    rotate: rotateAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ["0deg", "360deg"],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="wallet-outline"
+              size={60}
+              color={theme.primary}
+            />
+          </Animated.View>
+          <Animated.Text
+            style={[
+              styles.loadingText,
+              {
+                color: theme.text,
+                opacity: fadeAnim,
+              },
+            ]}
+          >
+            Loading your expenses...
+          </Animated.Text>
+        </Animated.View>
       </SafeAreaView>
     );
   }
@@ -425,10 +516,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: 24,
+  },
+  loadingIconContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+
+    borderRadius: 40,
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "500",
   },
   scrollContent: {
