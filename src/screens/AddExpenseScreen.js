@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -20,7 +19,6 @@ import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
-import { Ionicons } from "@expo/vector-icons";
 
 const paymentMethods = [
   { id: 1, name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -40,16 +38,16 @@ export const AddExpenseScreen = ({ navigation }) => {
     date: new Date(),
     board: null,
   });
-  const [showNewBoardModal, setShowNewBoardModal] = useState(false);
-  const [showNewCategoryModal, setShowNewCategoryModal] = useState(false);
-  const [datePickerModalVisible, setDatePickerModalVisible] = useState(false);
 
   const validateForm = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
       showToast.error("Please enter a valid amount");
       return false;
     }
-
+    if (!formData.description.trim()) {
+      showToast.error("Please enter a description");
+      return false;
+    }
     if (!formData.category) {
       showToast.error("Please select a category");
       return false;
@@ -129,13 +127,12 @@ export const AddExpenseScreen = ({ navigation }) => {
   const renderDescriptionInput = () => (
     <View style={styles.inputContainer}>
       <FormInput
-        label="Description (Optional)"
+        label="Description"
         value={formData.description}
         onChangeText={(text) => setFormData({ ...formData, description: text })}
         placeholder="Enter description"
         multiline
-        numberOfLines={7}
-        inputStyle={styles.descriptionInput}
+        numberOfLines={3}
       />
     </View>
   );
@@ -155,18 +152,18 @@ export const AddExpenseScreen = ({ navigation }) => {
               styles.categoryItem,
               {
                 backgroundColor:
-                  formData.paymentMethod === method.name
+                  formData.paymentMethod === method.id
                     ? theme.primary
                     : theme.card,
-                borderWidth: formData.paymentMethod === method.name ? 2 : 1,
+                borderWidth: formData.paymentMethod === method.id ? 2 : 1,
                 borderColor:
-                  formData.paymentMethod === method.name
+                  formData.paymentMethod === method.id
                     ? theme.primary
                     : theme.border,
               },
             ]}
             onPress={() =>
-              setFormData({ ...formData, paymentMethod: method.name })
+              setFormData({ ...formData, paymentMethod: method.id })
             }
           >
             <View
@@ -231,139 +228,50 @@ export const AddExpenseScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderExpenseBoardSelector = () => (
-    <ExpenseBoardList
-      selectedBoard={formData.board}
-      onSelectBoard={(boardId) => {
-        console.log("Selected Board ID:", boardId);
-        setFormData({ ...formData, board: boardId });
-      }}
-      onCreateBoard={handleCreateBoard}
+  const renderSaveButton = () => (
+    <FormButton
+      title="Save Expense"
+      onPress={handleSave}
+      loading={loading}
+      style={styles.saveButton}
     />
-  );
-
-  const renderCategorySelector = () => (
-    <CategoryList
-      selectedCategory={formData.category}
-      onSelectCategory={(categoryId) =>
-        setFormData({ ...formData, category: categoryId })
-      }
-      onCreateCategory={handleCreateCategory}
-    />
-  );
-
-  const renderNewBoardModal = () => (
-    <TouchableOpacity
-      style={styles.newButton}
-      onPress={() => setShowNewBoardModal(true)}
-    >
-      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-      <Text style={styles.newButtonText}>New Board</Text>
-    </TouchableOpacity>
-  );
-
-  const renderNewCategoryModal = () => (
-    <TouchableOpacity
-      style={styles.newButton}
-      onPress={() => setShowNewCategoryModal(true)}
-    >
-      <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-      <Text style={styles.newButtonText}>New Category</Text>
-    </TouchableOpacity>
-  );
-
-  const renderDatePickerModal = () => (
-    <TouchableOpacity
-      style={styles.datePickerModal}
-      onPress={() => setDatePickerModalVisible(true)}
-    >
-      <Text style={styles.datePickerText}>
-        {formData.date.toLocaleDateString()}
-      </Text>
-      <MaterialCommunityIcons
-        name="calendar"
-        size={20}
-        color={theme.textSecondary}
-      />
-    </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <Header title="Add Expense" onBack={() => navigation.goBack()} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Expense</Text>
-      </View>
-
-      <View style={styles.newButtonsContainer}>
-        <TouchableOpacity
-          style={styles.newButton}
-          onPress={() => setShowNewBoardModal(true)}
-        >
-          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-          <Text style={styles.newButtonText}>New Board</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.newButton}
-          onPress={() => setShowNewCategoryModal(true)}
-        >
-          <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-          <Text style={styles.newButtonText}>New Category</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Amount</Text>
-          {renderAmountInput()}
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Category</Text>
-          {renderCategorySelector()}
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Expense Board</Text>
-          {renderExpenseBoardSelector()}
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          {renderPaymentMethodSelector()}
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Date</Text>
+          <ExpenseBoardList
+            selectedBoard={formData.board}
+            onSelectBoard={(boardId) => {
+              console.log("Selected Board ID:", boardId);
+              setFormData({ ...formData, board: boardId });
+            }}
+            onCreateBoard={handleCreateBoard}
+          />
           {renderDateSelector()}
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Description</Text>
+          {renderAmountInput()}
+          {renderPaymentMethodSelector()}
+          <CategoryList
+            selectedCategory={formData.category}
+            onSelectCategory={(categoryId) =>
+              setFormData({ ...formData, category: categoryId })
+            }
+            onCreateCategory={handleCreateCategory}
+          />
           {renderDescriptionInput()}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: theme.primary }]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={theme.white} />
-          ) : (
-            <Text style={styles.saveButtonText}>Save Expense</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {renderNewBoardModal()}
-      {renderNewCategoryModal()}
-      {renderDatePickerModal()}
+        </ScrollView>
+      </KeyboardAvoidingView>
+      {renderSaveButton()}
     </SafeAreaView>
   );
 };
@@ -372,58 +280,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 16,
-  },
-  newButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 16,
-  },
-  newButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  newButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  content: {
+  keyboardAvoid: {
     flex: 1,
-    paddingHorizontal: 16,
   },
-  formSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
+  scrollContent: {
+    padding: 16,
   },
   inputContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    padding: 12,
   },
   label: {
     fontSize: 13,
@@ -459,7 +323,7 @@ const styles = StyleSheet.create({
   descriptionInput: {
     padding: 12,
     borderRadius: 10,
-    height: 100,
+    height: 80,
     textAlignVertical: "top",
     shadowColor: "#000",
     shadowOffset: {
@@ -538,18 +402,5 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 15,
     fontWeight: "600",
-  },
-  datePickerModal: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-
-    borderWidth: 1,
-  },
-  datePickerText: {
-    fontSize: 15,
-    marginRight: 8,
-    fontWeight: "500",
   },
 });
