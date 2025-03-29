@@ -24,7 +24,8 @@
     "react-native-safe-area-context": "^5.3.0",
     "react-native-screens": "^4.9.2",
     "react-native-svg": "^15.11.2",
-    "react-native-toast-message": "^2.2.1"
+    "react-native-toast-message": "^2.2.1",
+    "react-native-ui-datepicker": "^3.1.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

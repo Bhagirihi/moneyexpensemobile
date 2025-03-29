@@ -9,9 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import DateTimePicker, { useDefaultStyles } from "react-native-ui-datepicker";
 import { Header } from "../components/Header";
 import { CategoryList } from "../components/CategoryList";
 import { ExpenseBoardList } from "../components/ExpenseBoardList";
@@ -30,6 +32,8 @@ const paymentMethods = [
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const defaultStyles = useDefaultStyles();
   const [formData, setFormData] = useState({
     amount: "",
     description: "",
@@ -132,7 +136,7 @@ export const AddExpenseScreen = ({ navigation }) => {
         onChangeText={(text) => setFormData({ ...formData, description: text })}
         placeholder="Enter description"
         multiline
-        numberOfLines={3}
+        inputStyle={styles.descriptionInput}
       />
     </View>
   );
@@ -211,10 +215,7 @@ export const AddExpenseScreen = ({ navigation }) => {
             borderColor: theme.border,
           },
         ]}
-        onPress={() => {
-          // TODO: Implement date picker
-          showToast.info("Date picker coming soon");
-        }}
+        onPress={() => setShowDatePicker(true)}
       >
         <MaterialCommunityIcons
           name="calendar"
@@ -225,6 +226,52 @@ export const AddExpenseScreen = ({ navigation }) => {
           {formData.date.toLocaleDateString()}
         </Text>
       </TouchableOpacity>
+
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Expense Date
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(false)}
+                style={styles.closeButton}
+              >
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={theme.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              mode="single"
+              date={formData.date}
+              onChange={({ date }) => {
+                setFormData({ ...formData, date });
+                setShowDatePicker(false);
+              }}
+              styles={{
+                ...defaultStyles,
+                selected: { backgroundColor: theme.primary },
+                selected_label: { color: theme.white },
+                today: { borderColor: theme.primary },
+                header: { backgroundColor: theme.card },
+                headerText: { color: theme.text },
+                weekdays: { color: theme.textSecondary },
+                days: { color: theme.text },
+                disabled: { color: theme.textSecondary },
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 
@@ -287,7 +334,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   inputContainer: {
-    padding: 12,
+    paddingHorizontal: 12,
+    marginVertical: 6,
   },
   label: {
     fontSize: 13,
@@ -323,7 +371,7 @@ const styles = StyleSheet.create({
   descriptionInput: {
     padding: 12,
     borderRadius: 10,
-    height: 80,
+    height: 100,
     textAlignVertical: "top",
     shadowColor: "#000",
     shadowOffset: {
@@ -402,5 +450,37 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "90%",
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  closeButton: {
+    padding: 4,
   },
 });
