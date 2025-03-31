@@ -15,6 +15,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
+import { formatCurrency } from "../utils/formatters";
 
 const { width } = Dimensions.get("window");
 
@@ -440,17 +441,18 @@ export const AnalyticsScreen = ({ navigation }) => {
         <Text style={[styles.summaryTitle, { color: theme.text }]}>
           Total Expenses
         </Text>
-        <MaterialCommunityIcons
+        {/* <MaterialCommunityIcons
           name="currency-usd"
           size={24}
           color={theme.primary}
-        />
+        /> */}
       </View>
       <Text style={[styles.summaryAmount, { color: theme.text }]}>
-        ${analytics.totalExpenses.toLocaleString()}
+        {formatCurrency(analytics.totalExpenses)}
       </Text>
       <Text style={[styles.summarySubtext, { color: theme.textSecondary }]}>
-        Average: ${analytics.averageExpense.toLocaleString()} per day
+        Average: {theme.currencySymbol}
+        {analytics.averageExpense.toLocaleString()} per day
       </Text>
       <View style={styles.summaryTrend}>
         <MaterialCommunityIcons
@@ -467,7 +469,8 @@ export const AnalyticsScreen = ({ navigation }) => {
           style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
         >
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ${analytics.stats.highestSpending}
+            {theme.currencySymbol}
+            {analytics.stats.highestSpending}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Highest
@@ -477,7 +480,8 @@ export const AnalyticsScreen = ({ navigation }) => {
           style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
         >
           <Text style={[styles.statValue, { color: theme.text }]}>
-            ${analytics.stats.lowestSpending}
+            {theme.currencySymbol}
+            {analytics.stats.lowestSpending}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Lowest
@@ -537,7 +541,9 @@ export const AnalyticsScreen = ({ navigation }) => {
 
   const renderCategoryBreakdown = () => (
     <View style={styles.categoryBreakdown}>
-      <Text style={[styles.summaryTitle, { color: theme.text }]}>
+      <Text
+        style={[styles.summaryTitle, { color: theme.text, marginVertical: 10 }]}
+      >
         Category Breakdown
       </Text>
       {analytics.topCategories.map((category, index) => (
@@ -564,7 +570,7 @@ export const AnalyticsScreen = ({ navigation }) => {
             <Text
               style={[styles.categoryAmount, { color: theme.textSecondary }]}
             >
-              ${category.amount.toLocaleString()}
+              {formatCurrency(category.amount)}
             </Text>
           </View>
           <Text style={[styles.categoryPercentage, { color: theme.primary }]}>

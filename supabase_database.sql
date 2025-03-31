@@ -1,3 +1,13 @@
+-- DELETE ALL DATA FROM ALL TABLES
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+        EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+    END LOOP;
+END $$;
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -108,14 +118,7 @@ INSERT INTO "public"."categories" ("id", "name", "description", "icon", "color",
 ('7622a19a-53a7-406d-b223-eb581adab67f', 'Health', 'Health and medical expenses', 'heart', '#FFEEAD', true, null, '2025-03-23 04:20:36.680139+00', '2025-03-23 04:20:36.680139+00'),
 ('ebe9fe8e-cd00-4ad7-9377-c37a2018c56b', 'Housing', 'Housing and utilities', 'home', '#9B59B6', true, null, '2025-03-23 04:20:36.680139+00', '2025-03-23 04:20:36.680139+00'),
 -- User-specific categories (with new unique IDs)
-('a09264e2c-6a00-47dc-a257-dacd2a60703a', 'Education', 'Education and learning', 'book', '#D4A5A5', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('b0d70e61f-a64a-4a34-8122-10ab43ee764d', 'Entertainment', 'Entertainment and leisure', 'movie', '#96CEB4', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('c618d34a3-597d-41c4-96b8-336240d04074', 'Food', 'Food and dining expenses', 'food', '#FF6B6B', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('d66ff6918-a497-4c0b-8f0e-f57652be7322', 'Travel', 'Travel and tourism', 'airplane', '#3498DB', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('e7622a19a-53a7-406d-b223-eb581adab67f', 'Health', 'Health and medical expenses', 'heart', '#FFEEAD', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('fbf9b9b02-d77c-45ed-b524-d9184b0327b6', 'Transport', 'Transportation costs', 'car', '#4ECDC4', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('gcf12df90-f7c2-4407-a3f4-951e87443990', 'Shopping', 'Shopping and retail', 'shopping', '#45B7D1', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
-('hebe9fe8e-cd00-4ad7-9377-c37a2018c56b', 'Housing', 'Housing and utilities', 'home', '#9B59B6', true, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-23 04:21:40.855711+00', '2025-03-23 04:21:40.855711+00'),
+
 -- Custom categories
 ('e558e68b-10f7-4a91-8442-9c2931024916', 'New', '', 'heart', '#4ECDC4', false, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-28 03:43:44.456019+00', '2025-03-28 03:43:44.456019+00'),
 ('08b2ee79-1278-48ea-9d1d-5975c5ba4f89', 'Travelq', 'Travel and tourism', 'airplane', '#3498DB', false, '4841b1d3-60d8-4386-9718-e56c5dc44fd8', '2025-03-28 03:44:18.527115+00', '2025-03-28 03:44:18.527115+00');
@@ -210,22 +213,86 @@ CREATE POLICY "Users can update their own profile"
     FOR UPDATE
     USING (auth.uid() = id);
 
+-- Categories policies
 CREATE POLICY "Users can view their own categories"
     ON "public"."categories"
     FOR SELECT
     USING (auth.uid() = user_id OR user_id IS NULL);
 
+CREATE POLICY "Users can insert their own categories"
+    ON "public"."categories"
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own categories"
+    ON "public"."categories"
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own categories"
+    ON "public"."categories"
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Expense boards policies
 CREATE POLICY "Users can view their own expense boards"
     ON "public"."expense_boards"
     FOR SELECT
     USING (auth.uid() = created_by);
 
+CREATE POLICY "Users can insert their own expense boards"
+    ON "public"."expense_boards"
+    FOR INSERT
+    WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Users can update their own expense boards"
+    ON "public"."expense_boards"
+    FOR UPDATE
+    USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can delete their own expense boards"
+    ON "public"."expense_boards"
+    FOR DELETE
+    USING (auth.uid() = created_by);
+
+-- Expenses policies
 CREATE POLICY "Users can view their own expenses"
     ON "public"."expenses"
     FOR SELECT
     USING (auth.uid() = created_by);
 
+CREATE POLICY "Users can insert their own expenses"
+    ON "public"."expenses"
+    FOR INSERT
+    WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Users can update their own expenses"
+    ON "public"."expenses"
+    FOR UPDATE
+    USING (auth.uid() = created_by);
+
+CREATE POLICY "Users can delete their own expenses"
+    ON "public"."expenses"
+    FOR DELETE
+    USING (auth.uid() = created_by);
+
+-- Notifications policies
 CREATE POLICY "Users can view their own notifications"
     ON "public"."notifications"
     FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own notifications"
+    ON "public"."notifications"
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notifications"
+    ON "public"."notifications"
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own notifications"
+    ON "public"."notifications"
+    FOR DELETE
     USING (auth.uid() = user_id);

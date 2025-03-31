@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   },
   transactionsSection: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 60,
   },
   transactionsList: {
     maxHeight: 320, // Height to fit 4 transactions
