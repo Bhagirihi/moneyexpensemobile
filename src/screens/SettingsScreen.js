@@ -28,10 +28,12 @@ export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { language, currency, updateLanguage, updateCurrency } =
     useAppSettings();
+  const [budget, setBudget] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState(0);
+  const [boardCount, setBoardCount] = useState(0);
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showShareAppModal, setShowShareAppModal] = useState(false);
@@ -86,30 +88,22 @@ export const SettingsScreen = ({ navigation }) => {
 
       // Fetch monthly budget
       const { data: budgetData, error: budgetError } = await supabase
-        .from("monthly_budgets")
-        .select("amount")
+        .from("profiles")
+        .select("total_boards, default_board_budget, referral_code,board_id")
         .single();
 
       if (budgetError) throw budgetError;
-      setMonthlyBudget(budgetData?.amount || 0);
+      console.log("Budget data:", budgetData);
+      setBudget(budgetData);
+      setBoardCount(budgetData.total_boards);
+      setMonthlyBudget(budgetData.default_board_budget);
+      setReferralCode(budgetData.referral_code);
 
       // Fetch expense boards
-      const { data: boardsData, error: boardsError } = await supabase.from(
-        "expense_boards"
-      ).select(`
-          id,
-          name,
-          total_budget,
-          expense_board_members (
-            id,
-            user_id,
-            profiles (
-              full_name,
-              email
-            )
-          )
-        `);
-
+      const { data: boardsData, error: boardsError } = await supabase
+        .from("expense_boards")
+        .select(`*`);
+      console.log("Boards data:", boardsData);
       if (boardsError) throw boardsError;
       setExpenseBoards(boardsData || []);
     } catch (error) {
@@ -288,9 +282,6 @@ export const SettingsScreen = ({ navigation }) => {
         Set Monthly Budget
       </Text>
       <View style={styles.budgetInputContainer}>
-        <Text style={[styles.currencySymbol, { color: theme.text }]}>
-          {currencies.find((curr) => curr.code === currency)?.symbol || "$"}
-        </Text>
         <TextInput
           style={[styles.budgetInput, { color: theme.text }]}
           value={editValue}
@@ -783,9 +774,7 @@ export const SettingsScreen = ({ navigation }) => {
             renderSettingItem({
               icon: "view-dashboard-outline",
               title: "Expense Board",
-              subtitle: `${
-                expenseBoards.length
-              } Boards • ${expenseBoards.reduce(
+              subtitle: `${boardCount} Boards • ${expenseBoards.reduce(
                 (sum, board) =>
                   sum + (board.expense_board_members?.length || 0),
                 0

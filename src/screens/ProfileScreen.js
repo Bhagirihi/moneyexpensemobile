@@ -44,7 +44,7 @@ export const ProfileScreen = ({ navigation }) => {
           .single();
 
         if (error) throw error;
-        console.log(data);
+        console.log("Profile data:", data);
         setUserProfile(data);
       }
     } catch (error) {
@@ -597,9 +597,7 @@ export const ProfileScreen = ({ navigation }) => {
                 Expense Boards
               </Text>
             </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              0
-            </Text>
+            <Text style={[styles.statsCardValue, { color: theme.text }]}></Text>
             <Text
               style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
             >
