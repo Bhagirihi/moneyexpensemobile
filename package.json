@@ -9,6 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.3.0",
+    "@expo-google-fonts/manrope": "^0.3.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/datetimepicker": "^8.3.0",
     "@react-navigation/native": "^7.0.17",
@@ -25,7 +27,9 @@
     "react-native-screens": "^4.9.2",
     "react-native-svg": "^15.11.2",
     "react-native-toast-message": "^2.2.1",
-    "react-native-ui-datepicker": "^3.1.2"
+    "react-native-ui-datepicker": "^3.1.2",
+    "expo-splash-screen": "~0.29.22",
+    "expo-font": "~13.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

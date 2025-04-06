@@ -664,6 +664,8 @@ export const SettingsScreen = ({ navigation }) => {
       onPress={() => {
         if (title === "Edit Profile") {
           navigation.navigate("Profile");
+        } else if (title === "Font Test") {
+          navigation.navigate("FontTest");
         } else if (editable || onPress) {
           handleEdit({ title, subtitle });
         }
@@ -863,6 +865,14 @@ export const SettingsScreen = ({ navigation }) => {
               subtitle: "Version 1.0.0",
               showBorder: false,
               editable: false,
+            }),
+            renderSettingItem({
+              icon: "information-outline",
+              title: "Font Test",
+              subtitle: "Test the fonts",
+              showBorder: false,
+              editable: true,
+              onPress: () => navigation.navigate("FontTest"),
             }),
           ],
         })}

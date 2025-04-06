@@ -12,6 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -19,10 +22,38 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.tripexpense.app",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8c56fa33-ba34-46a0-b155-227b0c5aaca6"
+      }
+    },
+    "owner": "takeyshi",
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Inter_Bold.ttf",
+            "./assets/fonts/Inter_Medium.ttf",
+            "./assets/fonts/Inter_Regular.ttf",
+            "./assets/fonts/Manrope-Bold.ttf",
+            "./assets/fonts/Manrope-Medium.ttf"
+          ]
+        }
+      ]
+    ],
+    "font": {
+      "body": "Inter_Regular",
+      "heading": "Inter_Medium",
+      "monospace": "Inter_Regular",
+      "numbers": "Inter_Regular"
     }
   }
 }

@@ -7,10 +7,12 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { supabase } from "./src/config/supabase";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
+import * as Font from "expo-font";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import FontTestScreen from "./src/screens/FontTestScreen";
 
 // Import all screens
 import OnboardingScreen from "./src/screens/OnboardingScreen";
@@ -152,6 +154,7 @@ export default function App() {
                     />
                     <Stack.Screen name="Profile" component={ProfileScreen} />
                     <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen name="FontTest" component={FontTestScreen} />
                   </>
                 ) : (
                   // Public routes
