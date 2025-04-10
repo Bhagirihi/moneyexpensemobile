@@ -31,7 +31,7 @@ import { formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -372,7 +372,7 @@ export const DashboardScreen = ({ navigation }) => {
   if (loading) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.primary }]}
+        style={[styles.container, { backgroundColor: "transparent" }]}
       >
         <Animated.View
           style={[
@@ -384,8 +384,11 @@ export const DashboardScreen = ({ navigation }) => {
           ]}
         >
           <View style={styles.illustrationContainer}>
-            <BalloonIllustration width={200} height={200} color="#FFFFFF" />
-            <Animated.Text
+            <Image
+              source={require("../../assets/welcome.png")}
+              style={styles.logo}
+            />
+            {/* <Animated.Text
               style={[
                 styles.exploreText,
                 {
@@ -394,7 +397,7 @@ export const DashboardScreen = ({ navigation }) => {
               ]}
             >
               Loading expenses...
-            </Animated.Text>
+            </Animated.Text> */}
           </View>
         </Animated.View>
       </SafeAreaView>
@@ -736,5 +739,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginLeft: 8,
+  },
+  logo: {
+    width: width * 0.8,
+    height: height * 0.8,
+    resizeMode: "contain",
   },
 });
