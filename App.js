@@ -7,7 +7,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { supabase } from "./src/config/supabase";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
-import * as Font from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
@@ -33,6 +33,8 @@ import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
+// Prevent auto-hide of splash screen
+// SplashScreen.preventAutoHideAsync();
 
 const config = {
   animation: "spring",
@@ -98,6 +100,22 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // useEffect(() => {
+  //   const prepare = async () => {
+  //     try {
+  //       // Wait for 2 seconds
+  //       await new Promise((resolve) => setTimeout(resolve, 2000));
+  //     } catch (e) {
+  //       console.warn(e);
+  //     } finally {
+  //       // Hide the splash screen
+  //       await SplashScreen.hideAsync();
+  //     }
+  //   };
+
+  //   prepare();
+  // }, []);
 
   if (loading) {
     return null; // Or a loading screen

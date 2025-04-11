@@ -219,6 +219,17 @@ CREATE POLICY "Users can view their own categories"
     FOR SELECT
     USING (auth.uid() = user_id OR user_id IS NULL);
 
+
+CREATE POLICY "Allow owners to manage their boards"
+  ON expense_boards
+  FOR ALL
+  USING (
+    auth.uid() = created_by
+  )
+  WITH CHECK (
+    auth.uid() = created_by
+  );
+
 CREATE POLICY "Users can insert their own categories"
     ON "public"."categories"
     FOR INSERT

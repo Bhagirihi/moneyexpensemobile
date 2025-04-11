@@ -52,8 +52,8 @@
     "font": {
       "body": "Inter_Regular",
       "heading": "Inter_Medium",
-      "monospace": "Inter_Regular",
-      "numbers": "Inter_Regular"
+      "monospace": "Manrope-Medium",
+      "numbers": "Manrope-Bold"
     }
   }
 }

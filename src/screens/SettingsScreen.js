@@ -38,6 +38,8 @@ export const SettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [showShareAppModal, setShowShareAppModal] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+  const [selectedBoard, setSelectedBoard] = useState(null);
+  const [showBoardDropdown, setShowBoardDropdown] = useState(false);
 
   // Sample data - Replace with actual data from your backend
   const languages = [
@@ -274,43 +276,197 @@ export const SettingsScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderBudgetEditor = () => (
-    <View
-      style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}
-    >
-      <Text style={[styles.modalTitle, { color: theme.text }]}>
-        Set Monthly Budget
-      </Text>
-      <View style={styles.budgetInputContainer}>
-        <TextInput
-          style={[styles.budgetInput, { color: theme.text }]}
-          value={editValue}
-          onChangeText={setEditValue}
-          keyboardType="numeric"
-          placeholder="Enter amount"
-          placeholderTextColor={theme.textSecondary}
-        />
-      </View>
-      <View style={styles.modalButtons}>
-        <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
-          onPress={() => setEditModalVisible(false)}
-        >
-          <Text style={[styles.modalButtonText, { color: theme.error }]}>
-            Cancel
+  const renderBudgetEditor = () => {
+    return (
+      <View
+        style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}
+      >
+        <Text style={[styles.modalTitle, { color: theme.text }]}>
+          Set Board Budget
+        </Text>
+        <View style={styles.dropdownContainer}>
+          <Text style={[styles.dropdownLabel, { color: theme.text }]}>
+            Select Board
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: theme.primary }]}
-          onPress={handleUpdateBudget}
-        >
-          <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
-            Save
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dropdown, { backgroundColor: theme.card }]}
+            onPress={() => setShowBoardDropdown(!showBoardDropdown)}
+          >
+            <Text style={[styles.dropdownText, { color: theme.text }]}>
+              {selectedBoard ? selectedBoard.name : "Choose a board"}
+            </Text>
+            <MaterialCommunityIcons
+              name={showBoardDropdown ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={theme.textSecondary}
+            />
+          </TouchableOpacity>
+          {showBoardDropdown && (
+            <View
+              style={[styles.dropdownList, { backgroundColor: theme.card }]}
+            >
+              {expenseBoards.map((board) => (
+                <TouchableOpacity
+                  key={board.id}
+                  style={[
+                    styles.dropdownItem,
+                    {
+                      backgroundColor:
+                        selectedBoard?.id === board.id
+                          ? theme.primaryLight
+                          : "transparent",
+                    },
+                  ]}
+                  onPress={() => {
+                    setSelectedBoard(board);
+
+                    setEditValue(board.total_budget?.toString() || "");
+                    setShowBoardDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={[styles.dropdownItemText, { color: theme.text }]}
+                  >
+                    {board.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+        {selectedBoard && (
+          <View style={styles.budgetInputContainer}>
+            <Text style={[styles.budgetLabel, { color: theme.text }]}>
+              Budget Amount
+            </Text>
+            <TextInput
+              style={[styles.budgetInput, { color: theme.text }]}
+              value={selectedBoard.budget?.toString() || ""}
+              onChangeText={(value) => {
+                const newBudget = parseFloat(value);
+                if (!isNaN(newBudget)) {
+                  setExpenseBoards((prevBoards) =>
+                    prevBoards.map((board) =>
+                      board.id === selectedBoard.id
+                        ? { ...board, budget: newBudget }
+                        : board
+                    )
+                  );
+                  setSelectedBoard((prev) => ({ ...prev, budget: newBudget }));
+                }
+              }}
+              keyboardType="numeric"
+              placeholder="Enter budget"
+              placeholderTextColor={theme.textSecondary}
+            />
+          </View>
+        )}
+        <View style={styles.modalButtons}>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
+            onPress={() => setEditModalVisible(false)}
+          >
+            <Text style={[styles.modalButtonText, { color: theme.error }]}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: theme.primary }]}
+            onPress={handleApplyBudgets}
+          >
+            <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
+              Apply
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modalButton, { backgroundColor: theme.primary }]}
+            onPress={handleApplyAllBudgets}
+          >
+            <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
+              Apply All
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  const handleApplyBudgets = async () => {
+    if (!selectedBoard) {
+      showToast.error("Error", "Please select a board first");
+      return;
+    }
+
+    console.log("Selected Board:", {
+      id: selectedBoard.id,
+      name: selectedBoard.name,
+      newBudget: selectedBoard.budget,
+    });
+
+    try {
+      const { error } = await supabase
+        .from("expense_boards")
+        .update({
+          total_budget: selectedBoard.budget || 0,
+        })
+        .eq("id", selectedBoard.id);
+
+      if (error) throw error;
+
+      showToast.success("Success", "Board budget updated successfully");
+      setEditModalVisible(false);
+    } catch (error) {
+      console.error("Error updating board budget:", error);
+      showToast.error("Error", "Failed to update board budget");
+    }
+  };
+
+  const handleApplyAllBudgets = async () => {
+    Alert.alert(
+      "Confirm Apply All",
+      `Are you sure you want to apply the ${selectedBoard.budget} budget to all boards?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Apply All",
+          onPress: async () => {
+            try {
+              console.log("expenseBoards", expenseBoards);
+              for (const newboard of expenseBoards) {
+                console.log(
+                  "Updating board:",
+                  newboard,
+
+                  newboard.newBudget,
+                  newboard.name,
+                  newboard.id
+                );
+                const { error, data } = await supabase
+                  .from("expense_boards")
+                  .update({ total_budget: selectedBoard.budget || 0 })
+                  .eq("id", newboard.id);
+
+                if (error) throw error;
+                console.log("Updated board:", data);
+              }
+
+              showToast.success(
+                "Success",
+                "All board budgets updated successfully"
+              );
+              setEditModalVisible(false);
+            } catch (error) {
+              console.error("Error applying all budgets:", error);
+              showToast.error("Error", "Failed to apply all budgets");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const renderBoardDetails = () => (
     <View
@@ -731,6 +887,35 @@ export const SettingsScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderBoardListWithInput = () => (
+    <View style={styles.boardListContainer}>
+      {expenseBoards.map((board) => (
+        <View key={board.id} style={styles.boardItemContainer}>
+          <Text style={[styles.boardName, { color: theme.text }]}>
+            {board.name}
+          </Text>
+          <TextInput
+            style={[styles.amountInput, { color: theme.text }]}
+            value={board.budget?.toString() || ""}
+            onChangeText={(value) => {
+              const newBudget = parseFloat(value);
+              if (!isNaN(newBudget)) {
+                setExpenseBoards((prevBoards) =>
+                  prevBoards.map((b) =>
+                    b.id === board.id ? { ...b, budget: newBudget } : b
+                  )
+                );
+              }
+            }}
+            keyboardType="numeric"
+            placeholder="Enter amount"
+            placeholderTextColor={theme.textSecondary}
+          />
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -875,6 +1060,11 @@ export const SettingsScreen = ({ navigation }) => {
               onPress: () => navigation.navigate("FontTest"),
             }),
           ],
+        })}
+
+        {renderSection({
+          title: "Board Budgets",
+          children: [renderBoardListWithInput()],
         })}
 
         <TouchableOpacity
@@ -1042,20 +1232,19 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   budgetInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     marginBottom: 20,
   },
-  currencySymbol: {
-    fontSize: 24,
+  budgetLabel: {
+    fontSize: 14,
     fontWeight: "600",
-    marginRight: 8,
+    marginBottom: 8,
   },
   budgetInput: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: "600",
-    padding: 8,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: (theme) => theme.borderLight,
+    fontSize: 16,
   },
   boardSelector: {
     marginBottom: 20,
@@ -1139,8 +1328,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   boardDetailItem: {
-    marginBottom: 20,
-    padding: 16,
+    // marginBottom: 20,
+    padding: 10,
     borderRadius: 12,
     backgroundColor: (theme) => `${theme.text}08`,
   },
@@ -1216,5 +1405,65 @@ const styles = StyleSheet.create({
   shareOptionText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+  dropdownContainer: {
+    marginBottom: 20,
+    position: "relative",
+    zIndex: 1,
+  },
+  dropdownLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  dropdown: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: (theme) => theme.borderLight,
+  },
+  dropdownText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  dropdownList: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: (theme) => theme.borderLight,
+    maxHeight: 200,
+    overflow: "scroll",
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: (theme) => theme.borderLight,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+  },
+  boardListContainer: {
+    marginBottom: 20,
+  },
+  boardItemContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: (theme) => theme.borderLight,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "500",
+    padding: 8,
   },
 });
