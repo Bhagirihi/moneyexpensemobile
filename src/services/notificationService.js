@@ -129,28 +129,4 @@ export const notificationService = {
       throw error;
     }
   },
-
-  // Subscribe to new notifications
-  subscribeToNotifications: (callback) => {
-    return supabase
-      .channel("notifications")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-        },
-        async (payload) => {
-          // Fetch full notification details when new notification arrives
-          const { data: notificationDetails } = await supabase
-            .from("notifications")
-            .select("*")
-            .eq("id", payload.new.id)
-            .single();
-          callback(notificationDetails);
-        }
-      )
-      .subscribe();
-  },
 };

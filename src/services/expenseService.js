@@ -3,7 +3,11 @@ import { supabase } from "../config/supabase";
 export const expenseService = {
   async getExpenses(category = null, page = 1, limit = 10) {
     try {
-      console.log("Fetching expenses from Supabase...", { page, limit });
+      console.log("Fetching expenses from Supabase...", {
+        page,
+        limit,
+        category,
+      });
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -35,9 +39,9 @@ export const expenseService = {
         .eq("created_by", user.id)
         .order("date", { ascending: false })
         .range(offset, offset + limit - 1);
-
+      console.log("Category: ==> > > >", category);
       if (category) {
-        query = query.eq("category", category);
+        query = query.eq("category_id", category);
       }
 
       const { data, error, count } = await query;
@@ -46,6 +50,7 @@ export const expenseService = {
         console.error("Error fetching expenses:", error.message);
         throw error;
       }
+      console.log("Fetched expenses:", data);
 
       // Get user profiles for all expenses
       const userIds = [...new Set(data.map((expense) => expense.created_by))];

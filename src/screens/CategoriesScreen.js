@@ -19,6 +19,7 @@ import { categoryService } from "../services/categoryService";
 import ListHeader from "../components/common/ListHeader";
 import { showToast } from "../utils/toast";
 import { AddCategoryScreen } from "./AddCategoryScreen";
+import { realTimeSync } from "../services/realTimeSync";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -332,6 +333,13 @@ export const CategoriesScreen = ({ navigation }) => {
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchCategories();
+    const CategoryRealTimeSync =
+      realTimeSync.subscribeToCategory(fetchCategories);
+    return CategoryRealTimeSync;
+  }, []);
 
   const handleDelete = async (categoryId) => {
     try {

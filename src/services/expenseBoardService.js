@@ -61,6 +61,35 @@ export const expenseBoardService = {
       throw error;
     }
   },
+  async getExpenseBoardsByID(id) {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user");
+
+      console.log("ID:", id);
+      // First, get all expense boards for the user
+      const { data: boards, error: boardsError } = await supabase
+        .from("expense_boards")
+        .select("id, total_budget, name")
+        .eq("created_by", user.id)
+        .eq("id", id);
+
+      if (boardsError) throw boardsError;
+
+      // If no boards found, return empty array
+      if (!boards || boards.length === 0) {
+        return [];
+      }
+
+      console.log("Boards of ID:", boards);
+      return boards;
+    } catch (error) {
+      console.error("Error fetching boards:", error);
+      throw error;
+    }
+  },
 
   async createExpenseBoard(boardData) {
     try {

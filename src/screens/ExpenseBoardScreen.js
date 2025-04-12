@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import ShareModal from "../components/ShareModal";
 import { showToast } from "../utils/toast";
+import { realTimeSync } from "../services/realTimeSync";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +29,9 @@ export const ExpenseBoardScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchExpenseBoards();
+    const ExpenseBoardRealTimeSync =
+      realTimeSync.subscribeToExpenseBoard(fetchExpenseBoards);
+    return ExpenseBoardRealTimeSync;
   }, []);
 
   const fetchExpenseBoards = async () => {
@@ -55,6 +59,16 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const handleShareBoard = (board) => {
     setSelectedBoard(board);
     setShowShareModal(true);
+  };
+
+  const handleDeleteBoard = async (board) => {
+    console.log("Deleting board:", board);
+    try {
+      await expenseBoardService.deleteExpenseBoard(board.id);
+    } catch (error) {
+      console.error("Error in deleteBoard:", error);
+      showToast.error("Failed to delete board", error.message);
+    }
   };
 
   const renderExpenseBoard = (board) => (
@@ -99,6 +113,15 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             size={20}
             color={theme.primary}
           />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDeleteBoard(board);
+          }}
+          style={styles.deleteButton}
+        >
+          <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
         </TouchableOpacity>
       </View>
       <View style={styles.boardStats}>
@@ -313,5 +336,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     textAlign: "center",
+  },
+  deleteButton: {
+    marginHorizontal: 12,
+  },
+  shareButton: {
+    marginHorizontal: 12,
   },
 });

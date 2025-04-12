@@ -30,6 +30,7 @@ import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
+import { realTimeSync } from "../services/realTimeSync";
 
 const { width, height } = Dimensions.get("window");
 
@@ -37,7 +38,7 @@ export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { currency } = useAppSettings();
   const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [hasBoards, setHasBoards] = useState(false);
@@ -54,18 +55,18 @@ export const DashboardScreen = ({ navigation }) => {
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const cleanup = dashboardService.subscribeToChanges(fetchDashboardData);
+    const cleanup = realTimeSync.subscribeToDashboard(fetchDashboardData);
     return cleanup;
   }, []);
 
   useEffect(() => {
     fetchUserProfile();
     fetchDashboardData();
+    fetchUnreadCount();
   }, []);
 
   useEffect(() => {
-    fetchUnreadCount();
-    const subscription = notificationService.subscribeToNotifications(() => {
+    const subscription = realTimeSync.subscribeToNotifications(() => {
       fetchUnreadCount();
     });
 
@@ -146,7 +147,7 @@ export const DashboardScreen = ({ navigation }) => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
+      //setLoading(true);
 
       // Fetch expense boards
       const expenseBoards = await expenseBoardService.getExpenseBoards();
@@ -184,7 +185,7 @@ export const DashboardScreen = ({ navigation }) => {
       showToast.error("Failed to load dashboard data");
       setExpenses([]);
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 

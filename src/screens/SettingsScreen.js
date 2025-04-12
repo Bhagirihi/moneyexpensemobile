@@ -23,6 +23,8 @@ import ThemeToggle from "../components/ThemeToggle";
 import { supabase } from "../config/supabase";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
+import { realTimeSync } from "../services/realTimeSync";
+import { expenseBoardService } from "../services/expenseBoardService";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -39,6 +41,7 @@ export const SettingsScreen = ({ navigation }) => {
   const [showShareAppModal, setShowShareAppModal] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [selectedBoard, setSelectedBoard] = useState(null);
+  const [boardName, setBoardName] = useState("");
   const [showBoardDropdown, setShowBoardDropdown] = useState(false);
 
   // Sample data - Replace with actual data from your backend
@@ -56,32 +59,11 @@ export const SettingsScreen = ({ navigation }) => {
     { code: "INR", name: "Indian Rupee", symbol: "₹" },
   ];
 
-  const boards = [
-    { id: 1, name: "Personal", shared: [{ email: "john@example.com" }] },
-    {
-      id: 2,
-      name: "Family",
-      shared: [
-        { email: "sarah@example.com" },
-        { email: "mike@example.com" },
-        { email: "lisa@example.com" },
-      ],
-    },
-    {
-      id: 3,
-      name: "Work",
-      shared: [
-        { email: "boss@company.com" },
-        { email: "team@company.com" },
-        { email: "finance@company.com" },
-        { email: "admin@company.com" },
-      ],
-    },
-  ];
-
   useEffect(() => {
     fetchData();
     generateReferralCode();
+    const settingRealTimeSync = realTimeSync.subscribeToProfile(fetchData);
+    return settingRealTimeSync;
   }, []);
 
   const fetchData = async () => {
@@ -98,6 +80,7 @@ export const SettingsScreen = ({ navigation }) => {
       console.log("Budget data:", budgetData);
       setBudget(budgetData);
       setBoardCount(budgetData.total_boards);
+      setBoardName(budgetData.board_id);
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
 
@@ -106,7 +89,16 @@ export const SettingsScreen = ({ navigation }) => {
         .from("expense_boards")
         .select(`*`);
       console.log("Boards data:", boardsData);
+      const board = boardsData.find((b) => b.id === budgetData.board_id);
+
+      if (board) {
+        console.log("Matched Board:", board);
+        setBoardName(board.name);
+      } else {
+        console.log("Board not found for the given ID");
+      }
       if (boardsError) throw boardsError;
+
       setExpenseBoards(boardsData || []);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -248,6 +240,43 @@ export const SettingsScreen = ({ navigation }) => {
     >
       <Text style={[styles.modalTitle, { color: theme.text }]}>
         Select Currency
+      </Text>
+      {currencies.map((curr) => (
+        <TouchableOpacity
+          key={curr.code}
+          style={[
+            styles.selectorItem,
+            { borderBottomColor: theme.borderLight },
+          ]}
+          onPress={() => {
+            updateCurrency(curr.code);
+            setEditModalVisible(false);
+          }}
+        >
+          <Text style={[styles.selectorItemText, { color: theme.text }]}>
+            {curr.symbol} {curr.name} ({curr.code})
+          </Text>
+          {curr.code === currency && (
+            <MaterialCommunityIcons
+              name="check"
+              size={20}
+              color={theme.primary}
+            />
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderDefaultBoardSelector = () => (
+    <View
+      style={[
+        styles.selectorContent,
+        { backgroundColor: theme.cardBackground },
+      ]}
+    >
+      <Text style={[styles.modalTitle, { color: theme.text }]}>
+        Default Board
       </Text>
       {currencies.map((curr) => (
         <TouchableOpacity
@@ -673,6 +702,9 @@ export const SettingsScreen = ({ navigation }) => {
       case "Currency":
         modalContent = renderCurrencySelector();
         break;
+      case "Default Board":
+        modalContent = renderDefaultBoardSelector();
+        break;
       case "Monthly Budget":
         modalContent = renderBudgetEditor();
         break;
@@ -954,10 +986,18 @@ export const SettingsScreen = ({ navigation }) => {
               } ${currencies.find((curr) => curr.code === currency)?.name}`,
             }),
             renderSettingItem({
+              icon: "view-dashboard-outline",
+              title: "Default Board",
+              subtitle: `${boardName}`,
+              onPress: () => handleEdit({ title: "Default Board" }),
+              editable: false,
+            }),
+            renderSettingItem({
               icon: "wallet-outline",
               title: "Monthly Budget",
               subtitle: formatCurrency(monthlyBudget),
             }),
+
             renderSettingItem({
               icon: "view-dashboard-outline",
               title: "Expense Board",
@@ -1060,11 +1100,6 @@ export const SettingsScreen = ({ navigation }) => {
               onPress: () => navigation.navigate("FontTest"),
             }),
           ],
-        })}
-
-        {renderSection({
-          title: "Board Budgets",
-          children: [renderBoardListWithInput()],
         })}
 
         <TouchableOpacity

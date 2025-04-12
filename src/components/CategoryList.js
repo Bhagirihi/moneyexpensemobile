@@ -108,6 +108,35 @@ export const CategoryList = ({
             Add New
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.categoryItem,
+            {
+              backgroundColor:
+                selectedCategory === 0 ? theme.primary : theme.card,
+              borderWidth: selectedCategory === 0 ? 2 : 1,
+              borderColor:
+                selectedCategory === 0 ? theme.primary : theme.border,
+            },
+          ]}
+          onPress={() => onSelectCategory(0)}
+        >
+          <View
+            style={[
+              styles.addNewIcon,
+              {
+                backgroundColor: `${theme.primary}15`,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="view-grid"
+              size={22}
+              color={theme.text}
+            />
+          </View>
+          <Text style={[styles.addNewText, { color: theme.text }]}>All</Text>
+        </TouchableOpacity>
         {categories.map((category) => (
           <TouchableOpacity
             key={category.id}

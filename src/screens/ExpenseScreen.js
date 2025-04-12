@@ -19,46 +19,7 @@ import ExpenseList from "../components/ExpenseList";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
-
-const categories = [
-  { id: 0, name: "All", icon: "view-grid", color: "#6C5CE7" },
-  { id: 1, name: "Food", icon: "food", color: "#FF6B6B" },
-  { id: 2, name: "Transport", icon: "car", color: "#4ECDC4" },
-  { id: 3, name: "Shopping", icon: "shopping", color: "#45B7D1" },
-  { id: 4, name: "Entertainment", icon: "movie", color: "#96CEB4" },
-  { id: 5, name: "Health", icon: "medical-bag", color: "#FFEEAD" },
-  { id: 6, name: "Education", icon: "book-open-variant", color: "#D4A5A5" },
-];
-
-const recentExpenses = [
-  {
-    id: 1,
-    category: "Food",
-    amount: 45.5,
-    date: "2024-03-20T12:00:00",
-    description: "Lunch at Restaurant",
-    icon: "food",
-    color: "#FF6B6B",
-  },
-  {
-    id: 2,
-    category: "Transport",
-    amount: 25.0,
-    date: "2024-03-19T15:30:00",
-    description: "Bus Ticket",
-    icon: "car",
-    color: "#4ECDC4",
-  },
-  {
-    id: 3,
-    category: "Shopping",
-    amount: 120.0,
-    date: "2024-03-18T10:15:00",
-    description: "Souvenirs",
-    icon: "shopping",
-    color: "#45B7D1",
-  },
-];
+import { realTimeSync } from "../services/realTimeSync";
 
 export const ExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -89,15 +50,23 @@ export const ExpenseScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchExpenses();
+    console.log("Selected category:", selectedCategory);
   }, [selectedCategory]);
+
+  useEffect(() => {
+    fetchExpenses();
+    const EnpenseRealTimeSync = realTimeSync.subscribeToExpense(fetchExpenses);
+    return EnpenseRealTimeSync;
+  }, []);
 
   const fetchExpenses = async (pageNum = 1) => {
     try {
       setLoading(true);
       setError(null);
       console.log("Fetching expenses...");
+      console.log(`Fetching expenses of...`, selectedCategory);
       const { data, hasMore: more } = await expenseService.getExpenses(
-        selectedCategory === 0 ? null : categories[selectedCategory].name,
+        selectedCategory === 0 ? null : selectedCategory,
         pageNum,
         10
       );
@@ -127,12 +96,6 @@ export const ExpenseScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchExpenses(page + 1);
     }
   };
 
