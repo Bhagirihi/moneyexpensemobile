@@ -43,7 +43,8 @@ export const SettingsScreen = ({ navigation }) => {
   const [selectedBoard, setSelectedBoard] = useState(null);
   const [boardName, setBoardName] = useState("");
   const [showBoardDropdown, setShowBoardDropdown] = useState(false);
-
+  const [boardID, updateBoard] = useState("");
+  const [userID, setUserID] = useState("");
   // Sample data - Replace with actual data from your backend
   const languages = [
     { code: "en", name: "English" },
@@ -73,11 +74,12 @@ export const SettingsScreen = ({ navigation }) => {
       // Fetch monthly budget
       const { data: budgetData, error: budgetError } = await supabase
         .from("profiles")
-        .select("total_boards, default_board_budget, referral_code,board_id")
+        .select("id,total_boards, default_board_budget, referral_code,board_id")
         .single();
 
       if (budgetError) throw budgetError;
       console.log("Budget data:", budgetData);
+      setUserID(budgetData.id);
       setBudget(budgetData);
       setBoardCount(budgetData.total_boards);
       setBoardName(budgetData.board_id);
@@ -90,7 +92,12 @@ export const SettingsScreen = ({ navigation }) => {
         .select(`*`);
       console.log("Boards data:", boardsData);
       const board = boardsData.find((b) => b.id === budgetData.board_id);
-
+      const isDefaultBoard = boardsData.find((b) => b.is_default);
+      console.log("Default Board:", isDefaultBoard);
+      if (isDefaultBoard) {
+        console.log("Default Board:", board.id, board.name);
+        updateBoard(board.id);
+      }
       if (board) {
         console.log("Matched Board:", board);
         setBoardName(board.name);
@@ -194,6 +201,23 @@ export const SettingsScreen = ({ navigation }) => {
     }
   };
 
+  const updateDefaultBoard = async (boardID) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ board_id: boardID })
+        .eq("id", userID);
+      if (error) throw error;
+      updateBoard(boardID);
+      setEditModalVisible(false);
+      showToast.success("Success", "Default board updated successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating default board:", error);
+      showToast.error("Error", "Failed to update default board");
+    }
+  };
+
   const renderLanguageSelector = () => (
     <View
       style={[
@@ -278,22 +302,21 @@ export const SettingsScreen = ({ navigation }) => {
       <Text style={[styles.modalTitle, { color: theme.text }]}>
         Default Board
       </Text>
-      {currencies.map((curr) => (
+      {expenseBoards.map((board) => (
         <TouchableOpacity
-          key={curr.code}
+          key={board.id}
           style={[
             styles.selectorItem,
             { borderBottomColor: theme.borderLight },
           ]}
           onPress={() => {
-            updateCurrency(curr.code);
-            setEditModalVisible(false);
+            updateDefaultBoard(board.id);
           }}
         >
           <Text style={[styles.selectorItemText, { color: theme.text }]}>
-            {curr.symbol} {curr.name} ({curr.code})
+            {board.name}
           </Text>
-          {curr.code === currency && (
+          {board.id === boardID && (
             <MaterialCommunityIcons
               name="check"
               size={20}

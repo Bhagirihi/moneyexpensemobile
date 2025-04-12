@@ -16,7 +16,13 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
-import { formatDate, formatDateTime } from "../utils/formatters";
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+} from "../utils/formatters";
+import { expenseBoardService } from "../services/expenseBoardService";
+import { categoryService } from "../services/categoryService";
 
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -25,6 +31,9 @@ export const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [expandedFeature, setExpandedFeature] = useState(null);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const [totalBoards, setTotalBoards] = useState(0);
   const featureAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -45,6 +54,7 @@ export const ProfileScreen = ({ navigation }) => {
 
         if (error) throw error;
         console.log("Profile data:", data);
+        accountStatics();
         setUserProfile(data);
       }
     } catch (error) {
@@ -53,6 +63,22 @@ export const ProfileScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const accountStatics = async () => {
+    const expenseBoards = await expenseBoardService.getExpenseBoards();
+    const categories = await categoryService.getCategories();
+
+    const totalExpenses = expenseBoards.reduce(
+      (sum, board) => sum + (board.totalExpenses || 0),
+      0
+    );
+    const totalCategories = categories.length;
+    const totalBoards = expenseBoards.length;
+
+    setTotalExpenses(totalExpenses);
+    setTotalCategories(totalCategories);
+    setTotalBoards(totalBoards);
   };
 
   const handleEditProfile = () => {
@@ -457,18 +483,6 @@ export const ProfileScreen = ({ navigation }) => {
             color: "#DB4437",
             connected: false,
           },
-          {
-            name: "Apple",
-            icon: "apple",
-            color: "#000000",
-            connected: false,
-          },
-          {
-            name: "Facebook",
-            icon: "facebook",
-            color: "#4267B2",
-            connected: false,
-          },
         ].map((connection, index) => (
           <View key={index} style={styles.connectionItem}>
             <View style={styles.connectionLeft}>
@@ -572,7 +586,7 @@ export const ProfileScreen = ({ navigation }) => {
               </Text>
             </View>
             <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              ₹0
+              {formatCurrency(totalExpenses)}
             </Text>
             <Text
               style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
@@ -597,7 +611,9 @@ export const ProfileScreen = ({ navigation }) => {
                 Expense Boards
               </Text>
             </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}></Text>
+            <Text style={[styles.statsCardValue, { color: theme.text }]}>
+              {totalBoards}
+            </Text>
             <Text
               style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
             >
@@ -624,7 +640,7 @@ export const ProfileScreen = ({ navigation }) => {
               </Text>
             </View>
             <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              0
+              {totalCategories}
             </Text>
             <Text
               style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
@@ -640,7 +656,7 @@ export const ProfileScreen = ({ navigation }) => {
               <MaterialCommunityIcons
                 name="account-group"
                 size={20}
-                color={theme.info}
+                color={theme.text}
               />
               <Text style={[styles.statsCardTitle, { color: theme.text }]}>
                 Members
