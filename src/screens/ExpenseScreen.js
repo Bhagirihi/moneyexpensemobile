@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,18 @@ import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
 
+const calculateMonthlyStats = (expensesData, setMonthlyStats) => {
+  const totalExpenses = expensesData.reduce(
+    (sum, expense) => sum + expense.amount,
+    0
+  );
+  setMonthlyStats({
+    totalExpenses,
+    totalBudget: 2000.0,
+    remainingBalance: 2000.0 - totalExpenses,
+  });
+};
+
 export const ExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState(0);
@@ -36,27 +48,22 @@ export const ExpenseScreen = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const calculateMonthlyStats = (expensesData) => {
-    const totalExpenses = expensesData.reduce(
-      (sum, expense) => sum + expense.amount,
-      0
-    );
-    setMonthlyStats({
-      totalExpenses,
-      totalBudget: 2000.0,
-      remainingBalance: 2000.0 - totalExpenses,
-    });
-  };
+  const memoizedCalculateMonthlyStats = useCallback((expensesData) => {
+    calculateMonthlyStats(expensesData, setMonthlyStats);
+  }, []);
 
   useEffect(() => {
     fetchExpenses();
-    console.log("Selected category:", selectedCategory);
   }, [selectedCategory]);
 
   useEffect(() => {
     fetchExpenses();
     const EnpenseRealTimeSync = realTimeSync.subscribeToExpense(fetchExpenses);
-    return EnpenseRealTimeSync;
+    return () => {
+      if (EnpenseRealTimeSync && typeof EnpenseRealTimeSync === "function") {
+        EnpenseRealTimeSync();
+      }
+    };
   }, []);
 
   const fetchExpenses = async (pageNum = 1) => {
@@ -64,17 +71,16 @@ export const ExpenseScreen = ({ navigation }) => {
       setLoading(true);
       setError(null);
       console.log("Fetching expenses...");
-      console.log(`Fetching expenses of...`, selectedCategory);
+
       const { data, hasMore: more } = await expenseService.getExpenses(
         selectedCategory === 0 ? null : selectedCategory,
         pageNum,
         10
       );
-      console.log("Fetched expenses:", data);
 
       if (!data || data.length === 0) {
         setExpenses([]);
-        calculateMonthlyStats([]);
+        memoizedCalculateMonthlyStats([]);
         setHasMore(false);
         setPage(1);
         return;
@@ -82,7 +88,7 @@ export const ExpenseScreen = ({ navigation }) => {
 
       const newExpenses = pageNum === 1 ? data : [...expenses, ...data];
       setExpenses(newExpenses);
-      calculateMonthlyStats(newExpenses);
+      memoizedCalculateMonthlyStats(newExpenses);
       setHasMore(more);
       setPage(pageNum);
     } catch (error) {
@@ -90,7 +96,7 @@ export const ExpenseScreen = ({ navigation }) => {
       setError("Failed to fetch expenses. Please try again later.");
       showToast.error("Failed to fetch expenses", "Please try again later");
       setExpenses([]);
-      calculateMonthlyStats([]);
+      memoizedCalculateMonthlyStats([]);
       setHasMore(false);
       setPage(1);
     } finally {
@@ -115,7 +121,7 @@ export const ExpenseScreen = ({ navigation }) => {
         (expense) => expense.id !== expenseId
       );
       setExpenses(updatedExpenses);
-      calculateMonthlyStats(updatedExpenses);
+      memoizedCalculateMonthlyStats(updatedExpenses);
       showToast.success(
         "Expense deleted",
         "The expense has been successfully deleted"

@@ -39,7 +39,7 @@ export const expenseService = {
         .eq("created_by", user.id)
         .order("date", { ascending: false })
         .range(offset, offset + limit - 1);
-      console.log("Category: ==> > > >", category);
+
       if (category) {
         query = query.eq("category_id", category);
       }
@@ -50,7 +50,6 @@ export const expenseService = {
         console.error("Error fetching expenses:", error.message);
         throw error;
       }
-      console.log("Fetched expenses:", data);
 
       // Get user profiles for all expenses
       const userIds = [...new Set(data.map((expense) => expense.created_by))];
@@ -138,7 +137,6 @@ export const expenseService = {
       }
 
       const { data, error, count } = await query;
-      console.log("Fetched expenses:", data, "and BOARD ID:", boardId);
 
       if (error) {
         console.error("Error fetching expenses:", error.message);
@@ -192,7 +190,6 @@ export const expenseService = {
 
   async getExpenseById(expenseId) {
     try {
-      console.log("Fetching expense by ID:", expenseId);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -235,7 +232,6 @@ export const expenseService = {
         throw profileError;
       }
 
-      console.log("Fetched expense:", data);
       return {
         ...data,
         created_by_profile: profile,
@@ -286,7 +282,6 @@ export const expenseService = {
         throw profileError;
       }
 
-      console.log("Created expense:", data);
       return {
         ...data,
         created_by_profile: profile,
@@ -299,7 +294,6 @@ export const expenseService = {
 
   async updateExpense(expenseId, updates) {
     try {
-      console.log("Updating expense:", expenseId);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -334,7 +328,6 @@ export const expenseService = {
         throw profileError;
       }
 
-      console.log("Updated expense:", data);
       return {
         ...data,
         created_by_profile: profile,
@@ -347,7 +340,6 @@ export const expenseService = {
 
   async deleteExpense(expenseId) {
     try {
-      console.log("Deleting expense:", expenseId);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -368,7 +360,6 @@ export const expenseService = {
         throw error;
       }
 
-      console.log("Deleted expense:", expenseId);
       return true;
     } catch (error) {
       console.error("Error in deleteExpense:", error.message);

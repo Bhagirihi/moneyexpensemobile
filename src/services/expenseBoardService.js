@@ -54,7 +54,6 @@ export const expenseBoardService = {
         totalTransactions: expensesMap[board.id]?.length || 0,
       }));
 
-      console.log("Boards with expenses:", boardsWithExpenses);
       return boardsWithExpenses;
     } catch (error) {
       console.error("Error fetching expense boards:", error);
@@ -68,7 +67,6 @@ export const expenseBoardService = {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
-      console.log("ID:", id);
       // First, get all expense boards for the user
       const { data: boards, error: boardsError } = await supabase
         .from("expense_boards")

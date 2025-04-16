@@ -46,7 +46,6 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         return;
       }
 
-      console.log("Fetched boards =>", data);
       setExpenseBoards(data);
     } catch (error) {
       console.error("Error in fetchBoards:", error);
@@ -62,7 +61,6 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   };
 
   const handleDeleteBoard = async (board) => {
-    console.log("Deleting board:", board);
     try {
       await expenseBoardService.deleteExpenseBoard(board.id);
     } catch (error) {

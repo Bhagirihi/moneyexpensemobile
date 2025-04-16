@@ -49,6 +49,7 @@ const lightTheme = {
   primaryLight: "#DBEAFE", // Light blue for primary backgrounds
   textLight: "#94A3B8", // Light text color
   borderLight: "#E2E8F0", // Light border color
+  inputBackground: "#F8FAFC", // Light gray for input backgrounds
 };
 
 const darkTheme = {
@@ -76,6 +77,7 @@ const darkTheme = {
   primaryLight: "#1E40AF", // Dark blue for primary backgrounds
   textLight: "#64748B", // Dark text color
   borderLight: "#334155", // Dark border color
+  inputBackground: "#1E293B", // Dark gray for input backgrounds
 };
 
 const ThemeContext = createContext();

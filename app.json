@@ -4,13 +4,13 @@
     "slug": "TripExpense",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.jpg",
+    "icon": "./assets/icon_0.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/welcome.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "resizeMode": "cover",
+      "backgroundColor": "#f3f2ef"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.jpg",
+        "foregroundImage": "./assets/icon_0.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.tripexpense.app",
@@ -47,13 +47,24 @@
             "./assets/fonts/Manrope-Medium.ttf"
           ]
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "ios": {
+            "image": "./assets/welcome.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#f3f2ef",
+            "statusBarStyle": "dark"
+          },
+          "android": {
+            "image": "./assets/welcome.png",
+            "resizeMode": "cover",
+            "backgroundColor": "#f3f2ef",
+            "statusBarTranslucent": true
+          }
+        }
       ]
-    ],
-    "font": {
-      "body": "Inter_Regular",
-      "heading": "Inter_Medium",
-      "monospace": "Manrope-Medium",
-      "numbers": "Manrope-Bold"
-    }
+    ]
   }
 }

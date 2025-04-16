@@ -41,7 +41,7 @@ export const ExpenseBoardDetailsScreen = () => {
       // Fetch recent transactions
       const { data: transactionsData } =
         await expenseService.getExpensesbyBoardId(boardId, null, 1, 4);
-      console.log("Fetched recent transactions: BOARD --", transactionsData);
+
       // Update expenses state with fetched transactions
       setExpenses(transactionsData || []);
     } catch (error) {

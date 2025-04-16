@@ -349,7 +349,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       };
 
       const newBoard = await expenseBoardService.createExpenseBoard(boardData);
-      console.log("Created Board ID:", newBoard.id);
+
       showToast.success("Expense board created successfully");
       navigation.goBack();
     } catch (error) {

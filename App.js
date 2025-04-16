@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider } from "./src/context/ThemeContext";
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 import { AuthProvider } from "./src/context/AuthContext";
 import { supabase } from "./src/config/supabase";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 import * as SplashScreen from "expo-splash-screen";
-
+import * as Font from "expo-font";
+import { StatusBar } from "expo-status-bar";
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
@@ -30,11 +31,10 @@ import { NotificationScreen } from "./src/screens/NotificationScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
+import { View } from "react-native";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
-// Prevent auto-hide of splash screen
-// SplashScreen.preventAutoHideAsync();
 
 const config = {
   animation: "spring",
@@ -80,49 +80,64 @@ const screenOptions = {
   },
 };
 
-export default function App() {
+const AppContent = () => {
+  const { theme } = useTheme();
   const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
-    // Check for active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    async function prepare() {
+      try {
+        await SplashScreen.preventAutoHideAsync();
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+        await Font.loadAsync({
+          Inter_Bold: require("./assets/fonts/Inter_Bold.ttf"),
+          Inter_Medium: require("./assets/fonts/Inter_Medium.ttf"),
+          Inter_Regular: require("./assets/fonts/Inter_Regular.ttf"),
+          "Manrope-Bold": require("./assets/fonts/Manrope-Bold.ttf"),
+          "Manrope-Medium": require("./assets/fonts/Manrope-Medium.ttf"),
+        });
 
-    return () => subscription.unsubscribe();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        setSession(session);
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true); // Ready to render
+      }
+    }
+
+    prepare();
   }, []);
 
-  // useEffect(() => {
-  //   const prepare = async () => {
-  //     try {
-  //       // Wait for 2 seconds
-  //       await new Promise((resolve) => setTimeout(resolve, 2000));
-  //     } catch (e) {
-  //       console.warn(e);
-  //     } finally {
-  //       // Hide the splash screen
-  //       await SplashScreen.hideAsync();
-  //     }
-  //   };
+  const onLayoutRootView = useCallback(async () => {
+    if (appIsReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
 
-  //   prepare();
-  // }, []);
-
-  if (loading) {
-    return null; // Or a loading screen
+  if (!appIsReady) {
+    return <View style={{ flex: 1, backgroundColor: "#f3f2ef" }} />;
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider onLayout={onLayoutRootView}>
+      <StatusBar
+        barStyle={
+          theme.background === "#FFFFFF" ? "dark-content" : "light-content"
+        }
+        backgroundColor={theme.background}
+      />
       <AuthProvider>
         <ThemeProvider>
           <AppSettingsProvider>
@@ -197,5 +212,17 @@ export default function App() {
         </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>
+  );
+};
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppSettingsProvider>
+          <AppContent />
+        </AppSettingsProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

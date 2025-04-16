@@ -300,6 +300,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     opacity: 0.7,
   },
+  listContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
 
 export const CategoriesScreen = ({ navigation }) => {
@@ -318,7 +327,6 @@ export const CategoriesScreen = ({ navigation }) => {
         return;
       }
 
-      console.log("Fetched categories:", data);
       setCategories(data);
     } catch (error) {
       console.error("Error in fetchCategories:", error);
@@ -405,43 +413,41 @@ export const CategoriesScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header title="Categories" onBack={() => navigation.goBack()} />
-      <View style={styles.content}>
-        {loading ? (
+      {loading ? (
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-        ) : categories.length === 0 ? (
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons
-              name="folder-plus"
-              size={48}
-              color={theme.textSecondary}
-            />
-            <Text style={[styles.emptyStateText, { color: theme.text }]}>
-              No categories yet. Tap the + button to create one.
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={categories}
-            renderItem={renderCategoryItem}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <ListHeader
-                title={
-                  categories.some((cat) => cat.id.startsWith("default-"))
-                    ? "Default Categories"
-                    : "Your Categories"
-                }
-              />
-            }
+        </View>
+      ) : categories.length === 0 ? (
+        <View style={styles.emptyState}>
+          <MaterialCommunityIcons
+            name="folder-outline"
+            size={48}
+            color={theme.textSecondary}
           />
-        )}
-      </View>
+          <Text style={[styles.emptyStateText, { color: theme.text }]}>
+            No categories yet. Tap the + button to create one.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={categories}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            <ListHeader
+              title="Categories"
+              subtitle={`${categories.length} categories`}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      )}
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: theme.primary }]}
         onPress={() => navigation.navigate("AddCategory")}
       >
-        <MaterialCommunityIcons name="plus" size={24} color="#FFFFFF" />
+        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
       </TouchableOpacity>
     </SafeAreaView>
   );

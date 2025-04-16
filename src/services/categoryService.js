@@ -24,7 +24,6 @@ export const categoryService = {
         throw error;
       }
 
-      console.log("Fetched categories:", data);
       return data;
     } catch (error) {
       console.error("Error in getCategories:", error.message);
@@ -71,7 +70,7 @@ export const categoryService = {
         throw error;
       }
 
-      console.log("Successfully imported default categories:", data);
+      console.log("Successfully imported default categories:");
       return data;
     } catch (error) {
       console.error("Error in importDefaultCategories:", error.message);

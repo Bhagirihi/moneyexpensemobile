@@ -60,7 +60,40 @@ export const DashboardScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    fetchUserProfile();
+    const loadProfile = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .single();
+
+        if (error) {
+          console.error("Error loading profile:", error);
+          return;
+        }
+
+        if (profile) {
+          setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      }
+    };
+
+    loadProfile();
+
+    // Subscribe to profile changes
+    const unsubscribeProfile = realTimeSync.subscribeToProfile(() => {
+      loadProfile();
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeProfile();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchDashboardData();
     fetchUnreadCount();
   }, []);
@@ -128,23 +161,6 @@ export const DashboardScreen = ({ navigation }) => {
     setRefreshing(false);
   }, []);
 
-  const fetchUserProfile = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data, error } = await dashboardService.getUserProfile(user.id);
-        if (error) throw error;
-        setUserProfile(data);
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error.message);
-      showToast.error("Failed to load profile");
-    }
-  };
-
   const fetchDashboardData = async () => {
     try {
       //setLoading(true);
@@ -178,7 +194,7 @@ export const DashboardScreen = ({ navigation }) => {
       if (transactionsError) {
         throw transactionsError;
       }
-      console.log("transactionsData ==> payment_method", transactionsData);
+
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
@@ -357,9 +373,7 @@ export const DashboardScreen = ({ navigation }) => {
         expenses={expenses.slice(0, 3)}
         title="Recent Transactions"
         onSeeAllPress={() => navigation.navigate("Expense")}
-        onExpensePress={(expense) => {
-          console.log("Expense pressed:", expense);
-        }}
+        onExpensePress={(expense) => {}}
         showHeader={true}
         showAllButton={true}
         showEmptyState={true}

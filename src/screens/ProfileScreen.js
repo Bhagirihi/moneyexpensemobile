@@ -23,6 +23,7 @@ import {
 } from "../utils/formatters";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
+import { useAuth } from "../context/AuthContext";
 
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -35,25 +36,24 @@ export const ProfileScreen = ({ navigation }) => {
   const [totalCategories, setTotalCategories] = useState(0);
   const [totalBoards, setTotalBoards] = useState(0);
   const featureAnimation = useRef(new Animated.Value(0)).current;
+  const { session } = useAuth();
 
   useEffect(() => {
     fetchUserProfile();
+    console.log("session", session);
   }, []);
 
   const fetchUserProfile = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
+      if (session.user) {
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", user.id)
+          .eq("id", session.user.id)
           .single();
 
         if (error) throw error;
-        console.log("Profile data:", data);
+
         accountStatics();
         setUserProfile(data);
       }

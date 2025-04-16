@@ -132,8 +132,8 @@ export const realTimeSync = {
   },
 
   subscribeToProfile: (callback) => {
-    return supabase
-      .channel("profiles")
+    const subscription = supabase
+      .channel("profile_changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles" },
@@ -143,5 +143,9 @@ export const realTimeSync = {
         }
       )
       .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   },
 };

@@ -25,7 +25,7 @@ const formatDate = (date) => {
 
 const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
   const { theme } = useTheme();
-  console.log("Expense Item:", expense);
+
   // Memoize styles
   const styles = useMemo(
     () =>

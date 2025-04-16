@@ -25,11 +25,13 @@ import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
 import { expenseBoardService } from "../services/expenseBoardService";
+import { useAuth } from "../context/AuthContext";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { language, currency, updateLanguage, updateCurrency } =
     useAppSettings();
+  const { session } = useAuth();
   const [budget, setBudget] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -45,6 +47,12 @@ export const SettingsScreen = ({ navigation }) => {
   const [showBoardDropdown, setShowBoardDropdown] = useState(false);
   const [boardID, updateBoard] = useState("");
   const [userID, setUserID] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   // Sample data - Replace with actual data from your backend
   const languages = [
     { code: "en", name: "English" },
@@ -63,8 +71,16 @@ export const SettingsScreen = ({ navigation }) => {
   useEffect(() => {
     fetchData();
     generateReferralCode();
-    const settingRealTimeSync = realTimeSync.subscribeToProfile(fetchData);
-    return settingRealTimeSync;
+
+    // Store the subscription cleanup function
+    const cleanup = realTimeSync.subscribeToProfile(fetchData);
+
+    // Return a proper cleanup function
+    return () => {
+      if (typeof cleanup === "function") {
+        cleanup();
+      }
+    };
   }, []);
 
   const fetchData = async () => {
@@ -78,11 +94,11 @@ export const SettingsScreen = ({ navigation }) => {
         .single();
 
       if (budgetError) throw budgetError;
-      console.log("Budget data:", budgetData);
+
       setUserID(budgetData.id);
       setBudget(budgetData);
       setBoardCount(budgetData.total_boards);
-      setBoardName(budgetData.board_id);
+      // setBoardName(budgetData.board_id);
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
 
@@ -90,16 +106,14 @@ export const SettingsScreen = ({ navigation }) => {
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
         .select(`*`);
-      console.log("Boards data:", boardsData);
+
       const board = boardsData.find((b) => b.id === budgetData.board_id);
       const isDefaultBoard = boardsData.find((b) => b.is_default);
-      console.log("Default Board:", isDefaultBoard);
+
       if (isDefaultBoard) {
-        console.log("Default Board:", board.id, board.name);
         updateBoard(board.id);
       }
       if (board) {
-        console.log("Matched Board:", board);
         setBoardName(board.name);
       } else {
         console.log("Board not found for the given ID");
@@ -215,6 +229,81 @@ export const SettingsScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Error updating default board:", error);
       showToast.error("Error", "Failed to update default board");
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(false);
+
+      // Validate passwords
+      if (newPassword !== confirmPassword) {
+        setError("New passwords do not match");
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        setError("Password must be at least 6 characters long");
+        return;
+      }
+
+      // First, reauthenticate the user with their current password
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: currentPassword,
+      });
+
+      if (reauthError) {
+        setError("Current password is incorrect");
+        return;
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setSuccess(true);
+      setEditModalVisible(false);
+      showToast.success("Password updated successfully");
+
+      // Clear form
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handle2FAToggle = async (value) => {
+    try {
+      setLoading(true);
+      // Here you would typically make an API call to update 2FA status
+      // For now, we'll just update the local state
+      setIs2FAEnabled(value);
+
+      if (value) {
+        showToast.success("Two-factor authentication enabled");
+      } else {
+        showToast.success("Two-factor authentication disabled");
+      }
+    } catch (error) {
+      console.error("Error updating 2FA status:", error);
+      showToast.error("Failed to update two-factor authentication status");
+      // Revert the switch if the update fails
+      setIs2FAEnabled(!value);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -486,23 +575,13 @@ export const SettingsScreen = ({ navigation }) => {
           text: "Apply All",
           onPress: async () => {
             try {
-              console.log("expenseBoards", expenseBoards);
               for (const newboard of expenseBoards) {
-                console.log(
-                  "Updating board:",
-                  newboard,
-
-                  newboard.newBudget,
-                  newboard.name,
-                  newboard.id
-                );
                 const { error, data } = await supabase
                   .from("expense_boards")
                   .update({ total_budget: selectedBoard.budget || 0 })
                   .eq("id", newboard.id);
 
                 if (error) throw error;
-                console.log("Updated board:", data);
               }
 
               showToast.success(
@@ -663,37 +742,70 @@ export const SettingsScreen = ({ navigation }) => {
       <Text style={[styles.modalTitle, { color: theme.text }]}>
         Reset Password
       </Text>
+      {error && (
+        <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+      )}
+      {success && (
+        <Text style={[styles.successText, { color: theme.success }]}>
+          Password updated successfully!
+        </Text>
+      )}
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: theme.textLight },
+          {
+            color: theme.text,
+            borderColor: theme.textLight,
+            backgroundColor: theme.inputBackground,
+          },
         ]}
         placeholder="Current Password"
         placeholderTextColor={theme.textSecondary}
         secureTextEntry
+        value={currentPassword}
+        onChangeText={setCurrentPassword}
       />
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: theme.textLight },
+          {
+            color: theme.text,
+            borderColor: theme.textLight,
+            backgroundColor: theme.inputBackground,
+          },
         ]}
         placeholder="New Password"
         placeholderTextColor={theme.textSecondary}
         secureTextEntry
+        value={newPassword}
+        onChangeText={setNewPassword}
       />
       <TextInput
         style={[
           styles.modalInput,
-          { color: theme.text, backgroundColor: theme.textLight },
+          {
+            color: theme.text,
+            borderColor: theme.textLight,
+            backgroundColor: theme.inputBackground,
+          },
         ]}
         placeholder="Confirm New Password"
         placeholderTextColor={theme.textSecondary}
         secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
       <View style={styles.modalButtons}>
         <TouchableOpacity
           style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
-          onPress={() => setEditModalVisible(false)}
+          onPress={() => {
+            setEditModalVisible(false);
+            setError(null);
+            setSuccess(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+          }}
         >
           <Text style={[styles.modalButtonText, { color: theme.error }]}>
             Cancel
@@ -701,13 +813,11 @@ export const SettingsScreen = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.modalButton, { backgroundColor: theme.primary }]}
-          onPress={() => {
-            // Handle password reset
-            setEditModalVisible(false);
-          }}
+          onPress={handlePasswordReset}
+          disabled={loading}
         >
           <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
-            Reset
+            {loading ? "Updating..." : "Reset"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -863,6 +973,9 @@ export const SettingsScreen = ({ navigation }) => {
     onPress,
     showBorder = true,
     editable = true,
+    isSwitch = false,
+    switchValue,
+    onSwitchChange,
   }) => (
     <TouchableOpacity
       style={[
@@ -872,15 +985,7 @@ export const SettingsScreen = ({ navigation }) => {
           borderBottomColor: theme.borderLight,
         },
       ]}
-      onPress={() => {
-        if (title === "Edit Profile") {
-          navigation.navigate("Profile");
-        } else if (title === "Font Test") {
-          navigation.navigate("FontTest");
-        } else if (editable || onPress) {
-          handleEdit({ title, subtitle });
-        }
-      }}
+      onPress={onPress}
       disabled={!editable && !onPress}
     >
       <View style={styles.settingLeft}>
@@ -907,7 +1012,15 @@ export const SettingsScreen = ({ navigation }) => {
       </View>
       <View style={styles.settingRight}>
         {rightComponent}
-        {editable ? (
+        {isSwitch ? (
+          <Switch
+            value={switchValue}
+            onValueChange={onSwitchChange}
+            trackColor={{ false: theme.borderLight, true: theme.primary }}
+            thumbColor={theme.background}
+            ios_backgroundColor={theme.borderLight}
+          />
+        ) : editable ? (
           <MaterialCommunityIcons
             name="pencil"
             size={20}
@@ -937,7 +1050,9 @@ export const SettingsScreen = ({ navigation }) => {
           { backgroundColor: theme.cardBackground },
         ]}
       >
-        {children}
+        {React.Children.map(children, (child, index) =>
+          React.cloneElement(child, { key: `${title}-${index}` })
+        )}
       </View>
     </View>
   );
@@ -1063,13 +1178,15 @@ export const SettingsScreen = ({ navigation }) => {
               icon: "two-factor-authentication",
               title: "Two-Factor Authentication",
               subtitle: "Add extra security to your account",
-              onPress: () => {},
+              isSwitch: true,
+              switchValue: is2FAEnabled,
+              onSwitchChange: handle2FAToggle,
               editable: false,
             }),
             renderSettingItem({
               icon: "lock-reset",
               title: "Reset Password",
-              onPress: () => {},
+              onPress: () => handleEdit({ title: "Reset Password" }),
               showBorder: false,
               editable: false,
             }),
@@ -1252,6 +1369,7 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderRadius: 12,
+    borderWidth: 1,
     padding: 12,
     fontSize: 16,
     marginBottom: 20,
@@ -1523,5 +1641,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     padding: 8,
+  },
+  errorText: {
+    color: "red",
+    marginBottom: 10,
+  },
+  successText: {
+    color: "green",
+    marginBottom: 10,
   },
 });

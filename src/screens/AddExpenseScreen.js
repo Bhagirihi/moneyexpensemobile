@@ -300,7 +300,6 @@ export const AddExpenseScreen = ({ navigation }) => {
           <ExpenseBoardList
             selectedBoard={formData.board}
             onSelectBoard={(boardId) => {
-              console.log("Selected Board ID:", boardId);
               setFormData({ ...formData, board: boardId });
             }}
             onCreateBoard={handleCreateBoard}

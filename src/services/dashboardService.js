@@ -39,7 +39,6 @@ export const dashboardService = {
         .limit(limit);
 
       if (error) throw error;
-      console.log("DATA", data);
 
       // Get unique user IDs from expenses
       const userIds = [...new Set(data.map((expense) => expense.created_by))];
