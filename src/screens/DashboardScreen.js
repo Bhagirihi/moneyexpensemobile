@@ -27,7 +27,7 @@ import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
 import ExpenseList from "../components/ExpenseList";
 import { showToast } from "../utils/toast";
-import { formatCurrency } from "../utils/formatters";
+import { capitalizeFirstLetter, formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
 import { realTimeSync } from "../services/realTimeSync";
@@ -451,7 +451,7 @@ export const DashboardScreen = ({ navigation }) => {
               Welcome back,
             </Text>
             <Text style={[styles.nameText, { color: theme.text }]}>
-              {userProfile?.full_name || "Guest"}
+              {capitalizeFirstLetter(userProfile?.full_name) || "Guest"}
             </Text>
           </View>
         </TouchableOpacity>

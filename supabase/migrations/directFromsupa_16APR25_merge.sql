@@ -106,6 +106,7 @@ ALTER TABLE "public"."expense_boards" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."expenses" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."shared_users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
 CREATE POLICY "Users can view their own profile"
@@ -218,6 +219,23 @@ CREATE POLICY "Can read shared items"
   FOR SELECT
   USING (shared_by = auth.uid());
 
+CREATE POLICY "Allow uploads for authenticated users"
+  ON storage.objects
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow read for authenticated users"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Allow delete for authenticated users"
+  ON storage.objects
+  FOR DELETE
+  TO authenticated
+  USING (true);
 
 
 -- FOREIGN KEY CONSTRAINTS

@@ -30,7 +30,9 @@
     "react-native-svg": "15.8.0",
     "react-native-toast-message": "^2.2.1",
     "react-native-ui-datepicker": "^3.1.2",
-    "supabase": "^2.20.12"
+    "supabase": "^2.20.12",
+    "expo-image-picker": "~16.0.6",
+    "expo-file-system": "~18.0.12"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

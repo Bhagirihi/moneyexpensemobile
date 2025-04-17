@@ -12,11 +12,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
 import {
+  capitalizeFirstLetter,
   formatCurrency,
   formatDate,
   formatDateTime,
@@ -24,6 +26,7 @@ import {
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
+import * as FileSystem from "expo-file-system";
 
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -53,6 +56,12 @@ export const ProfileScreen = ({ navigation }) => {
           .select("*")
           .eq("id", session.user.id)
           .single();
+
+        const { data: ImageData, error: ImageError } = await supabase.storage
+          .from("avatars")
+          .list(session.user.id);
+
+        console.log("Image", ImageData, ImageError);
 
         if (error) throw error;
 
@@ -110,72 +119,201 @@ export const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const renderProfileImage = () => (
-    <View
-      style={[
-        styles.profileImageSection,
-        { backgroundColor: theme.cardBackground },
-      ]}
-    >
-      <View style={styles.profileRow}>
-        <View style={styles.profileImageContainer}>
-          <View
-            style={[
-              styles.profileImage,
-              { backgroundColor: `${theme.primary}15` },
-            ]}
-          >
-            {userProfile?.avatar_url ? (
-              <Image
-                source={{ uri: userProfile.avatar_url }}
-                style={styles.profileImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <MaterialCommunityIcons
-                name="account"
-                size={50}
-                color={theme.primary}
-              />
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.editImageButton, { backgroundColor: theme.primary }]}
-            onPress={() => {
-              // TODO: Implement image picker
-              Alert.alert(
-                "Coming Soon",
-                "Profile picture upload will be available soon!"
-              );
-            }}
-          >
-            <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+  const pickAndUploadImage = async (userId) => {
+    try {
+      if (!userId) {
+        userId = session?.user?.id;
+        if (!userId) {
+          throw new Error("User ID is missing.");
+        }
+        console.log("userId", userId);
+      }
+      // Ask for permission
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Please grant camera access to upload images"
+        );
+        return;
+      }
 
-        <View style={styles.profileDetails}>
-          <Text style={[styles.profileName, { color: theme.text }]}>
-            {userProfile?.full_name || "No name set"}
-          </Text>
-          <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-            {userProfile?.email_address || "No email set"}
-          </Text>
-          <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-            {userProfile?.mobile || "No phone set"}
-          </Text>
-          <View style={styles.profileBadge}>
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={14}
-              color={theme.success}
-            />
-            <Text style={[styles.profileBadgeText, { color: theme.success }]}>
-              Verified Account
+      // Pick image from gallery
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (result.canceled) return;
+
+      const publicUrl = await uploadImageToSupabase(result);
+
+      // Update DB with new avatar URL
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", session.user.id); // ✅ string, works
+
+      if (error) throw error;
+      setUserProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
+    } catch (error) {
+      console.error("Image Upload Error:", error.message);
+      Alert.alert("Error", "Something went wrong while uploading image.");
+    }
+  };
+
+  const uploadImageToSupabase = async (ImageData) => {
+    const { uri, mimeType } = ImageData.assets[0];
+    try {
+      const userId = session?.user?.id; // Ensure user is logged in
+      if (!userId) throw new Error("User not logged in");
+
+      console.log("Uploading image with URI:", uri);
+
+      // Convert image URI to base64
+      const base64Image = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // console.log("Base64 Image:", base64Image); // Check base64 string
+
+      // Create a filename and path
+      const fileExt = uri.split(".").pop()?.split("?")[0] || "jpg";
+      const filename = `${Date.now()}.${fileExt}`;
+      const path = `${userId}/${filename}`;
+      const fileType = `image/${fileExt}`;
+
+      console.log("base64Image", JSON.stringify(base64Image), fileType, path);
+      const file = {
+        uri: uri,
+        name: filename,
+        type: fileType,
+      };
+      // Now upload the base64 image to Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, {
+          contentType: fileType, // Ensure proper content type
+        });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(path);
+
+      console.log("Image uploaded successfully. Public URL:", publicUrl);
+      return publicUrl;
+    } catch (error) {
+      console.error("Error in uploadImageToSupabase:", error);
+      throw error;
+    }
+  };
+
+  // const uploadImageToSupabase = async (uri) => {
+  //   let userId = session?.user?.id;
+  //   console.log("uri uploadImageToSupabase", uri);
+
+  //   const response = await fetch(uri);
+  //   const blob = await response.blob();
+
+  //   const ext = uri.split(".").pop() || "jpg";
+  //   const filename = `${Date.now()}.${ext}`;
+  //   const path = `${userId}/${filename}`;
+  //   console.log("path", userId, path, response, blob);
+
+  //   const { error: uploadError } = await supabase.storage
+  //     .from("avatars")
+  //     .upload(path, blob, {
+  //       cacheControl: "3600",
+  //       upsert: true,
+  //     });
+
+  //   if (uploadError) throw uploadError;
+
+  //   const {
+  //     data: { publicUrl },
+  //   } = supabase.storage.from("avatars").getPublicUrl(path);
+  //   console.log("publicUrl 9090", publicUrl);
+
+  //   return publicUrl;
+  // };
+
+  const renderProfileImage = () => (
+    console.log("userProfile?.avatar_url", userProfile?.avatar_url),
+    (
+      <View
+        style={[
+          styles.profileImageSection,
+          { backgroundColor: theme.cardBackground },
+        ]}
+      >
+        <View style={styles.profileRow}>
+          <View style={styles.profileImageContainer}>
+            <TouchableOpacity onPress={pickAndUploadImage}>
+              <View
+                style={[
+                  styles.profileImage,
+                  { backgroundColor: `${theme.primary}15` },
+                ]}
+              >
+                {userProfile?.avatar_url ? (
+                  <Image
+                    source={{ uri: userProfile.avatar_url }}
+                    style={styles.profileImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name="account"
+                    size={50}
+                    color={theme.primary}
+                  />
+                )}
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.editImageButton,
+                  { backgroundColor: theme.primary },
+                ]}
+                onPress={pickAndUploadImage}
+              >
+                <MaterialCommunityIcons
+                  name="camera"
+                  size={14}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.profileDetails}>
+            <Text style={[styles.profileName, { color: theme.text }]}>
+              {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
             </Text>
+            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+              {userProfile?.email_address || "No email Address"}
+            </Text>
+            <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
+              {userProfile?.mobile || "No phone Number"}
+            </Text>
+            <View style={styles.profileBadge}>
+              <MaterialCommunityIcons
+                name="check-circle"
+                size={14}
+                color={theme.success}
+              />
+              <Text style={[styles.profileBadgeText, { color: theme.success }]}>
+                Verified Account
+              </Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    )
   );
 
   const renderSubscriptionStatus = () => (
