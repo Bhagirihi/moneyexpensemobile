@@ -22,31 +22,62 @@ const ShareModal = ({
 }) => {
   const { theme } = useTheme();
 
-  const handleCopyCode = () => {
-    Clipboard.setString(boardId);
-    showToast.success("Success", "Board code copied to clipboard");
-  };
+  // const handleCopyCode = () => {
+  //   Clipboard.setString(boardId);
+  //   showToast.success("Success", "Board code copied to clipboard");
+  // };
 
-  const handleShareViaEmail = async () => {
-    try {
-      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${boardId}\n\nClick here to join: https://tripexpanse.app/join/${boardId}`;
-      await Share.share({
-        message,
-        subject: `Join my expense board: ${boardName}`,
-      });
-    } catch (error) {
-      console.error("Error sharing via email:", error);
-    }
-  };
+  // const handleShareViaEmail = async () => {
+  //   try {
+  //     const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
+  //     await Share.share({
+  //       message,
+  //       subject: `Join my expense board: ${boardName}`,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error sharing via email:", error);
+  //   }
+  // };
 
-  const handleShareViaSocial = async () => {
+  // const handleShareViaSocial = async () => {
+  //   try {
+  //     const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
+  //     await Share.share({
+  //       message,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error sharing via social:", error);
+  //   }
+  // };
+
+  const handleShareApp = async (method) => {
     try {
-      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${boardId}\n\nClick here to join: https://tripexpanse.app/join/${boardId}`;
-      await Share.share({
-        message,
-      });
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
+
+      let result;
+
+      if (method === "email" || method === "social") {
+        result = await Share.share({
+          message,
+          ...(method === "email" && {
+            subject: "Join my expense board: ${boardName}",
+          }),
+        });
+
+        if (result.action === Share.sharedAction) {
+          showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
+          console.log("User shared the invite", result);
+        } else if (result.action === Share.dismissedAction) {
+          // Optional: silently ignore or log
+          console.log("User dismissed the share dialog.");
+        }
+      } else if (method === "copy") {
+        await Clipboard.setString(boardId);
+        showToast.success("Copied!", "Board code copied to clipboard 📋");
+      }
     } catch (error) {
-      console.error("Error sharing via social:", error);
+      console.error("Error sharing:", error);
+      showToast.error("Error", "Failed to share. Please try again.");
     }
   };
 
@@ -103,7 +134,7 @@ const ShareModal = ({
                 <Text style={[styles.codeText, { color: theme.text }]}>
                   {boardId}
                 </Text>
-                <TouchableOpacity onPress={handleCopyCode}>
+                <TouchableOpacity onPress={() => handleShareApp("copy")}>
                   <MaterialCommunityIcons
                     name="content-copy"
                     size={20}
@@ -116,7 +147,7 @@ const ShareModal = ({
             <View style={styles.shareOptions}>
               <TouchableOpacity
                 style={[styles.shareOption, { backgroundColor: theme.card }]}
-                onPress={handleShareViaEmail}
+                onPress={() => handleShareApp("email")}
               >
                 <MaterialCommunityIcons
                   name="email"
@@ -130,7 +161,7 @@ const ShareModal = ({
 
               <TouchableOpacity
                 style={[styles.shareOption, { backgroundColor: theme.card }]}
-                onPress={handleShareViaSocial}
+                onPress={() => handleShareApp("social")}
               >
                 <MaterialCommunityIcons
                   name="share-variant"

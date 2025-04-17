@@ -312,7 +312,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     try {
       const code = shareCode || generateShareCode();
       const subject = `Join my expense board: ${boardName}`;
-      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${code}\n\nClick here to join: https://tripexpanse.app/join/${code}`;
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: https://trivense.app/join/${code}`;
       await Share.share({
         message,
         subject,
@@ -325,7 +325,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
   const handleShareViaSocial = async () => {
     try {
       const code = shareCode || generateShareCode();
-      const message = `Join my expense board "${boardName}" on TripExpanse!\n\nBoard Code: ${code}\n\nClick here to join: https://tripexpanse.app/join/${code}`;
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: https://trivense.app/join/${code}`;
       await Share.share({
         message,
       });

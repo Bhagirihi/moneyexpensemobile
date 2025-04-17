@@ -59,7 +59,7 @@ export const signUpWithEmail = async (email, password, userData) => {
       password,
       options: {
         data: userData,
-        emailRedirectTo: "tripexpanse://verify-email",
+        emailRedirectTo: "trivense://verify-email",
       },
     });
 
@@ -118,7 +118,7 @@ export const signOut = async () => {
 export const resetPassword = async (email) => {
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "tripexpanse://reset-password",
+      redirectTo: "trivense://reset-password",
     });
 
     if (error) throw error;

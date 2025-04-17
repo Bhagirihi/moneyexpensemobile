@@ -973,7 +973,7 @@ export const ProfileScreen = ({ navigation }) => {
             onPress: () => {
               Alert.alert(
                 "About",
-                "TripExpanse v1.0.0\n\nTrack your expenses with ease!"
+                "Trivense v1.0.0\n\nTrack your expenses with ease!"
               );
             },
           },

@@ -116,12 +116,12 @@ export const SettingsScreen = ({ navigation }) => {
       // Fetch monthly budget
       const { data: budgetData, error: budgetError } = await supabase
         .from("profiles")
-        .select("id,total_boards, default_board_budget, referral_code,board_id")
+        .select("*")
         .single();
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
       if (budgetError) throw budgetError;
-
+      console.log("budgetData", budgetData);
       setUserID(budgetData.id);
       setBudget(budgetData);
       setBoardCount(budgetData.total_boards);
@@ -129,6 +129,7 @@ export const SettingsScreen = ({ navigation }) => {
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
       setSharedMembers(sharedMembers);
+      setIs2FAEnabled(budgetData.is2FA);
       // Fetch expense boards
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
@@ -172,24 +173,32 @@ export const SettingsScreen = ({ navigation }) => {
 
   const handleShareApp = async (method) => {
     try {
-      const message = `Join TripExpanse - The Smart Expense Tracking App!\n\nUse my referral code: ${referralCode}\n\nDownload now: https://tripexpanse.app/download\n\nTrack your expenses smarter with TripExpanse!`;
+      const message = `Join Trivense - The Smart Expense Tracking App!\n\nUse my referral code: ${referralCode}\n\nDownload now: https://trivense.app/download?invite=${referralCode}\n\nTrack your expenses smarter with Trivense!`;
 
-      if (method === "email") {
-        await Share.share({
+      let result;
+
+      if (method === "email" || method === "social") {
+        result = await Share.share({
           message,
-          subject: "Join TripExpanse - Smart Expense Tracking",
+          ...(method === "email" && {
+            subject: "Join Trivense - Smart Expense Tracking",
+          }),
         });
-      } else if (method === "social") {
-        await Share.share({
-          message,
-        });
+
+        if (result.action === Share.sharedAction) {
+          showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
+          console.log("User shared the invite", result);
+        } else if (result.action === Share.dismissedAction) {
+          // Optional: silently ignore or log
+          console.log("User dismissed the share dialog.");
+        }
       } else if (method === "copy") {
-        await Clipboard.setString(referralCode);
-        showToast.success("Success", "Referral code copied to clipboard");
+        await Clipboard.setStringAsync(referralCode);
+        showToast.success("Copied!", "Referral code copied to clipboard 📋");
       }
     } catch (error) {
       console.error("Error sharing:", error);
-      showToast.error("Error", "Failed to share");
+      showToast.error("Error", "Failed to share. Please try again.");
     }
   };
 
@@ -318,6 +327,11 @@ export const SettingsScreen = ({ navigation }) => {
       // Here you would typically make an API call to update 2FA status
       // For now, we'll just update the local state
       setIs2FAEnabled(value);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is2FA: value })
+        .eq("id", userID);
 
       if (value) {
         showToast.success("Two-factor authentication enabled");
@@ -953,7 +967,7 @@ export const SettingsScreen = ({ navigation }) => {
         >
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Share TripExpanse
+              Share Trivense
             </Text>
             <TouchableOpacity onPress={() => setShowShareAppModal(false)}>
               <MaterialCommunityIcons
@@ -979,7 +993,7 @@ export const SettingsScreen = ({ navigation }) => {
                 />
               </View>
               <Text style={[styles.appName, { color: theme.text }]}>
-                TripExpanse
+                Trivense
               </Text>
             </View>
 
@@ -1282,7 +1296,7 @@ export const SettingsScreen = ({ navigation }) => {
             renderSettingItem({
               icon: "share-variant-outline",
               title: "Share With",
-              subtitle: "Share TripExpanse with friends",
+              subtitle: "Share Trivense with friends",
               onPress: () => handleEdit({ title: "Share With" }),
               showBorder: false,
               editable: false,
@@ -1300,14 +1314,14 @@ export const SettingsScreen = ({ navigation }) => {
               showBorder: false,
               editable: false,
             }),
-            renderSettingItem({
-              icon: "information-outline",
-              title: "Font Test",
-              subtitle: "Test the fonts",
-              showBorder: false,
-              editable: true,
-              onPress: () => navigation.navigate("FontTest"),
-            }),
+            // renderSettingItem({
+            //   icon: "information-outline",
+            //   title: "Font Test",
+            //   subtitle: "Test the fonts",
+            //   showBorder: false,
+            //   editable: true,
+            //   onPress: () => navigation.navigate("FontTest"),
+            // }),
           ],
         })}
 
