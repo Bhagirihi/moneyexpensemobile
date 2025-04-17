@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
-import * as Font from "expo-font";
+import Font from "expo-font";
 
 const FontTestScreen = ({ navigation }) => {
   const { theme } = useTheme();

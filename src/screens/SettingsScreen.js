@@ -53,6 +53,7 @@ export const SettingsScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [sharedMembers, setSharedMembers] = useState([]);
   // Sample data - Replace with actual data from your backend
   const languages = [
     { code: "en", name: "English" },
@@ -62,10 +63,35 @@ export const SettingsScreen = ({ navigation }) => {
   ];
 
   const currencies = [
-    { code: "USD", name: "US Dollar", symbol: "$" },
-    { code: "EUR", name: "Euro", symbol: "€" },
-    { code: "GBP", name: "British Pound", symbol: "£" },
-    { code: "INR", name: "Indian Rupee", symbol: "₹" },
+    { code: "USD", name: "US Dollar", symbol: "$", conversionRate: 1 },
+    { code: "EUR", name: "Euro", symbol: "€", conversionRate: 0.92 },
+    { code: "GBP", name: "British Pound", symbol: "£", conversionRate: 0.79 },
+    { code: "INR", name: "Indian Rupee", symbol: "₹", conversionRate: 83.12 },
+    {
+      code: "AUD",
+      name: "Australian Dollar",
+      symbol: "A$",
+      conversionRate: 1.5,
+    },
+    { code: "CAD", name: "Canadian Dollar", symbol: "C$", conversionRate: 1.3 },
+    {
+      code: "NZD",
+      name: "New Zealand Dollar",
+      symbol: "NZ$",
+      conversionRate: 1.4,
+    },
+    {
+      code: "SGD",
+      name: "Singapore Dollar",
+      symbol: "S$",
+      conversionRate: 1.35,
+    },
+    {
+      code: "HKD",
+      name: "Hong Kong Dollar",
+      symbol: "HK$",
+      conversionRate: 7.8,
+    },
   ];
 
   useEffect(() => {
@@ -92,6 +118,7 @@ export const SettingsScreen = ({ navigation }) => {
         .from("profiles")
         .select("id,total_boards, default_board_budget, referral_code,board_id")
         .single();
+      const sharedMembers = await expenseBoardService.getSharedMembers();
 
       if (budgetError) throw budgetError;
 
@@ -101,14 +128,14 @@ export const SettingsScreen = ({ navigation }) => {
       // setBoardName(budgetData.board_id);
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
-
+      setSharedMembers(sharedMembers);
       // Fetch expense boards
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
         .select(`*`);
 
-      const board = boardsData.find((b) => b.id === budgetData.board_id);
-      const isDefaultBoard = boardsData.find((b) => b.is_default);
+      const board = await boardsData.find((b) => b.id === budgetData.board_id);
+      const isDefaultBoard = await boardsData.find((b) => b.is_default);
 
       if (isDefaultBoard) {
         updateBoard(board.id);
@@ -122,7 +149,7 @@ export const SettingsScreen = ({ navigation }) => {
 
       setExpenseBoards(boardsData || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching data: <-", error);
       showToast.error("Error", "Failed to load settings data");
     } finally {
       setLoading(false);
@@ -305,6 +332,19 @@ export const SettingsScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getConvertedPrice = (basePrice, currencyCode) => {
+    const selectedCurrency = currencies.find(
+      (curr) => curr.code === currencyCode
+    );
+    if (!selectedCurrency) return { amount: basePrice, symbol: "₹" };
+
+    const convertedAmount = basePrice * selectedCurrency.conversionRate;
+    return {
+      amount: convertedAmount.toFixed(2),
+      symbol: selectedCurrency.symbol,
+    };
   };
 
   const renderLanguageSelector = () => (
@@ -615,40 +655,48 @@ export const SettingsScreen = ({ navigation }) => {
           />
         </TouchableOpacity>
       </View>
-      {expenseBoards.slice(-3).map((board) => (
-        <View key={board.id} style={styles.boardDetailItem}>
-          <View style={styles.boardDetailHeader}>
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: theme.primaryLight },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="view-dashboard-outline"
-                size={22}
-                color={theme.primary}
-              />
-            </View>
-            <Text style={[styles.boardDetailName, { color: theme.text }]}>
-              {board.name}
-            </Text>
-            <Text style={[styles.memberCount, { color: theme.textSecondary }]}>
-              {board.expense_board_members?.length || 0} members
-            </Text>
-          </View>
-          <View style={styles.memberList}>
-            {board.expense_board_members?.map((member, index) => (
-              <Text
-                key={member.id}
-                style={[styles.memberEmail, { color: theme.textSecondary }]}
+      {expenseBoards.slice(-3).map((board) => {
+        const members =
+          sharedMembers?.filter((member) => member.board_id === board.id) || [];
+
+        return (
+          <View key={board.id} style={styles.boardDetailItem}>
+            <View style={styles.boardDetailHeader}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: theme.primaryLight },
+                ]}
               >
-                {member.profiles?.email || "Unknown"}
+                <MaterialCommunityIcons
+                  name="view-dashboard-outline"
+                  size={22}
+                  color={theme.primary}
+                />
+              </View>
+              <Text style={[styles.boardDetailName, { color: theme.text }]}>
+                {board.name}
               </Text>
-            ))}
+              <Text
+                style={[styles.memberCount, { color: theme.textSecondary }]}
+              >
+                {members.length} members
+              </Text>
+            </View>
+
+            <View style={styles.memberList}>
+              {members.map((member) => (
+                <Text
+                  key={member.id}
+                  style={[styles.memberEmail, { color: theme.textSecondary }]}
+                >
+                  {member.shared_with || "Unknown"}
+                </Text>
+              ))}
+            </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 
@@ -690,6 +738,16 @@ export const SettingsScreen = ({ navigation }) => {
             title: "Multiple Boards",
             desc: "Create unlimited boards",
           },
+          {
+            icon: "account-multiple-plus",
+            title: "Share Boards",
+            desc: "Easily collaborate with others",
+          },
+          {
+            icon: "robot",
+            title: "AI Expense Analysis",
+            desc: "Smart insights from your sheets coming soon!",
+          },
         ].map((feature, index) => (
           <View key={index} style={styles.premiumFeatureItem}>
             <View
@@ -718,10 +776,22 @@ export const SettingsScreen = ({ navigation }) => {
         ))}
       </View>
       <View style={styles.pricingSection}>
-        <Text style={[styles.priceAmount, { color: theme.text }]}>$9.99</Text>
-        <Text style={[styles.pricePeriod, { color: theme.textSecondary }]}>
-          /month
-        </Text>
+        {(() => {
+          const { amount, symbol } = getConvertedPrice(1.2, currency);
+          return (
+            <>
+              <Text style={[styles.priceAmount, { color: theme.text }]}>
+                {symbol}
+                {amount}
+              </Text>
+              <Text
+                style={[styles.pricePeriod, { color: theme.textSecondary }]}
+              >
+                /month
+              </Text>
+            </>
+          );
+        })()}
       </View>
       <TouchableOpacity
         style={[
@@ -828,6 +898,7 @@ export const SettingsScreen = ({ navigation }) => {
     if (!editModalVisible) return null;
 
     let modalContent;
+    console.log("editingItem <-", editingItem);
     switch (editingItem?.title) {
       case "Language":
         modalContent = renderLanguageSelector();
@@ -1122,6 +1193,7 @@ export const SettingsScreen = ({ navigation }) => {
               subtitle: `${
                 currencies.find((curr) => curr.code === currency)?.symbol
               } ${currencies.find((curr) => curr.code === currency)?.name}`,
+              onPress: () => handleEdit({ title: "Currency" }),
             }),
             renderSettingItem({
               icon: "view-dashboard-outline",
@@ -1134,16 +1206,13 @@ export const SettingsScreen = ({ navigation }) => {
               icon: "wallet-outline",
               title: "Monthly Budget",
               subtitle: formatCurrency(monthlyBudget),
+              onPress: () => handleEdit({ title: "Monthly Budget" }),
             }),
 
             renderSettingItem({
               icon: "view-dashboard-outline",
               title: "Expense Board",
-              subtitle: `${boardCount} Boards • ${expenseBoards.reduce(
-                (sum, board) =>
-                  sum + (board.expense_board_members?.length || 0),
-                0
-              )} Members`,
+              subtitle: `${boardCount} Boards • ${sharedMembers?.length} Members`,
               onPress: () => handleEdit({ title: "Expense Board" }),
               editable: false,
               showBorder: false,
@@ -1163,8 +1232,8 @@ export const SettingsScreen = ({ navigation }) => {
             renderSettingItem({
               icon: "crown",
               title: "Premium Access",
-              subtitle: "Upgrade to premium for more features",
-              onPress: () => {},
+              subtitle: "Upgrade premium to unlock all features",
+              onPress: () => handleEdit({ title: "Premium Access" }),
               showBorder: false,
               editable: false,
             }),

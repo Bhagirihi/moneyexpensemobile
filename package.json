@@ -1,5 +1,5 @@
 {
-  "name": "mobile_2",
+  "name": "Trivense",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -18,6 +18,8 @@
     "@react-navigation/stack": "^7.2.1",
     "@supabase/supabase-js": "^2.49.1",
     "expo": "~52.0.40",
+    "expo-font": "~13.0.4",
+    "expo-splash-screen": "~0.29.22",
     "expo-status-bar": "~2.0.1",
     "react": "18.3.1",
     "react-native": "0.76.9",
@@ -28,9 +30,7 @@
     "react-native-svg": "15.8.0",
     "react-native-toast-message": "^2.2.1",
     "react-native-ui-datepicker": "^3.1.2",
-    "expo-splash-screen": "~0.29.22",
-    "expo-font": "~13.0.4",
-    "expo-dev-client": "~5.0.19"
+    "supabase": "^2.20.12"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

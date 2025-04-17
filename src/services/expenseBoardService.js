@@ -60,6 +60,7 @@ export const expenseBoardService = {
       throw error;
     }
   },
+
   async getExpenseBoardsByID(id) {
     try {
       const {
@@ -169,6 +170,28 @@ export const expenseBoardService = {
       return true;
     } catch (error) {
       console.error("Error deleting expense board:", error);
+      throw error;
+    }
+  },
+
+  async getSharedMembers() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user");
+      console.log("User:", user.id);
+
+      const { data, error } = await supabase
+        .from("shared_users")
+        .select("*")
+        .eq("shared_by", user.id);
+
+      if (error) throw error;
+      console.log("Shared members:", data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching shared members:", error);
       throw error;
     }
   },

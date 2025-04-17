@@ -36,6 +36,8 @@ export const ProfileScreen = ({ navigation }) => {
   const [totalCategories, setTotalCategories] = useState(0);
   const [totalBoards, setTotalBoards] = useState(0);
   const featureAnimation = useRef(new Animated.Value(0)).current;
+  const [isGoogleconnected, setIsGoogleconnected] = useState(false);
+  const [totalSharedMembers, setTotalSharedMembers] = useState(0);
   const { session } = useAuth();
 
   useEffect(() => {
@@ -68,6 +70,9 @@ export const ProfileScreen = ({ navigation }) => {
   const accountStatics = async () => {
     const expenseBoards = await expenseBoardService.getExpenseBoards();
     const categories = await categoryService.getCategories();
+    const sharedMembers = await expenseBoardService.getSharedMembers();
+
+    console.log("sharedMembers", sharedMembers);
 
     const totalExpenses = expenseBoards.reduce(
       (sum, board) => sum + (board.totalExpenses || 0),
@@ -75,10 +80,12 @@ export const ProfileScreen = ({ navigation }) => {
     );
     const totalCategories = categories.length;
     const totalBoards = expenseBoards.length;
+    const totalSharedMembers = sharedMembers.length;
 
     setTotalExpenses(totalExpenses);
     setTotalCategories(totalCategories);
     setTotalBoards(totalBoards);
+    setTotalSharedMembers(totalSharedMembers);
   };
 
   const handleEditProfile = () => {
@@ -663,7 +670,7 @@ export const ProfileScreen = ({ navigation }) => {
               </Text>
             </View>
             <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              0
+              {totalSharedMembers}
             </Text>
             <Text
               style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
@@ -732,6 +739,52 @@ export const ProfileScreen = ({ navigation }) => {
               </Text>
             </View>
           </View>
+
+          <View style={styles.statsDetailItem}>
+            <View style={styles.statsDetailLeft}>
+              <MaterialCommunityIcons
+                name="google"
+                size={20}
+                color={isGoogleconnected ? theme.success : theme.error}
+              />
+              <View style={{ flexDirection: "column", gap: 4 }}>
+                <Text style={[styles.statsDetailText, { color: theme.text }]}>
+                  Google Account
+                </Text>
+                <Text
+                  style={[
+                    styles.connectionStatus,
+                    {
+                      color: isGoogleconnected ? theme.success : theme.error,
+                      fontSize: 12,
+                    },
+                  ]}
+                >
+                  {isGoogleconnected ? "✓ Connected" : "× Not connected"}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: isGoogleconnected
+                    ? theme.success
+                    : theme.primary,
+                },
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  "Coming Soon",
+                  "Social connections will be available soon!"
+                );
+              }}
+            >
+              <Text style={styles.connectButtonText}>
+                {isGoogleconnected ? "Connected" : "Connect"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -753,17 +806,17 @@ export const ProfileScreen = ({ navigation }) => {
             subtitle: "Manage notification preferences",
             onPress: () => navigation.navigate("Notification"),
           },
-          {
-            icon: "lock-outline",
-            title: "Privacy",
-            subtitle: "Control your privacy settings",
-            onPress: () => {
-              Alert.alert(
-                "Coming Soon",
-                "Privacy settings will be available soon!"
-              );
-            },
-          },
+          // {
+          //   icon: "lock-outline",
+          //   title: "Privacy",
+          //   subtitle: "Control your privacy settings",
+          //   onPress: () => {
+          //     Alert.alert(
+          //       "Coming Soon",
+          //       "Privacy settings will be available soon!"
+          //     );
+          //   },
+          // },
           {
             icon: "help-circle-outline",
             title: "Help & Support",
@@ -852,21 +905,21 @@ export const ProfileScreen = ({ navigation }) => {
       <Header
         title="Profile"
         onBack={() => navigation.goBack()}
-        rightComponent={
-          <TouchableOpacity
-            onPress={handleEditProfile}
-            style={[
-              styles.editButton,
-              { backgroundColor: `${theme.primary}15` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={isEditing ? "check" : "pencil"}
-              size={18}
-              color={theme.primary}
-            />
-          </TouchableOpacity>
-        }
+        // rightComponent={
+        //   <TouchableOpacity
+        //     onPress={handleEditProfile}
+        //     style={[
+        //       styles.editButton,
+        //       { backgroundColor: `${theme.primary}15` },
+        //     ]}
+        //   >
+        //     <MaterialCommunityIcons
+        //       name={isEditing ? "check" : "pencil"}
+        //       size={18}
+        //       color={theme.primary}
+        //     />
+        //   </TouchableOpacity>
+        // }
       />
       <Animated.ScrollView
         style={styles.content}
@@ -879,7 +932,7 @@ export const ProfileScreen = ({ navigation }) => {
         {renderProfileImage()}
         {/* {renderSubscriptionStatus()} */}
         {renderAccountStatistics()}
-        {renderAccountConnections()}
+        {/* {renderAccountConnections()} */}
         {renderSettingsSection()}
       </Animated.ScrollView>
     </SafeAreaView>

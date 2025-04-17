@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { notificationService } from "../services/notificationService";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
+import { realTimeSync } from "../services/realTimeSync";
 
 const formatNotificationDate = (dateString) => {
   const date = new Date(dateString);
@@ -49,7 +50,7 @@ export const NotificationScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchNotifications();
-    const subscription = notificationService.subscribeToNotifications(
+    const subscription = realTimeSync.subscribeToNotifications(
       (newNotification) => {
         setNotifications((prev) => [newNotification, ...prev]);
       }

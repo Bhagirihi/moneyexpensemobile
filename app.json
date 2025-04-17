@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "TripExpense",
-    "slug": "TripExpense",
+    "name": "Trivense",
+    "slug": "Trivense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon_0.png",
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/icon_0.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.tripexpense.app",
+      "package": "com.trivense.app",
       "versionCode": 1
     },
     "web": {
