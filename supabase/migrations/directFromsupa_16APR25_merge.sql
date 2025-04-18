@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   mobile text,
   avatar_url text,
   has_notifications boolean,
+  is2fa boolean,
   current_plan text,
   is_google_connected boolean,
   account_status text,
@@ -81,14 +82,16 @@ CREATE TABLE IF NOT EXISTS expenses (
 );
 
 CREATE TABLE public.shared_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY,
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
   is_accepted BOOLEAN DEFAULT false,
-  shared_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   shared_with TEXT NOT NULL,
-  board_id UUID NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE
+  board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE
 );
 
+-- Enable pgcrypto extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON "public"."profiles"("email_address");
@@ -107,6 +110,22 @@ ALTER TABLE "public"."expenses" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."shared_users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT policyname, schemaname, tablename
+    FROM pg_policies
+  LOOP
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I ON %I.%I',
+      r.policyname, r.schemaname, r.tablename
+    );
+  END LOOP;
+END $$;
 
 -- Create policies
 CREATE POLICY "Users can view their own profile"
@@ -240,15 +259,33 @@ CREATE POLICY "Allow delete for authenticated users"
 
 -- FOREIGN KEY CONSTRAINTS
 
-ALTER TABLE profiles ADD CONSTRAINT fk_profiles_board_id FOREIGN KEY (board_id) REFERENCES expense_boards (id);
-ALTER TABLE categories ADD CONSTRAINT categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles (id);
-ALTER TABLE expense_boards ADD CONSTRAINT expense_boards_created_by_fkey FOREIGN KEY (created_by) REFERENCES profiles (id);
-ALTER TABLE expenses ADD CONSTRAINT expenses_board_id_fkey FOREIGN KEY (board_id) REFERENCES expense_boards (id);
-ALTER TABLE expenses ADD CONSTRAINT expenses_category_id_fkey FOREIGN KEY (category_id) REFERENCES categories (id);
-ALTER TABLE expenses ADD CONSTRAINT expenses_created_by_fkey FOREIGN KEY (created_by) REFERENCES profiles (id);
-ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles (id);
-ALTER TABLE shared_users ADD CONSTRAINT shared_users_board_id_fkey FOREIGN KEY (board_id) REFERENCES expense_boards (id);
-ALTER TABLE shared_users ADD CONSTRAINT shared_users_shared_by_fkey FOREIGN KEY (shared_by) REFERENCES profiles (id);
+ALTER TABLE profiles ADD CONSTRAINT fk_profiles_board_id
+FOREIGN KEY (board_id) REFERENCES expense_boards (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE categories ADD CONSTRAINT categories_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES profiles (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE expense_boards ADD CONSTRAINT expense_boards_created_by_fkey
+FOREIGN KEY (created_by) REFERENCES profiles (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE expenses ADD CONSTRAINT expenses_board_id_fkey
+FOREIGN KEY (board_id) REFERENCES expense_boards (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE expenses ADD CONSTRAINT expenses_category_id_fkey
+FOREIGN KEY (category_id) REFERENCES categories (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE expenses ADD CONSTRAINT expenses_created_by_fkey
+FOREIGN KEY (created_by) REFERENCES profiles (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES profiles (id)
+DEFERRABLE INITIALLY DEFERRED;
 
 -- FUNCTION DEFINITIONS
 
@@ -298,74 +335,141 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger AS $$
+
+CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger
+SECURITY DEFINER
+SET search_path = public AS $$
 DECLARE
     default_board_id UUID;
+    referral_code TEXT;
+    share_code TEXT;
 BEGIN
-    -- Insert into profiles table
-    INSERT INTO public.profiles (
-        id,
-        full_name,
-        email_address,
-        mobile,
-        avatar_url,
-        has_notifications,
-        current_plan,
-        is_google_connected,
-        account_status
-    )
-    VALUES (
-        NEW.id,
-        NEW.raw_user_meta_data->>'full_name',
-        NEW.email,
-        NEW.raw_user_meta_data->>'mobile',
-        NEW.raw_user_meta_data->>'avatar_url',
-        COALESCE((NEW.raw_user_meta_data->>'has_notifications')::boolean, false),
-        'free',
-        COALESCE((NEW.raw_user_meta_data->>'is_google_connected')::boolean, false),
-        'active'
-    );
+    -- Start transaction block
+    BEGIN
+        -- Generate referral code
+        SELECT
+            string_agg(
+                substr(
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+                    (random() * 62)::integer + 1,
+                    1
+                ),
+                ''
+            )
+        INTO referral_code
+        FROM generate_series(1, 6);
 
-    -- Create default categories for the new user
-    INSERT INTO public.categories (
-        name,
-        description,
-        icon,
-        color,
-        user_id,
-        is_default
-    )
-    VALUES
-        ('Food', 'Food and dining expenses', 'food', '#FF6B6B', NEW.id, true),
-        ('Transport', 'Transportation costs', 'car', '#4ECDC4', NEW.id, true),
-        ('Shopping', 'Shopping and retail', 'shopping', '#45B7D1', NEW.id, true),
-        ('Entertainment', 'Entertainment and leisure', 'movie', '#96CEB4', NEW.id, true),
-        ('Health', 'Health and medical expenses', 'heart', '#FFEEAD', NEW.id, true),
-        ('Education', 'Education and learning', 'book', '#D4A5A5', NEW.id, true),
-        ('Housing', 'Housing and utilities', 'home', '#9B59B6', NEW.id, true),
-        ('Travel', 'Travel and tourism', 'airplane', '#3498DB', NEW.id, true);
+        -- Generate share code
+        SELECT
+            string_agg(
+                substr(
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+                    (random() * 62)::integer + 1,
+                    1
+                ),
+                ''
+            )
+        INTO share_code
+        FROM generate_series(1, 6);
 
-    -- Create a default ""General Expense"" board
-    INSERT INTO public.expense_boards (
-        name,
-        description,
-        total_budget,
-        created_by
-    )
-    VALUES (
-        'General Expenses',
-        'Default board for tracking general expenses',
-        NULL,  -- No specific budget limit
-        NEW.id
-    )
-    RETURNING id INTO default_board_id;
+        -- Generate a new UUID for the board
+        default_board_id := gen_random_uuid();
 
-    -- Log the successful creation
-    RAISE NOTICE 'Created default data for user %: Profile, Categories, and General Expense Board (ID: %)',
-        NEW.id,
-        default_board_id;
+        -- Create a default "General Expense" board first
+        INSERT INTO public.expense_boards (
+            id,
+            name,
+            description,
+            total_budget,
+            created_by,
+            share_code,
+            is_default,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            default_board_id,
+            'General Expenses',
+            'Default board for tracking general expenses',
+            NULL,
+            NEW.id,
+            share_code,
+            TRUE,
+            NOW(),
+            NOW()
+        );
 
-    RETURN NEW;
+        -- Then create the profile with the board_id
+        INSERT INTO public.profiles (
+            id,
+            full_name,
+            email_address,
+            mobile,
+            avatar_url,
+            has_notifications,
+            is2fa,
+            current_plan,
+            is_google_connected,
+            account_status,
+            total_boards,
+            board_id,
+            referral_code,
+            created_at,
+            updated_at
+        )
+        VALUES (
+            NEW.id,
+            NEW.raw_user_meta_data->>'full_name',
+            NEW.email,
+            NEW.raw_user_meta_data->>'mobile',
+            NEW.raw_user_meta_data->>'avatar_url',
+            COALESCE((NEW.raw_user_meta_data->>'has_notifications')::boolean, false),
+            false,
+            'free',
+            COALESCE((NEW.raw_user_meta_data->>'is_google_connected')::boolean, false),
+            'active',
+            1, -- Start with 1 board since we just created it
+            default_board_id,
+            referral_code,
+            NOW(),
+            NOW()
+        );
+
+        -- Create default categories for the new user
+        INSERT INTO public.categories (
+            id,
+            name,
+            description,
+            icon,
+            color,
+            user_id,
+            is_default,
+            created_at,
+            updated_at
+        )
+        VALUES
+            (gen_random_uuid(), 'Food', 'Food and dining expenses', 'food', '#FF6B6B', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Transport', 'Transportation costs', 'car', '#4ECDC4', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Shopping', 'Shopping and retail', 'shopping', '#45B7D1', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Entertainment', 'Entertainment and leisure', 'movie', '#96CEB4', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Health', 'Health and medical expenses', 'heart', '#FFEEAD', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Education', 'Education and learning', 'book', '#D4A5A5', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Housing', 'Housing and utilities', 'home', '#9B59B6', NEW.id, true, NOW(), NOW()),
+            (gen_random_uuid(), 'Travel', 'Travel and tourism', 'airplane', '#3498DB', NEW.id, true, NOW(), NOW());
+
+        -- Log the successful creation
+        RAISE NOTICE 'Created default data for user %: Profile, Categories, and General Expense Board (ID: %)',
+            NEW.id,
+            default_board_id;
+
+        RETURN NEW;
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- Log the error
+            RAISE EXCEPTION 'Error in handle_new_user: %', SQLERRM;
+            -- The transaction will be rolled back automatically
+            RETURN NULL;
+    END;
 END;
 $$ LANGUAGE plpgsql;
 
