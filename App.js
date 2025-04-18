@@ -10,14 +10,16 @@ import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import { StatusBar } from "expo-status-bar";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
+import WelcomeScreen from "./src/screens/WelcomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import EmailVerificationScreen from "./src/screens/EmailVerificationScreen";
 import FontTestScreen from "./src/screens/FontTestScreen";
 
 // Import all screens
-import OnboardingScreen from "./src/screens/OnboardingScreen";
-import WelcomeScreen from "./src/screens/WelcomeScreen";
+
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { ExpenseScreen } from "./src/screens/ExpenseScreen";
 import { AddExpenseScreen } from "./src/screens/AddExpenseScreen";
@@ -32,6 +34,7 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 import { View } from "react-native";
+import { showToast } from "./src/utils/toast";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
@@ -100,7 +103,29 @@ const AppContent = () => {
 
         const {
           data: { session },
+          error: sessionError,
         } = await supabase.auth.getSession();
+
+        if (sessionError || !session?.user) {
+          showToast.error("Error", "User session not found.");
+          return;
+        }
+
+        console.log("session updated_at:", session.user.updated_at);
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .update({ updated_at: new Date().toISOString() }) // Optionally use new Date()
+          .eq("id", session.user.id)
+          .select("updated_at") // So you get the updated value
+          .single();
+
+        if (error) {
+          showToast.error("Update failed", error.message);
+        } else {
+          showToast.success("Updated at", data?.updated_at);
+        }
+
         setSession(session);
 
         const {
@@ -192,13 +217,17 @@ const AppContent = () => {
                 ) : (
                   // Public routes
                   <>
-                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                    <Stack.Screen
+                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
+                    {/* <Stack.Screen
                       name="Onboarding"
                       component={OnboardingScreen}
                     /> */}
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
+                    <Stack.Screen
+                      name="EmailVerification"
+                      component={EmailVerificationScreen}
+                    />
                     <Stack.Screen
                       name="ForgotPassword"
                       component={ForgotPasswordScreen}

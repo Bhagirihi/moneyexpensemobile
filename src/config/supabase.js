@@ -134,15 +134,18 @@ export const resetPassword = async (email) => {
 };
 
 // User profile helpers
-export const updateUserProfile = async (userId, updates) => {
+export const updateUserProfile = async (updates) => {
+  console.log("data updatedData ini", updates);
   try {
-    const { data, error } = await supabase
+    const { data } = await supabase.auth.getUser();
+    console.log("user updateUserProfile", data.user?.id, new Date());
+    const { data: updatedData, error } = await supabase
       .from("profiles")
       .update({ ...updates, updated_at: new Date() })
-      .eq("id", userId);
+      .eq("id", data.user?.id);
 
     if (error) throw error;
-    return { data, error: null };
+    showToast.success("Profile updated successfully");
   } catch (error) {
     console.error("Update profile error:", error.message);
     return { data: null, error };

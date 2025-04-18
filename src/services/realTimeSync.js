@@ -148,4 +148,15 @@ export const realTimeSync = {
       subscription.unsubscribe();
     };
   },
+
+  subscribeToVerification: (callback) => {
+    return supabase
+      .channel("verification")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "verification" },
+        callback
+      )
+      .subscribe();
+  },
 };

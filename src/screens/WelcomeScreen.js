@@ -62,7 +62,7 @@ const WelcomeScreen = ({ navigation }) => {
         }
       }, 2500);
     } catch (error) {
-      console.error("Error checking auth state:", error);
+      console.log("Error checking auth state:", error);
       setTimeout(() => {
         navigation.replace("Login");
       }, 2500);

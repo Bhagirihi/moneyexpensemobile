@@ -26,6 +26,7 @@ const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
+    mobile: "",
     password: "",
     confirmPassword: "",
   });
@@ -46,6 +47,12 @@ const RegisterScreen = ({ navigation }) => {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Please enter a valid email";
+    }
+
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^\d{10}$/.test(formData.mobile)) {
+      newErrors.mobile = "Please enter a valid 10-digit mobile number";
     }
 
     if (!formData.password) {
@@ -74,6 +81,7 @@ const RegisterScreen = ({ navigation }) => {
         formData.password,
         {
           full_name: formData.fullName.trim(),
+          mobile: formData.mobile.trim(),
           avatar_url: null,
           has_notifications: false,
         }
@@ -81,10 +89,10 @@ const RegisterScreen = ({ navigation }) => {
 
       if (signUpError) throw signUpError;
 
-      showToast.success(
-        "Registration successful! Please check your email to verify your account."
-      );
-      navigation.navigate("Login");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "EmailVerification" }],
+      });
     } catch (error) {
       console.error("Registration error:", error.message);
       showToast.error(error.message || "Failed to register");
@@ -127,9 +135,6 @@ const RegisterScreen = ({ navigation }) => {
             />
             <Text style={[styles.title, { color: theme.text }]}>
               Create Account
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Sign up to start tracking your expenses
             </Text>
           </View>
 
@@ -208,6 +213,47 @@ const RegisterScreen = ({ navigation }) => {
               {errors.email && (
                 <Text style={[styles.errorText, { color: theme.error }]}>
                   {errors.email}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Mobile Number
+              </Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: errors.mobile ? theme.error : theme.border,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="phone-outline"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter your mobile number"
+                  placeholderTextColor={theme.textSecondary}
+                  value={formData.mobile}
+                  onChangeText={(text) => {
+                    setFormData((prev) => ({ ...prev, mobile: text }));
+                    if (errors.mobile) {
+                      setErrors((prev) => ({ ...prev, mobile: undefined }));
+                    }
+                  }}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </View>
+              {errors.mobile && (
+                <Text style={[styles.errorText, { color: theme.error }]}>
+                  {errors.mobile}
                 </Text>
               )}
             </View>
@@ -354,7 +400,7 @@ const RegisterScreen = ({ navigation }) => {
         visible={showVerificationModal}
         onClose={() => setShowVerificationModal(false)}
         title="Verify Your Email"
-        message="Please check your email for verification link"
+        message="We have sent a verification link to your email. Please verify your email to continue."
         icon="email-check"
         buttons={[
           {
@@ -386,8 +432,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginTop: 40,
-    marginBottom: 40,
+    marginVertical: 8,
   },
   title: {
     fontSize: 28,

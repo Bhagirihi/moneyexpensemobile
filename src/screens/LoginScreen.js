@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { supabase } from "../config/supabase";
+import { supabase, updateUserProfile } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { showToast } from "../utils/toast";
 
@@ -50,8 +50,21 @@ export const LoginScreen = ({ navigation }) => {
         password: formData.password,
       });
 
-      if (error) throw error;
-      showToast.success("Login successful");
+      if (error) {
+        if (error.message === "Email not confirmed") {
+          // If email is not confirmed, navigate to verification screen
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name: "EmailVerification",
+                params: { email: formData.email.trim() },
+              },
+            ],
+          });
+          return;
+        }
+      }
     } catch (error) {
       console.error("Login error:", error.message);
       showToast.error(error.message || "Failed to login");
