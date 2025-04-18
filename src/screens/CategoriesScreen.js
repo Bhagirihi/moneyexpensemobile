@@ -344,9 +344,12 @@ export const CategoriesScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchCategories();
-    const CategoryRealTimeSync =
-      realTimeSync.subscribeToCategory(fetchCategories);
-    return CategoryRealTimeSync;
+    const cleanup = realTimeSync.subscribeToCategory(fetchCategories);
+    return () => {
+      if (cleanup && typeof cleanup === "function") {
+        cleanup();
+      }
+    };
   }, []);
 
   const handleDelete = async (categoryId) => {

@@ -157,7 +157,7 @@ export const ProfileScreen = ({ navigation }) => {
         .update({ avatar_url: publicUrl })
         .eq("id", session.user.id); // ✅ string, works
 
-      if (error) throw error;
+      if (error) console.log("error", error);
       setUserProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
     } catch (error) {
       console.error("Image Upload Error:", error.message);

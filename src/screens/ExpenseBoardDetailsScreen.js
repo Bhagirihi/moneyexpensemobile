@@ -92,6 +92,38 @@ export const ExpenseBoardDetailsScreen = () => {
 
   const remainingBudget = totalBudget - totalExpenses;
 
+  const renderEmptyState = () => (
+    <View style={[styles.emptyContainer, { backgroundColor: theme.card }]}>
+      <View
+        style={[
+          styles.emptyIconContainer,
+          { backgroundColor: `${theme.primary}15` },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="receipt"
+          size={32}
+          color={theme.primary}
+        />
+      </View>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>
+        No Transactions Yet
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        Start by adding your first expense to this board
+      </Text>
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: theme.primary }]}
+        onPress={() => navigation.navigate("AddExpense", { boardId })}
+      >
+        <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
+        <Text style={[styles.addButtonText, { color: theme.white }]}>
+          Add Expense
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}

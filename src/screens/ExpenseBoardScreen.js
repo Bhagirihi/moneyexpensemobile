@@ -29,9 +29,12 @@ export const ExpenseBoardScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchExpenseBoards();
-    const ExpenseBoardRealTimeSync =
-      realTimeSync.subscribeToExpenseBoard(fetchExpenseBoards);
-    return ExpenseBoardRealTimeSync;
+    const cleanup = realTimeSync.subscribeToExpenseBoard(fetchExpenseBoards);
+    return () => {
+      if (cleanup && typeof cleanup === "function") {
+        cleanup();
+      }
+    };
   }, []);
 
   const fetchExpenseBoards = async () => {
