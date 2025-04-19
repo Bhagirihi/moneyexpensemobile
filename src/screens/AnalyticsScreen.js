@@ -149,22 +149,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 20,
+    flexWrap: "wrap",
+    gap: 8,
   },
   statItem: {
     flex: 1,
+    minWidth: "30%",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
     borderRadius: 16,
     marginHorizontal: 4,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
     marginBottom: 4,
+    textAlign: "center",
+    flexShrink: 1,
   },
   statLabel: {
     fontSize: 12,
     opacity: 0.7,
+    textAlign: "center",
   },
   insightsContainer: {
     marginTop: 8,
@@ -268,56 +274,26 @@ export const AnalyticsScreen = ({ navigation }) => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+
       const trends = await fetchExpenseTrends(user.id, selectedPeriod);
       console.log("Expense Trends:", trends);
       const statistics = trends.statistics;
       const trendData = trends.trendData;
       const dummyData = {
         totalExpenses: statistics.totalAmount,
-        averageExpense: statistics.averageAmount,
+        averageExpense: statistics?.averageAmount,
         stats: {
           highestSpending: statistics.highestAmount,
           lowestSpending: statistics.lowestAmount,
           totalTransactions: statistics.totalCount,
+          highestCategory: statistics?.categoryBreakdown[0]?.name,
+          highestCategoryPercentage:
+            statistics?.categoryBreakdown[0]?.percentage,
+          previousPeriod: {
+            percentageChange: statistics.previousPeriod?.percentageChange || 0,
+          },
         },
         topCategories: statistics?.categoryBreakdown || [],
-        // topCategories: [
-        //   {
-        //     name: "Food",
-        //     icon: "food",
-        //     color: "#FF6B6B",
-        //     amount: 800,
-        //     percentage: 32,
-        //   },
-        //   {
-        //     name: "Transport",
-        //     icon: "car",
-        //     color: "#4ECDC4",
-        //     amount: 600,
-        //     percentage: 24,
-        //   },
-        //   {
-        //     name: "Shopping",
-        //     icon: "shopping",
-        //     color: "#45B7D1",
-        //     amount: 500,
-        //     percentage: 20,
-        //   },
-        //   {
-        //     name: "Entertainment",
-        //     icon: "movie",
-        //     color: "#96CEB4",
-        //     amount: 400,
-        //     percentage: 16,
-        //   },
-        //   {
-        //     name: "Health",
-        //     icon: "heart",
-        //     color: "#FFEEAD",
-        //     amount: 200,
-        //     percentage: 8,
-        //   },
-        // ],
         insights: [
           {
             title: "Spending Increased",
@@ -464,36 +440,55 @@ export const AnalyticsScreen = ({ navigation }) => {
         <Text style={[styles.summaryTitle, { color: theme.text }]}>
           Total Expenses
         </Text>
-        {/* <MaterialCommunityIcons
-          name="currency-usd"
-          size={24}
-          color={theme.primary}
-        /> */}
       </View>
       <Text style={[styles.summaryAmount, { color: theme.text }]}>
         {formatCurrency(analytics.totalExpenses)}
       </Text>
       <Text style={[styles.summarySubtext, { color: theme.textSecondary }]}>
-        Average: {theme.currencySymbol}
-        {analytics.averageExpense.toLocaleString()} per day
+        Average: {formatCurrency(analytics.averageExpense)} per day
       </Text>
       <View style={styles.summaryTrend}>
         <MaterialCommunityIcons
-          name="trending-up"
+          name={
+            analytics.stats.previousPeriod?.percentageChange >= 0
+              ? "trending-up"
+              : "trending-down"
+          }
           size={20}
-          color={theme.success}
+          color={
+            analytics.stats.previousPeriod?.percentageChange >= 0
+              ? theme.success
+              : theme.error
+          }
         />
-        <Text style={[styles.trendText, { color: theme.success }]}>
-          12% more than last period
+        <Text
+          style={[
+            styles.trendText,
+            {
+              color:
+                analytics.stats.previousPeriod?.percentageChange >= 0
+                  ? theme.success
+                  : theme.error,
+            },
+          ]}
+        >
+          {Math.abs(analytics.stats.previousPeriod?.percentageChange || 0)}%{" "}
+          {analytics.stats.previousPeriod?.percentageChange >= 0
+            ? "more"
+            : "less"}{" "}
+          than last {selectedPeriod}
         </Text>
       </View>
       <View style={styles.statsContainer}>
         <View
           style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
         >
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            {theme.currencySymbol}
-            {analytics.stats.highestSpending}
+          <Text
+            style={[styles.statValue, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {formatCurrency(analytics.stats.highestSpending)}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Highest
@@ -502,9 +497,12 @@ export const AnalyticsScreen = ({ navigation }) => {
         <View
           style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
         >
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            {theme.currencySymbol}
-            {analytics.stats.lowestSpending}
+          <Text
+            style={[styles.statValue, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {formatCurrency(analytics.stats.lowestSpending)}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Lowest
@@ -513,11 +511,29 @@ export const AnalyticsScreen = ({ navigation }) => {
         <View
           style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
         >
-          <Text style={[styles.statValue, { color: theme.text }]}>
+          <Text
+            style={[styles.statValue, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {analytics.stats.totalTransactions}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Transactions
+          </Text>
+        </View>
+        <View
+          style={[styles.statItem, { backgroundColor: `${theme.primary}15` }]}
+        >
+          <Text
+            style={[styles.statValue, { color: theme.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {analytics.stats.highestCategory}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+            Highest Category
           </Text>
         </View>
       </View>
