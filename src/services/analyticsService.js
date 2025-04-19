@@ -187,12 +187,11 @@ export const fetchExpenseTrends = async (userId, period) => {
         startDate = new Date(now.setDate(now.getDate() - 30));
     }
 
-    // Fetch expenses grouped by date
+    // Fetch expenses with categories
     const { data, error } = await supabase
       .from("expenses")
       .select(
         `
-        date,
         amount,
         category_id,
         categories (
@@ -224,43 +223,32 @@ export const fetchExpenseTrends = async (userId, period) => {
     const averageAmountPerDay =
       daysInPeriod > 0 ? totalAmount / daysInPeriod : 0;
 
-    // Group expenses by date
-    const dailyExpenses = new Map();
+    // Calculate category breakdown
+    const categoryMap = new Map();
     data.forEach((expense) => {
-      const date = new Date(expense.date).toISOString().split("T")[0];
-      if (!dailyExpenses.has(date)) {
-        dailyExpenses.set(date, {
-          amount: 0,
-          count: 0,
-          categories: new Map(),
-        });
-      }
-      const dayData = dailyExpenses.get(date);
-      dayData.amount += expense.amount;
-      dayData.count += 1;
-
-      // Track category spending for each day
       const category = expense.categories;
-      if (!dayData.categories.has(category.name)) {
-        dayData.categories.set(category.name, {
+      if (!categoryMap.has(category.name)) {
+        categoryMap.set(category.name, {
           name: category.name,
           icon: category.icon,
           color: category.color,
           amount: 0,
+          count: 0,
         });
       }
-      dayData.categories.get(category.name).amount += expense.amount;
+      const catData = categoryMap.get(category.name);
+      catData.amount += expense.amount;
+      catData.count += 1;
     });
 
-    // Convert to array format with category breakdown
-    const trendData = Array.from(dailyExpenses.entries()).map(
-      ([date, dayData]) => ({
-        date,
-        amount: dayData.amount,
-        count: dayData.count,
-        categories: Array.from(dayData.categories.values()),
-      })
-    );
+    // Convert to array and calculate percentages
+    const categoryBreakdown = Array.from(categoryMap.values())
+      .map((cat) => ({
+        ...cat,
+        percentage:
+          totalAmount > 0 ? Math.round((cat.amount / totalAmount) * 100) : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
 
     // Format the statistics object
     const statistics = {
@@ -275,10 +263,11 @@ export const fetchExpenseTrends = async (userId, period) => {
         start: startDate.toISOString(),
         end: endDate.toISOString(),
       },
+      categoryBreakdown,
     };
 
     return {
-      trendData,
+      trendData: [], // You can keep this empty if not needed
       statistics,
     };
   } catch (error) {

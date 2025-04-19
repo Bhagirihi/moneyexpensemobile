@@ -280,43 +280,44 @@ export const AnalyticsScreen = ({ navigation }) => {
           lowestSpending: statistics.lowestAmount,
           totalTransactions: statistics.totalCount,
         },
-        topCategories: [
-          {
-            name: "Food",
-            icon: "food",
-            color: "#FF6B6B",
-            amount: 800,
-            percentage: 32,
-          },
-          {
-            name: "Transport",
-            icon: "car",
-            color: "#4ECDC4",
-            amount: 600,
-            percentage: 24,
-          },
-          {
-            name: "Shopping",
-            icon: "shopping",
-            color: "#45B7D1",
-            amount: 500,
-            percentage: 20,
-          },
-          {
-            name: "Entertainment",
-            icon: "movie",
-            color: "#96CEB4",
-            amount: 400,
-            percentage: 16,
-          },
-          {
-            name: "Health",
-            icon: "heart",
-            color: "#FFEEAD",
-            amount: 200,
-            percentage: 8,
-          },
-        ],
+        topCategories: statistics?.categoryBreakdown || [],
+        // topCategories: [
+        //   {
+        //     name: "Food",
+        //     icon: "food",
+        //     color: "#FF6B6B",
+        //     amount: 800,
+        //     percentage: 32,
+        //   },
+        //   {
+        //     name: "Transport",
+        //     icon: "car",
+        //     color: "#4ECDC4",
+        //     amount: 600,
+        //     percentage: 24,
+        //   },
+        //   {
+        //     name: "Shopping",
+        //     icon: "shopping",
+        //     color: "#45B7D1",
+        //     amount: 500,
+        //     percentage: 20,
+        //   },
+        //   {
+        //     name: "Entertainment",
+        //     icon: "movie",
+        //     color: "#96CEB4",
+        //     amount: 400,
+        //     percentage: 16,
+        //   },
+        //   {
+        //     name: "Health",
+        //     icon: "heart",
+        //     color: "#FFEEAD",
+        //     amount: 200,
+        //     percentage: 8,
+        //   },
+        // ],
         insights: [
           {
             title: "Spending Increased",
@@ -341,7 +342,7 @@ export const AnalyticsScreen = ({ navigation }) => {
         ],
       };
 
-      setAnalytics(dummyData);
+      await setAnalytics(dummyData);
     } catch (error) {
       console.error("Error fetching analytics:", error);
     } finally {
@@ -562,45 +563,52 @@ export const AnalyticsScreen = ({ navigation }) => {
   );
 
   const renderCategoryBreakdown = () => (
-    <View style={styles.categoryBreakdown}>
-      <Text
-        style={[styles.summaryTitle, { color: theme.text, marginVertical: 10 }]}
-      >
-        Category Breakdown
-      </Text>
-      {analytics.topCategories.map((category, index) => (
-        <View
-          key={index}
-          style={[styles.categoryItem, { backgroundColor: theme.card }]}
+    console.log("analytics.topCategories", analytics.topCategories),
+    (
+      <View style={styles.categoryBreakdown}>
+        <Text
+          style={[
+            styles.summaryTitle,
+            { color: theme.text, marginVertical: 10 },
+          ]}
         >
+          Category Breakdown
+        </Text>
+
+        {analytics.topCategories.map((category, index) => (
           <View
-            style={[
-              styles.categoryIcon,
-              { backgroundColor: `${category.color}15` },
-            ]}
+            key={index}
+            style={[styles.categoryItem, { backgroundColor: theme.card }]}
           >
-            <MaterialCommunityIcons
-              name={category.icon}
-              size={24}
-              color={category.color}
-            />
-          </View>
-          <View style={styles.categoryInfo}>
-            <Text style={[styles.categoryName, { color: theme.text }]}>
-              {category.name}
-            </Text>
-            <Text
-              style={[styles.categoryAmount, { color: theme.textSecondary }]}
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: `${category.color}15` },
+              ]}
             >
-              {formatCurrency(category.amount)}
+              <MaterialCommunityIcons
+                name={category.icon}
+                size={24}
+                color={category.color}
+              />
+            </View>
+            <View style={styles.categoryInfo}>
+              <Text style={[styles.categoryName, { color: theme.text }]}>
+                {category.name}
+              </Text>
+              <Text
+                style={[styles.categoryAmount, { color: theme.textSecondary }]}
+              >
+                {formatCurrency(category.amount)}
+              </Text>
+            </View>
+            <Text style={[styles.categoryPercentage, { color: theme.primary }]}>
+              {`${category.percentage}% (${category.count})`}
             </Text>
           </View>
-          <Text style={[styles.categoryPercentage, { color: theme.primary }]}>
-            {category.percentage}%
-          </Text>
-        </View>
-      ))}
-    </View>
+        ))}
+      </View>
+    )
   );
 
   return (
