@@ -25,7 +25,7 @@ const { width } = Dimensions.get("window");
 const TIME_PERIODS = [
   { id: "week", label: "This Week", icon: "calendar-week", days: 7 },
   { id: "month", label: "This Month", icon: "calendar-month", days: 30 },
-  { id: "year", label: "This Year", icon: "calendar-year", days: 365 },
+  { id: "year", label: "This Year", icon: "calendar-range", days: 365 },
   { id: "all", label: "All Time", icon: "calendar-clock", days: null },
 ];
 
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
 export const AnalyticsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [analytics, setAnalytics] = useState({
     totalExpenses: 0,
@@ -276,12 +276,11 @@ export const AnalyticsScreen = ({ navigation }) => {
       if (!user) throw new Error("User not authenticated");
 
       const trends = await fetchExpenseTrends(user.id, selectedPeriod);
-      console.log("Expense Trends:", trends);
       const statistics = trends.statistics;
       const trendData = trends.trendData;
       const dummyData = {
         totalExpenses: statistics.totalAmount,
-        averageExpense: statistics?.averageAmount,
+        averageExpense: statistics?.averageAmountPerDay,
         stats: {
           highestSpending: statistics.highestAmount,
           lowestSpending: statistics.lowestAmount,
@@ -296,22 +295,38 @@ export const AnalyticsScreen = ({ navigation }) => {
         topCategories: statistics?.categoryBreakdown || [],
         insights: [
           {
-            title: "Spending Increased",
-            description:
-              "Your spending increased by 15% compared to last month",
-            icon: "trending-up",
-            color: "#FF6B6B",
+            title: `Spending ${
+              statistics.previousPeriod?.percentageChange >= 0
+                ? "Increased"
+                : "Decreased"
+            }`,
+            description: `Your spending ${
+              statistics.previousPeriod?.percentageChange >= 0
+                ? "increased"
+                : "decreased"
+            } by ${Math.abs(
+              statistics.previousPeriod?.percentageChange || 0
+            )}% compared to last ${selectedPeriod}`,
+            icon:
+              statistics.previousPeriod?.percentageChange >= 0
+                ? "trending-up"
+                : "trending-down",
+            color:
+              statistics.previousPeriod?.percentageChange >= 0
+                ? "#FF6B6B"
+                : "#4ECDC4",
           },
           {
             title: "Top Category",
-            description: "Food expenses are your highest spending category",
+            description: `${statistics?.categoryBreakdown[0]?.name},${statistics?.categoryBreakdown[1]?.name},and ${statistics?.categoryBreakdown[2]?.name} are the top 3 categories of your spending.`,
             icon: "food",
             color: "#4ECDC4",
           },
           {
             title: "Savings Opportunity",
-            description:
-              "You could save 20% by reducing entertainment expenses",
+            description: `You could save ${Math.abs(
+              statistics.previousPeriod?.percentageChange || 0
+            )}% by reducing ${statistics?.categoryBreakdown[0]?.name} expenses`,
             icon: "piggy-bank",
             color: "#45B7D1",
           },
