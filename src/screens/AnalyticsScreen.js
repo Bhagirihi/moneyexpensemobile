@@ -16,7 +16,10 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
-
+import {
+  fetchAnalytics,
+  fetchExpenseTrends,
+} from "../services/analyticsService";
 const { width } = Dimensions.get("window");
 
 const TIME_PERIODS = [
@@ -265,14 +268,17 @@ export const AnalyticsScreen = ({ navigation }) => {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
-
+      const trends = await fetchExpenseTrends(user.id, selectedPeriod);
+      console.log("Expense Trends:", trends);
+      const statistics = trends.statistics;
+      const trendData = trends.trendData;
       const dummyData = {
-        totalExpenses: 2500,
-        averageExpense: 125,
+        totalExpenses: statistics.totalAmount,
+        averageExpense: statistics.averageAmount,
         stats: {
-          highestSpending: 850,
-          lowestSpending: 450,
-          totalTransactions: 24,
+          highestSpending: statistics.highestAmount,
+          lowestSpending: statistics.lowestAmount,
+          totalTransactions: statistics.totalCount,
         },
         topCategories: [
           {
@@ -344,8 +350,24 @@ export const AnalyticsScreen = ({ navigation }) => {
   }, [selectedPeriod]);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics, selectedPeriod]);
+    const checkAnalytics = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const analytics = await fetchAnalytics(user.id, selectedPeriod);
+        const trends = await fetchExpenseTrends(user.id, selectedPeriod);
+        console.log("Analytics Data:", analytics);
+        console.log("Expense Trends:", trends);
+      } catch (error) {
+        console.error("Error checking analytics:", error);
+      }
+    };
+
+    checkAnalytics();
+  }, [selectedPeriod]);
 
   const renderPeriodDropdown = () => (
     <TouchableOpacity

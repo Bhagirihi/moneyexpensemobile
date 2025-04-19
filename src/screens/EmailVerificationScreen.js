@@ -17,6 +17,7 @@ const EmailVerificationScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("pending");
+  const [recheckLoading, setRecheckLoading] = useState(false);
   const email = route.params?.email;
 
   useEffect(() => {
@@ -88,21 +89,31 @@ const EmailVerificationScreen = ({ navigation, route }) => {
   };
 
   const handleReCheckVerification = async () => {
-    setVerificationLoading(true);
+    setRecheckLoading(true);
     try {
-      console.log("user", user);
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) throw error;
+
       if (user?.email_confirmed_at) {
         setVerificationStatus("verified");
         showToast.success("Email verified successfully!");
-        // updateUserProfile({ updated_at: new Date() });
+        // Update user profile to trigger any necessary updates
+        await updateUserProfile({ updated_at: new Date() });
         setTimeout(() => {
           navigation.replace("Dashboard");
         }, 2000);
+      } else {
+        showToast.info("Email not verified yet. Please check your inbox.");
       }
     } catch (error) {
       console.error("Error re-checking verification:", error);
+      showToast.error("Failed to check verification status");
     } finally {
-      setVerificationLoading(false);
+      setRecheckLoading(false);
     }
   };
 
@@ -166,9 +177,9 @@ const EmailVerificationScreen = ({ navigation, route }) => {
           <TouchableOpacity
             style={[styles.button, { backgroundColor: theme.card }]}
             onPress={handleReCheckVerification}
-            disabled={verificationLoading}
+            disabled={recheckLoading}
           >
-            {verificationLoading ? (
+            {recheckLoading ? (
               <ActivityIndicator color={theme.primary} />
             ) : (
               <Text style={[styles.buttonText, { color: theme.primary }]}>
