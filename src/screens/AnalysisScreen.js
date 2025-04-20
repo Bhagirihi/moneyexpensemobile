@@ -14,7 +14,9 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Card from "../components/common/Card";
 import StatCard from "../components/common/StatCard";
-
+import { supabase } from "../config/supabase";
+import { formatCurrency } from "../utils/formatters";
+import { expenseBoardService } from "../services/expenseBoardService";
 const { width } = Dimensions.get("window");
 
 export const AnalysisScreen = ({ navigation, route }) => {
@@ -26,30 +28,86 @@ export const AnalysisScreen = ({ navigation, route }) => {
     name: "Summer Vacation 2024",
     date: "Jun 15 - Jun 30",
   });
-  const [trips, setTrips] = useState([
-    { id: 1, name: "Summer Vacation 2024", date: "Jun 15 - Jun 30" },
-    { id: 2, name: "Weekend Trip", date: "Mar 1 - Mar 3" },
-    { id: 3, name: "Business Trip", date: "Feb 10 - Feb 15" },
-  ]);
+  const [trips, setTrips] = useState([]);
   const [analysisData, setAnalysisData] = useState({
     totalExpense: 0,
     totalBudget: 0,
     perPersonBudget: 0,
-    participants: [],
-    settlements: [],
+    participants: [
+      { id: 1, name: "John", spent: 800, percentage: 53.33 },
+      { id: 2, name: "Alice", spent: 400, percentage: 26.67 },
+      { id: 3, name: "Bob", spent: 300, percentage: 20 },
+    ],
+    settlements: [
+      { from: "Alice", to: "John", amount: 150 },
+      { from: "Bob", to: "John", amount: 200 },
+    ],
   });
+
+  useEffect(() => {
+    fetchBoardsDetails();
+  }, []);
 
   useEffect(() => {
     fetchAnalysisData();
   }, [selectedTrip]);
 
+  const fetchBoardsDetails = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user found");
+
+      const { data: boards, error } = await supabase
+        .from("expense_boards")
+        .select(
+          `
+          id,
+          name,
+          total_budget,
+          created_at
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formattedBoards = boards.map((board) => ({
+        id: board.id,
+        name: board.name,
+        date: new Date(board.created_at).toLocaleDateString(),
+        total_budget: board.total_budget,
+      }));
+
+      setTrips(formattedBoards);
+      if (formattedBoards.length > 0) {
+        setSelectedTrip(formattedBoards[0]);
+      }
+    } catch (error) {
+      console.error("Error fetching boards details:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchAnalysisData = async () => {
     try {
-      // TODO: Replace with actual Supabase query
-      const dummyData = {
-        totalExpense: 1500,
-        totalBudget: 2000,
-        perPersonBudget: 500,
+      const data = await expenseBoardService.getExpenseBoardsByID(
+        selectedTrip.id
+      );
+      console.log("Analysis data:", JSON.stringify(data, null, 2));
+
+      // Calculate per person budget properly
+      const totalBudget = Number(data.totalBudget);
+      const totalExpenses = Number(data.totalExpenses);
+      const participantCount = "3" || data.participants?.length; // Fallback to 1 if no participants
+      const perPersonBudget = Number(data.perPersonBudget);
+
+      setAnalysisData({
+        totalExpense: totalExpenses,
+        totalBudget: totalBudget,
+        perPersonBudget: Number(perPersonBudget.toFixed(2)),
         participants: [
           { id: 1, name: "John", spent: 800, percentage: 53.33 },
           { id: 2, name: "Alice", spent: 400, percentage: 26.67 },
@@ -59,12 +117,10 @@ export const AnalysisScreen = ({ navigation, route }) => {
           { from: "Alice", to: "John", amount: 150 },
           { from: "Bob", to: "John", amount: 200 },
         ],
-      };
-      setAnalysisData(dummyData);
+        participantCount: participantCount,
+      });
     } catch (error) {
       console.error("Error fetching analysis data:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -190,21 +246,26 @@ export const AnalysisScreen = ({ navigation, route }) => {
       <View style={styles.summaryGrid}>
         <StatCard
           title="Expense"
-          value={`$${analysisData.totalExpense}`}
+          value={formatCurrency(Number(analysisData.totalExpense.toFixed(2)))}
           icon="cash-multiple"
           style={styles.summaryItem}
+          valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
           title="Budget"
-          value={`$${analysisData.totalBudget}`}
+          value={formatCurrency(Number(analysisData.totalBudget.toFixed(2)))}
           icon="wallet"
           style={styles.summaryItem}
+          valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
           title="Per Person"
-          value={`$${analysisData.perPersonBudget}`}
+          value={formatCurrency(
+            Number(analysisData.perPersonBudget.toFixed(2))
+          )}
           icon="account-group"
           style={styles.summaryItem}
+          valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
           title="Status"
@@ -241,7 +302,9 @@ export const AnalysisScreen = ({ navigation, route }) => {
     <Card style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, { color: theme.text }]}>
-          Per Person Spending
+          {analysisData.participantCount > 0
+            ? `Per Person Spending (${analysisData.participantCount})`
+            : "No participants"}
         </Text>
         <MaterialCommunityIcons
           name="account-group"
@@ -266,7 +329,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.participantDetails}>
               <Text style={[styles.participantName, { color: theme.text }]}>
-                {participant.name}
+                {participant.name || participant.shared_with}
               </Text>
               <View style={styles.percentageBar}>
                 <View

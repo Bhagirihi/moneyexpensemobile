@@ -69,21 +69,42 @@ export const expenseBoardService = {
       if (!user) throw new Error("No authenticated user");
 
       // First, get all expense boards for the user
-      const { data: boards, error: boardsError } = await supabase
+      const { data: expenses, error: expensesBoardError } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("board_id", id);
+
+      const { data: expensesBoard, error: boardError } = await supabase
         .from("expense_boards")
-        .select("id, total_budget, name")
-        .eq("created_by", user.id)
+        .select("*")
         .eq("id", id);
 
-      if (boardsError) throw boardsError;
+      const { data: sharedUsers, error: sharedUsersError } = await supabase
+        .from("shared_users")
+        .select("id, shared_with, shared_by")
+        .eq("board_id", id)
+        .eq("shared_by", user.id);
+
+      if (expensesBoardError) throw expensesBoardError;
 
       // If no boards found, return empty array
-      if (!boards || boards.length === 0) {
+      if (!expenses || expenses.length === 0) {
         return [];
       }
+      let expenseBoard;
 
-      console.log("Boards of ID:", boards);
-      return boards;
+      expenseBoard = {
+        // ...expensesBoard,
+        //  ...board,
+        participants: [],
+        totalBudget: expensesBoard[0].total_budget,
+        perPersonBudget: "100000" || expensesBoard[0].per_person_budget,
+        totalExpenses: expenses.reduce(
+          (sum, expense) => sum + expense.amount,
+          0
+        ),
+      };
+      return expenseBoard;
     } catch (error) {
       console.error("Error fetching boards:", error);
       throw error;

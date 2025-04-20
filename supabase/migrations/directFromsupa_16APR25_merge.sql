@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS expense_boards (
   name text NOT NULL,
   description text,
   total_budget numeric,
+  total_expense numeric,
   created_by uuid,
   created_at timestamp with time zone,
   updated_at timestamp with time zone,
@@ -499,21 +500,27 @@ $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION public.update_profiles_budget() RETURNS trigger AS $$
 BEGIN
-  UPDATE profiles
-  SET default_board_budget = NEW.total_budget
-  WHERE board_id = NEW.id;
+-- Only proceed if total_budget has changed (or any other condition you want)
+  IF OLD.total_budget IS DISTINCT FROM NEW.total_budget THEN
+    UPDATE profiles
+    SET default_board_budget = NEW.total_budget
+    WHERE board_id = NEW.id;
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION public.sync_budget_on_board_id_change() RETURNS trigger AS $$
 BEGIN
+-- Only proceed if the board_id has actually changed
+  IF OLD.board_id IS DISTINCT FROM NEW.board_id THEN
+  -- Update the profile budget only if necessary
   UPDATE profiles
   SET default_board_budget = (
     SELECT total_budget FROM expense_boards WHERE id = NEW.board_id
   )
   WHERE id = NEW.id; -- Replace with user_id = NEW.user_id if needed
-
+END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -592,6 +599,55 @@ CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
     )::jsonb
 $$ LANGUAGE sql;
 
+CREATE OR REPLACE FUNCTION update_board_total_expense()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Subtract old amount if it's an update
+  IF TG_OP = 'UPDATE' THEN
+    UPDATE expense_boards
+    SET total_expense = total_expense - OLD.amount + NEW.amount
+    WHERE id = NEW.board_id;
+  ELSIF TG_OP = 'INSERT' THEN
+    UPDATE expense_boards
+    SET total_expense = total_expense + NEW.amount
+    WHERE id = NEW.board_id;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE expense_boards
+    SET total_expense = total_expense - OLD.amount
+    WHERE id = OLD.board_id;
+  END IF;
+
+  RETURN NULL; -- AFTER trigger must return NULL
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_total_expense()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update the total_expense field in the expense_boards table
+  UPDATE expense_boards
+  SET total_expense = (
+    SELECT COALESCE(SUM(e.amount), 0) -- Replace `amount` with the correct field in your `expenses` table
+    FROM expenses e
+    WHERE e.board_id = NEW.board_id AND e.created_by = NEW.created_by
+  )
+  WHERE id = NEW.board_id;
+
+  -- Update the shared_users table to reflect the total_expense change
+  UPDATE shared_users
+  SET total_expense = (
+    SELECT COALESCE(SUM(e.amount), 0) -- Replace `amount` with the correct field in your `expenses` table
+    FROM expenses e
+    WHERE e.board_id = NEW.board_id
+  )
+  WHERE board_id = NEW.board_id;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
 -- TRIGGERS
 
 -- Drop the trigger if it already exists
@@ -617,3 +673,49 @@ CREATE TRIGGER trg_sync_budget_on_board_change
 AFTER UPDATE ON profiles
 FOR EACH ROW
 EXECUTE FUNCTION sync_budget_on_board_id_change();
+
+DROP TRIGGER IF EXISTS trg_expense_insert ON expenses;
+DROP TRIGGER IF EXISTS trg_expense_update ON expenses;
+DROP TRIGGER IF EXISTS trg_expense_delete ON expenses;
+
+-- After Insert
+CREATE TRIGGER trg_expense_insert
+AFTER INSERT ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_board_total_expense();
+
+-- After Update
+CREATE TRIGGER trg_expense_update
+AFTER UPDATE ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_board_total_expense();
+
+-- After Delete
+CREATE TRIGGER trg_expense_delete
+AFTER DELETE ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_board_total_expense();
+
+-- Drop the trigger if it already exists
+DROP TRIGGER IF EXISTS trg_update_total_expense_on_insert ON expenses;
+-- Trigger to update total_expense after an insert
+CREATE TRIGGER trg_update_total_expense_on_insert
+AFTER INSERT ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_total_expense();
+
+-- Drop the trigger if it already exists
+DROP TRIGGER IF EXISTS trg_update_total_expense_on_update ON expenses;
+-- Trigger to update total_expense after an update
+CREATE TRIGGER trg_update_total_expense_on_update
+AFTER UPDATE ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_total_expense();
+
+-- Drop the trigger if it already exists
+DROP TRIGGER IF EXISTS trg_update_total_expense_on_delete ON expenses;
+-- Trigger to update total_expense after a delete
+CREATE TRIGGER trg_update_total_expense_on_delete
+AFTER DELETE ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION update_total_expense();

@@ -161,6 +161,24 @@ export const DashboardScreen = ({ navigation }) => {
     setRefreshing(false);
   }, []);
 
+  const handleDeletePress = async (expenseId) => {
+    try {
+      await expenseService.deleteExpense(expenseId);
+      const updatedExpenses = expenses.filter(
+        (expense) => expense.id !== expenseId
+      );
+      setExpenses(updatedExpenses);
+      memoizedCalculateMonthlyStats(updatedExpenses);
+      showToast.success(
+        "Expense deleted",
+        "The expense has been successfully deleted"
+      );
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      showToast.error("Failed to delete expense", "Please try again later");
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       //setLoading(true);
@@ -373,6 +391,7 @@ export const DashboardScreen = ({ navigation }) => {
         expenses={expenses.slice(0, 3)}
         title="Recent Transactions"
         onSeeAllPress={() => navigation.navigate("Expense")}
+        onDeletePress={handleDeletePress}
         onExpensePress={(expense) => {}}
         showHeader={true}
         showAllButton={true}

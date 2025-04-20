@@ -346,6 +346,7 @@ export const ExpenseBoardDetailsScreen = () => {
               Add
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.card }]}
             onPress={() => navigation.navigate("Analysis", { boardId })}
