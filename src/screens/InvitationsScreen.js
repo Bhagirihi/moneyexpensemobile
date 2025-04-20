@@ -30,74 +30,17 @@ import * as FileSystem from "expo-file-system";
 
 export const InvitationsScreen = ({ navigation }) => {
   const { theme } = useTheme();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [userProfile, setUserProfile] = useState(null);
+
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [expandedFeature, setExpandedFeature] = useState(null);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [totalCategories, setTotalCategories] = useState(0);
-  const [totalBoards, setTotalBoards] = useState(0);
-  const featureAnimation = useRef(new Animated.Value(0)).current;
-  const [isGoogleconnected, setIsGoogleconnected] = useState(false);
-  const [totalSharedMembers, setTotalSharedMembers] = useState(0);
+
   const { session } = useAuth();
   const [sharedUsers, setSharedUsers] = useState([]);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   useEffect(() => {
-    fetchUserProfile();
     fetchSharedUsers();
     console.log("session", session);
   }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      if (session.user) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        const { data: ImageData, error: ImageError } = await supabase.storage
-          .from("avatars")
-          .list(session.user.id);
-
-        console.log("Image", ImageData, ImageError);
-
-        if (error) throw error;
-
-        accountStatics();
-        setUserProfile(data);
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error.message);
-      Alert.alert("Error", "Failed to load profile data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const accountStatics = async () => {
-    const expenseBoards = await expenseBoardService.getExpenseBoards();
-    const categories = await categoryService.getCategories();
-    const sharedMembers = await expenseBoardService.getSharedMembers();
-
-    console.log("sharedMembers", sharedMembers);
-
-    const totalExpenses = expenseBoards.reduce(
-      (sum, board) => sum + (board.totalExpenses || 0),
-      0
-    );
-    const totalCategories = categories.length;
-    const totalBoards = expenseBoards.length;
-    const totalSharedMembers = sharedMembers.length;
-
-    setTotalExpenses(totalExpenses);
-    setTotalCategories(totalCategories);
-    setTotalBoards(totalBoards);
-    setTotalSharedMembers(totalSharedMembers);
-  };
 
   const fetchSharedUsers = async () => {
     try {
@@ -107,965 +50,97 @@ export const InvitationsScreen = ({ navigation }) => {
           `
           *,
           profiles:user_id (
+            id,
             full_name,
-            email_address,
-            avatar_url
+            email_address
           ),
           expense_boards:board_id (
             name
           )
         `
         )
+        .eq("shared_by", session.user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setSharedUsers(data || []);
+      // Enrich users with fallback profile data if needed
+      const enrichedData = await Promise.all(
+        (data || []).map(async (user) => {
+          let profile = user.profiles;
+
+          // Fallback: fetch profile using shared_with email
+          if (!profile && user.shared_with) {
+            const { data: fallbackProfile } = await supabase
+              .from("profiles")
+              .select("id, full_name, email_address")
+              .eq("email_address", user.shared_with)
+              .single();
+
+            if (fallbackProfile) {
+              profile = fallbackProfile;
+            }
+          }
+
+          return {
+            ...user,
+            profiles: profile,
+          };
+        })
+      );
+
+      console.log("setSharedUsers enrichedData", enrichedData);
+      setSharedUsers(enrichedData);
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching shared users:", error.message);
+      setLoading(false);
     }
   };
 
-  const handleEditProfile = () => {
-    setIsEditing(!isEditing);
-    // TODO: Implement edit profile functionality
-  };
-
-  const toggleFeature = (index) => {
-    if (expandedFeature === index) {
-      Animated.timing(featureAnimation, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start(() => setExpandedFeature(null));
-    } else {
-      setExpandedFeature(index);
-      Animated.timing(featureAnimation, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    }
-  };
-
-  const pickAndUploadImage = async (userId) => {
+  const handleRemoveUser = async (sharedUserId, boardId, userName) => {
     try {
-      if (!userId) {
-        userId = session?.user?.id;
-        if (!userId) {
-          throw new Error("User ID is missing.");
-        }
-        console.log("userId", userId);
-      }
-      // Ask for permission
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission required",
-          "Please grant camera access to upload images"
-        );
-        return;
-      }
+      setIsRemoving(true);
 
-      // Pick image from gallery
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-      });
+      const { error } = await supabase
+        .from("shared_users")
+        .delete()
+        .eq("id", sharedUserId);
 
-      if (result.canceled) return;
+      if (error) throw error;
 
-      const publicUrl = await uploadImageToSupabase(result);
+      // Refresh the shared users list
+      await fetchSharedUsers();
 
-      // Update DB with new avatar URL
-      const { data, error } = await supabase
-        .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", session.user.id); // ✅ string, works
-
-      if (error) console.log("error", error);
-      setUserProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
+      Alert.alert("Success", `${userName} has been removed from the board`, [
+        { text: "OK" },
+      ]);
     } catch (error) {
-      console.error("Image Upload Error:", error.message);
-      Alert.alert("Error", "Something went wrong while uploading image.");
+      console.error("Error removing user:", error.message);
+      Alert.alert("Error", "Failed to remove user. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsRemoving(false);
     }
   };
 
-  const uploadImageToSupabase = async (ImageData) => {
-    const { uri, mimeType } = ImageData.assets[0];
-    try {
-      const userId = session?.user?.id; // Ensure user is logged in
-      if (!userId) throw new Error("User not logged in");
-
-      console.log("Uploading image with URI:", uri);
-
-      // Convert image URI to base64
-      const base64Image = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      // console.log("Base64 Image:", base64Image); // Check base64 string
-
-      // Create a filename and path
-      const fileExt = uri.split(".").pop()?.split("?")[0] || "jpg";
-      const filename = `${Date.now()}.${fileExt}`;
-      const path = `${userId}/${filename}`;
-      const fileType = `image/${fileExt}`;
-
-      console.log("base64Image", JSON.stringify(base64Image), fileType, path);
-      const file = {
-        uri: uri,
-        name: filename,
-        type: fileType,
-      };
-      // Now upload the base64 image to Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, {
-          contentType: fileType, // Ensure proper content type
-        });
-
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(path);
-
-      console.log("Image uploaded successfully. Public URL:", publicUrl);
-      return publicUrl;
-    } catch (error) {
-      console.error("Error in uploadImageToSupabase:", error);
-      throw error;
-    }
-  };
-
-  const renderProfileImage = () => (
-    console.log("userProfile?.avatar_url", userProfile?.avatar_url),
-    (
-      <View
-        style={[
-          styles.profileImageSection,
-          { backgroundColor: theme.cardBackground },
-        ]}
-      >
-        <View style={styles.profileRow}>
-          <View style={styles.profileImageContainer}>
-            <TouchableOpacity onPress={pickAndUploadImage}>
-              <View
-                style={[
-                  styles.profileImage,
-                  { backgroundColor: `${theme.primary}15` },
-                ]}
-              >
-                {userProfile?.avatar_url ? (
-                  <Image
-                    source={{ uri: userProfile.avatar_url }}
-                    style={styles.profileImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="account"
-                    size={50}
-                    color={theme.primary}
-                  />
-                )}
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.editImageButton,
-                  { backgroundColor: theme.primary },
-                ]}
-                onPress={pickAndUploadImage}
-              >
-                <MaterialCommunityIcons
-                  name="camera"
-                  size={14}
-                  color="#FFFFFF"
-                />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.profileDetails}>
-            <Text style={[styles.profileName, { color: theme.text }]}>
-              {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
-            </Text>
-            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-              {userProfile?.email_address || "No email Address"}
-            </Text>
-            <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-              {userProfile?.mobile || "No phone Number"}
-            </Text>
-            <View style={styles.profileBadge}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={14}
-                color={theme.success}
-              />
-              <Text style={[styles.profileBadgeText, { color: theme.success }]}>
-                Verified Account
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    )
-  );
-
-  const renderSubscriptionStatus = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="crown"
-            size={24}
-            color={theme.primary}
-          />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Premium Access
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Unlock all premium features
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.subscriptionInfo}>
-        <View style={styles.premiumHeader}>
-          <View style={styles.premiumBadgeContainer}>
-            <View
-              style={[
-                styles.planBadge,
-                { backgroundColor: `${theme.primary}15` },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="star"
-                size={16}
-                color={theme.primary}
-                style={styles.planIcon}
-              />
-              <Text style={[styles.planValue, { color: theme.primary }]}>
-                Free Plan
-              </Text>
-            </View>
-            <View style={styles.premiumPriceContainer}>
-              <Text style={[styles.premiumPrice, { color: theme.text }]}>
-                ₹299
-              </Text>
-              <Text
-                style={[styles.premiumPeriod, { color: theme.textSecondary }]}
-              >
-                /month
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.upgradePremiumButton,
-              { backgroundColor: theme.primary },
-            ]}
-            onPress={() => {
-              Alert.alert(
-                "Coming Soon",
-                "Premium features will be available soon!"
-              );
-            }}
-          >
-            <MaterialCommunityIcons
-              name="crown"
-              size={20}
-              color="#FFFFFF"
-              style={styles.upgradeIcon}
-            />
-            <Text style={styles.upgradePremiumText}>Upgrade to Premium</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.premiumFeatures}>
-          <Text style={[styles.featuresTitle, { color: theme.text }]}>
-            Premium Features
-          </Text>
-          <View style={styles.featuresList}>
-            {[
-              {
-                icon: "view-grid-plus",
-                title: "Unlimited Boards",
-                description: "Create unlimited expense boards",
-                details: [
-                  "Create and manage unlimited expense boards",
-                  "Customize board settings and permissions",
-                  "Share boards with team members",
-                  "Advanced board analytics",
-                ],
-                color: theme.primary,
-              },
-              {
-                icon: "chart-line",
-                title: "Advanced Analytics",
-                description: "Detailed insights and reports",
-                details: [
-                  "Comprehensive expense analytics",
-                  "Custom report generation",
-                  "Trend analysis and forecasting",
-                  "Export data in multiple formats",
-                ],
-                color: theme.success,
-              },
-              {
-                icon: "file-export",
-                title: "Export Data",
-                description: "Export to PDF/Excel",
-                details: [
-                  "Export to PDF, Excel, and CSV",
-                  "Custom report templates",
-                  "Automated report scheduling",
-                  "Batch export capabilities",
-                ],
-                color: theme.warning,
-              },
-              {
-                icon: "headphones",
-                title: "Priority Support",
-                description: "24/7 dedicated support",
-                details: [
-                  "24/7 dedicated customer support",
-                  "Priority ticket resolution",
-                  "Direct access to support team",
-                  "Regular account reviews",
-                ],
-                color: theme.info,
-              },
-              {
-                icon: "tag-multiple",
-                title: "Custom Categories",
-                description: "Create custom categories",
-                details: [
-                  "Create unlimited custom categories",
-                  "Category-specific analytics",
-                  "Smart categorization rules",
-                  "Category templates",
-                ],
-                color: theme.error,
-              },
-              {
-                icon: "cloud",
-                title: "Cloud Backup",
-                description: "Automatic data backup",
-                details: [
-                  "Automatic daily backups",
-                  "Version history",
-                  "Secure data storage",
-                  "Cross-device sync",
-                ],
-                color: theme.primary,
-              },
-            ].map((feature, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.featureCard,
-                  { backgroundColor: `${feature.color}10` },
-                  expandedFeature === index && {
-                    transform: [{ scale: 1.02 }],
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.featureCardHeader}
-                  onPress={() => toggleFeature(index)}
-                >
-                  <View
-                    style={[
-                      styles.featureIconContainer,
-                      { backgroundColor: `${feature.color}15` },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={feature.icon}
-                      size={24}
-                      color={feature.color}
-                    />
-                  </View>
-                  <View style={styles.featureCardContent}>
-                    <Text
-                      style={[styles.featureCardTitle, { color: theme.text }]}
-                    >
-                      {feature.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.featureCardDescription,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {feature.description}
-                    </Text>
-                  </View>
-                  <Animated.View
-                    style={{
-                      transform: [
-                        {
-                          rotate: expandedFeature === index ? "180deg" : "0deg",
-                        },
-                      ],
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={24}
-                      color={theme.textSecondary}
-                    />
-                  </Animated.View>
-                </TouchableOpacity>
-                <Animated.View
-                  style={[
-                    styles.featureDetails,
-                    {
-                      maxHeight: expandedFeature === index ? 200 : 0,
-                      opacity: expandedFeature === index ? 1 : 0,
-                    },
-                  ]}
-                >
-                  {feature.details.map((detail, idx) => (
-                    <View key={idx} style={styles.featureDetailItem}>
-                      <MaterialCommunityIcons
-                        name="check-circle"
-                        size={16}
-                        color={feature.color}
-                      />
-                      <Text
-                        style={[
-                          styles.featureDetailText,
-                          { color: theme.text },
-                        ]}
-                      >
-                        {detail}
-                      </Text>
-                    </View>
-                  ))}
-                </Animated.View>
-              </Animated.View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.premiumFooter}>
-          <View style={styles.premiumGuarantee}>
-            <MaterialCommunityIcons
-              name="shield-check"
-              size={20}
-              color={theme.success}
-            />
-            <Text style={[styles.guaranteeText, { color: theme.text }]}>
-              30-day money-back guarantee
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.learnMoreButton}
-            onPress={() => {
-              Alert.alert(
-                "Coming Soon",
-                "Premium features will be available soon!"
-              );
-            }}
-          >
-            <Text style={[styles.learnMoreText, { color: theme.primary }]}>
-              Learn more about Premium
-            </Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={theme.primary}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderAccountConnections = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons name="link" size={24} color={theme.primary} />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Account Connections
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Connect your accounts for better experience
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.connectionsList}>
-        {[
-          {
-            name: "Google",
-            icon: "google",
-            color: "#DB4437",
-            connected: false,
-          },
-        ].map((connection, index) => (
-          <View key={index} style={styles.connectionItem}>
-            <View style={styles.connectionLeft}>
-              <View
-                style={[
-                  styles.socialIconContainer,
-                  { backgroundColor: connection.color },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={connection.icon}
-                  size={20}
-                  color="#FFFFFF"
-                />
-              </View>
-              <View>
-                <Text style={[styles.connectionText, { color: theme.text }]}>
-                  {connection.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.connectionStatus,
-                    {
-                      color: connection.connected ? theme.success : theme.error,
-                    },
-                  ]}
-                >
-                  {connection.connected ? "✓ Connected" : "× Not connected"}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.connectButton,
-                {
-                  backgroundColor: connection.connected
-                    ? theme.success
-                    : theme.primary,
-                },
-              ]}
-              onPress={() => {
-                Alert.alert(
-                  "Coming Soon",
-                  "Social connections will be available soon!"
-                );
-              }}
-            >
-              <Text style={styles.connectButtonText}>
-                {connection.connected ? "Connected" : "Connect"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderAccountStatistics = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="chart-box"
-            size={24}
-            color={theme.primary}
-          />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Account Statistics
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Your account activity overview
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.primary}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="cash-multiple"
-                size={20}
-                color={theme.primary}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Total Expenses
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {formatCurrency(totalExpenses)}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              This month
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.success}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="view-grid"
-                size={20}
-                color={theme.success}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Expense Boards
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalBoards}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Active boards
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.warning}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="tag"
-                size={20}
-                color={theme.warning}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Categories
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalCategories}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Custom categories
-            </Text>
-          </View>
-
-          <View
-            style={[styles.statsCard, { backgroundColor: `${theme.info}10` }]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="account-group"
-                size={20}
-                color={theme.text}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Members
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalSharedMembers}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Total members
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsDetails}>
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="calendar"
-                size={20}
-                color={theme.textSecondary}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Member Since
-              </Text>
-            </View>
-            <Text
-              style={[styles.statsDetailValue, { color: theme.textSecondary }]}
-            >
-              {formatDate(userProfile?.created_at)}
-            </Text>
-          </View>
-
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={20}
-                color={theme.textSecondary}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Last Login
-              </Text>
-            </View>
-            <Text
-              style={[styles.statsDetailValue, { color: theme.textSecondary }]}
-            >
-              {formatDateTime(userProfile?.updated_at)}
-            </Text>
-          </View>
-
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={20}
-                color={theme.success}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Account Status
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: `${theme.success}15` },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: theme.success }]}>
-                Active
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="google"
-                size={20}
-                color={isGoogleconnected ? theme.success : theme.error}
-              />
-              <View style={{ flexDirection: "column", gap: 4 }}>
-                <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                  Google Account
-                </Text>
-                <Text
-                  style={[
-                    styles.connectionStatus,
-                    {
-                      color: isGoogleconnected ? theme.success : theme.error,
-                      fontSize: 12,
-                    },
-                  ]}
-                >
-                  {isGoogleconnected ? "✓ Connected" : "× Not connected"}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: isGoogleconnected
-                    ? theme.success
-                    : theme.primary,
-                },
-              ]}
-              onPress={() => {
-                Alert.alert(
-                  "Coming Soon",
-                  "Social connections will be available soon!"
-                );
-              }}
-            >
-              <Text style={styles.connectButtonText}>
-                {isGoogleconnected ? "Connected" : "Connect"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderSettingsSection = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.settingsList}>
-        {[
-          {
-            icon: "cog",
-            title: "Settings",
-            subtitle: "Manage your account settings",
-            onPress: () => navigation.navigate("Settings"),
-          },
-          {
-            icon: "bell-outline",
-            title: "Notifications",
-            subtitle: "Manage notification preferences",
-            onPress: () => navigation.navigate("Notification"),
-          },
-          // {
-          //   icon: "lock-outline",
-          //   title: "Privacy",
-          //   subtitle: "Control your privacy settings",
-          //   onPress: () => {
-          //     Alert.alert(
-          //       "Coming Soon",
-          //       "Privacy settings will be available soon!"
-          //     );
-          //   },
-          // },
-          {
-            icon: "help-circle-outline",
-            title: "Help & Support",
-            subtitle: "Get help and contact support",
-            onPress: () => {
-              Alert.alert(
-                "Coming Soon",
-                "Support features will be available soon!"
-              );
-            },
-          },
-          {
-            icon: "information-outline",
-            title: "About",
-            subtitle: "App information and version",
-            onPress: () => {
-              Alert.alert(
-                "About",
-                "Trivense v1.0.0\n\nTrack your expenses with ease!"
-              );
-            },
-          },
-        ].map((setting, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.settingItem}
-            onPress={setting.onPress}
-          >
-            <View style={styles.settingLeft}>
-              <View
-                style={[
-                  styles.settingIconContainer,
-                  { backgroundColor: `${theme.primary}15` },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={setting.icon}
-                  size={20}
-                  color={theme.primary}
-                />
-              </View>
-              <View>
-                <Text style={[styles.settingTitle, { color: theme.text }]}>
-                  {setting.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.settingSubtitle,
-                    { color: theme.textSecondary },
-                  ]}
-                >
-                  {setting.subtitle}
-                </Text>
-              </View>
-            </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={theme.textSecondary}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyStateContainer}>
-      <MaterialCommunityIcons
-        name="account-group-outline"
-        size={64}
-        color={theme.textSecondary}
-      />
-      <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
-        No Shared Users Yet
-      </Text>
-      <Text style={[styles.emptyStateText, { color: theme.textSecondary }]}>
-        When you share your expense boards with others, they'll appear here
-      </Text>
-    </View>
-  );
-
-  const renderDummyData = () => {
-    const dummyData = [
-      {
-        id: 1,
-        created_at: "2024-03-20T10:00:00Z",
-        is_accepted: true,
-        profiles: {
-          full_name: "John Doe",
-          email_address: "john.doe@example.com",
+  const confirmRemoveUser = (sharedUserId, boardId, userName) => {
+    Alert.alert(
+      "Remove User",
+      `Are you sure you want to remove ${userName} from this board?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-        expense_boards: {
-          name: "Travel Expenses",
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => handleRemoveUser(sharedUserId, boardId, userName),
         },
-      },
-      {
-        id: 2,
-        created_at: "2024-03-19T15:30:00Z",
-        is_accepted: false,
-        profiles: {
-          full_name: "Jane Smith",
-          email_address: "jane.smith@example.com",
-        },
-        expense_boards: {
-          name: "Home Budget",
-        },
-      },
-    ];
-
-    return dummyData.map((user) => renderUserCard(user));
+      ]
+    );
   };
 
   const renderUserCard = (user) => (
@@ -1089,12 +164,39 @@ export const InvitationsScreen = ({ navigation }) => {
           </View>
         </View>
         <View style={styles.userDetails}>
-          <Text style={[styles.userName, { color: theme.text }]}>
-            {user.profiles.full_name}
-          </Text>
-          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-            {user.profiles.email_address}
-          </Text>
+          <View style={styles.userHeader}>
+            <View style={styles.userInfoText}>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {user?.profiles?.full_name || "No name"}
+              </Text>
+              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+                {user?.profiles?.email_address || "No email"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.removeButton,
+                { backgroundColor: `${theme.error}15` },
+              ]}
+              onPress={() =>
+                confirmRemoveUser(
+                  user.id,
+                  user.board_id,
+                  user.profiles?.full_name || "User"
+                )
+              }
+              disabled={isRemoving}
+            >
+              <MaterialCommunityIcons
+                name="account-remove"
+                size={16}
+                color={theme.error}
+              />
+              <Text style={[styles.removeText, { color: theme.error }]}>
+                Remove
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.boardInfo}>
             <MaterialCommunityIcons
               name="view-grid"
@@ -1102,7 +204,7 @@ export const InvitationsScreen = ({ navigation }) => {
               color={theme.textSecondary}
             />
             <Text style={[styles.boardName, { color: theme.textSecondary }]}>
-              {user.expense_boards.name}
+              {user.expense_boards?.name || "Unknown Board"}
             </Text>
           </View>
         </View>
@@ -1149,7 +251,7 @@ export const InvitationsScreen = ({ navigation }) => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            Loading profile...
+            Loading shared users...
           </Text>
         </View>
       </SafeAreaView>
@@ -1162,9 +264,25 @@ export const InvitationsScreen = ({ navigation }) => {
     >
       <Header title="Shared Users" onBack={() => navigation.goBack()} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {sharedUsers.length > 0
-          ? sharedUsers.map(renderUserCard)
-          : renderDummyData()}
+        {sharedUsers.length > 0 ? (
+          sharedUsers.map((user) => renderUserCard(user))
+        ) : (
+          <View style={styles.emptyStateContainer}>
+            <MaterialCommunityIcons
+              name="account-group"
+              size={48}
+              color={theme.textSecondary}
+            />
+            <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
+              No Shared Users
+            </Text>
+            <Text
+              style={[styles.emptyStateText, { color: theme.textSecondary }]}
+            >
+              You haven't shared any boards with other users yet.
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1239,6 +357,16 @@ const styles = StyleSheet.create({
   userDetails: {
     flex: 1,
     gap: 4,
+  },
+  userHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 4,
+  },
+  userInfoText: {
+    flex: 1,
+    marginRight: 8,
   },
   userName: {
     fontSize: 16,
@@ -1668,5 +796,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#FFFFFF",
+  },
+  actionsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  removeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 2,
+  },
+  removeText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

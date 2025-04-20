@@ -142,6 +142,22 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Example: allow read if profile.id matches any shared_users.user_id the logged-in user has access to
+CREATE POLICY "Allow read if related via shared_users"
+  ON profiles
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM shared_users
+      WHERE shared_users.user_id = profiles.id
+      AND (
+        shared_users.shared_by = auth.uid()
+        OR shared_users.user_id = auth.uid()
+      )
+    )
+  );
+
+
 -- Create policies
 CREATE POLICY "Users can view their own profile"
     ON "public"."profiles"

@@ -1477,7 +1477,7 @@ export const SettingsScreen = ({ navigation }) => {
             }),
             renderSettingItem({
               icon: "account-group",
-              title: "Invitations",
+              title: "Shared Users ",
               subtitle: `${invitees.length} pending`,
               onPress: () => navigation.navigate("Profile2"),
               editable: false,
