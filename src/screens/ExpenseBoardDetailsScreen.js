@@ -30,26 +30,49 @@ export const ExpenseBoardDetailsScreen = () => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
   const [expenses, setExpenses] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  const fetchData = async () => {
+  const ITEMS_PER_PAGE = 10;
+
+  const fetchData = async (pageNum = 1, isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else if (pageNum === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
 
-      // Fetch recent transactions
-      const { data: transactionsData } =
-        await expenseService.getExpensesbyBoardId(boardId, null, 1, 4);
+      const { data: transactionsData, count } =
+        await expenseService.getExpensesbyBoardId(
+          boardId,
+          null,
+          pageNum,
+          ITEMS_PER_PAGE
+        );
 
-      // Update expenses state with fetched transactions
-      setExpenses(transactionsData || []);
+      if (isRefreshing || pageNum === 1) {
+        setExpenses(transactionsData || []);
+        setTotalCount(count || 0);
+      } else {
+        setExpenses((prev) => [...prev, ...(transactionsData || [])]);
+      }
+
+      setHasMore((transactionsData?.length || 0) === ITEMS_PER_PAGE);
+      setPage(pageNum);
     } catch (error) {
       console.error("Error fetching data:", error);
       showToast.error("Error loading data");
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
@@ -58,9 +81,14 @@ export const ExpenseBoardDetailsScreen = () => {
   }, [boardId]);
 
   const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    fetchData();
+    fetchData(1, true);
   }, []);
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchData(page + 1);
+    }
+  };
 
   const handleDeleteBoard = async () => {
     try {
@@ -77,7 +105,7 @@ export const ExpenseBoardDetailsScreen = () => {
     setShowShareModal(true);
   };
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
@@ -124,6 +152,33 @@ export const ExpenseBoardDetailsScreen = () => {
     </View>
   );
 
+  const renderLoadMore = () => {
+    if (!hasMore) return null;
+
+    return (
+      <TouchableOpacity
+        style={[styles.loadMoreButton, { backgroundColor: theme.card }]}
+        onPress={loadMore}
+        disabled={loadingMore}
+      >
+        {loadingMore ? (
+          <ActivityIndicator size="small" color={theme.primary} />
+        ) : (
+          <>
+            <MaterialCommunityIcons
+              name="arrow-down"
+              size={20}
+              color={theme.primary}
+            />
+            <Text style={[styles.loadMoreText, { color: theme.text }]}>
+              Load More
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -161,6 +216,17 @@ export const ExpenseBoardDetailsScreen = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const paddingToBottom = 20;
+          const isCloseToBottom =
+            layoutMeasurement.height + contentOffset.y >=
+            contentSize.height - paddingToBottom;
+          if (isCloseToBottom && !loadingMore && hasMore) {
+            loadMore();
+          }
+        }}
+        scrollEventThrottle={400}
       >
         <View style={styles.content}>
           <View style={[styles.statsCard, { backgroundColor: theme.card }]}>
@@ -305,9 +371,11 @@ export const ExpenseBoardDetailsScreen = () => {
 
           {expenses.length > 0 ? (
             <View>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>
-                Transactions
-              </Text>
+              <View style={styles.transactionsHeader}>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>
+                  {` Transactions (${totalTransactions})`}
+                </Text>
+              </View>
               <View>
                 {expenses.map((expense) => (
                   <ExpenseItem
@@ -332,6 +400,7 @@ export const ExpenseBoardDetailsScreen = () => {
         </View>
       </ScrollView>
       <View style={styles.bottomButtons}>
+        {renderLoadMore()}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.card }]}
@@ -542,12 +611,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
+    marginBottom: 10,
     fontWeight: "600",
-    //   color: theme.text,
     opacity: 0.8,
-    marginBottom: 8,
-    marginTop: 16,
   },
   emptyContainer: {
     flex: 1,
@@ -614,5 +681,37 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 8,
+  },
+  loadMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 12,
+
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  transactionsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  countText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
