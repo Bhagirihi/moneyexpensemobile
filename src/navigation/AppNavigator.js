@@ -6,6 +6,8 @@ import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import EmailVerificationScreen from "../screens/EmailVerificationScreen";
 import DashboardScreen from "../screens/DashboardScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import InvitationsScreen from "../screens/InvitationsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +19,7 @@ const AppNavigator = () => {
         headerShown: false,
       }}
     >
+      <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
@@ -25,6 +28,8 @@ const AppNavigator = () => {
         component={EmailVerificationScreen}
       />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Invitations" component={InvitationsScreen} />
     </Stack.Navigator>
   );
 };

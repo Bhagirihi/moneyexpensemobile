@@ -14,6 +14,7 @@ import {
   Alert,
   Share,
   Clipboard,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -54,7 +55,9 @@ export const SettingsScreen = ({ navigation }) => {
   const [success, setSuccess] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [sharedMembers, setSharedMembers] = useState([]);
-  // Sample data - Replace with actual data from your backend
+  const [invitees, setInvitees] = useState([]);
+  const [loadingInvitees, setLoadingInvitees] = useState(false);
+
   const languages = [
     { code: "en", name: "English" },
     { code: "es", name: "Spanish" },
@@ -908,11 +911,237 @@ export const SettingsScreen = ({ navigation }) => {
     </View>
   );
 
+  const fetchInvitees = async () => {
+    try {
+      setLoadingInvitees(true);
+
+      // Get all shared users with their profile information
+      const { data: sharedUsers, error } = await supabase
+        .from("shared_users")
+        .select(
+          `
+          *,
+          profiles: user_id (
+            id,
+            full_name,
+            email_address
+          ),
+          expense_boards: board_id (
+            id,
+            name
+          )
+        `
+        )
+        .eq("board_id", boardID);
+
+      if (error) throw error;
+
+      const formattedInvitees = sharedUsers.map((sharedUser) => ({
+        id: sharedUser.id,
+        userId: sharedUser.user_id,
+        userName: sharedUser.profiles?.full_name || "Unknown",
+        userEmail: sharedUser.profiles?.email_address || "Unknown",
+        boardId: sharedUser.board_id,
+        boardName: sharedUser.expense_boards?.name || "Unknown Board",
+        status: sharedUser.is_accepted ? "accepted" : "pending",
+        createdAt: sharedUser.created_at,
+      }));
+
+      setInvitees(formattedInvitees);
+    } catch (error) {
+      console.error("Error fetching invitees:", error);
+      showToast.error("Error", "Failed to load invitees");
+    } finally {
+      setLoadingInvitees(false);
+    }
+  };
+
+  useEffect(() => {
+    if (boardID) {
+      fetchInvitees();
+    }
+  }, [boardID]);
+
+  const renderInvitees = () => (
+    <View
+      style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}
+    >
+      <View style={styles.modalHeader}>
+        <Text style={[styles.modalTitle, { color: theme.text }]}>Invitees</Text>
+        <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+          <MaterialCommunityIcons
+            name="close"
+            size={24}
+            color={theme.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {loadingInvitees ? (
+        <View style={[styles.loadingContainer, { padding: 20 }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Loading invitees...
+          </Text>
+        </View>
+      ) : invitees.length === 0 ? (
+        <View style={[styles.emptyContainer, { padding: 20 }]}>
+          <MaterialCommunityIcons
+            name="account-group-outline"
+            size={48}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            No invitees found
+          </Text>
+          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
+            When you share boards, your invitees will appear here
+          </Text>
+        </View>
+      ) : (
+        <ScrollView style={{ flex: 1 }}>
+          {invitees.map((invitee, index) => (
+            <View
+              key={invitee.id}
+              style={{
+                padding: 16,
+                borderBottomWidth: index !== invitees.length - 1 ? 1 : 0,
+                borderBottomColor: `${theme.text}10`,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: `${theme.primary}15`,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 16,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="account"
+                    size={28}
+                    color={theme.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "600",
+                        color: theme.text,
+                        marginRight: 8,
+                      }}
+                    >
+                      {invitee.userName}
+                    </Text>
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12,
+                        backgroundColor:
+                          invitee.status === "accepted"
+                            ? `${theme.success}15`
+                            : `${theme.warning}15`,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "600",
+                          color:
+                            invitee.status === "accepted"
+                              ? theme.success
+                              : theme.warning,
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {invitee.status}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <MaterialCommunityIcons
+                      name="email-outline"
+                      size={16}
+                      color={theme.textSecondary}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+                      {invitee.userEmail}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="view-dashboard"
+                  size={18}
+                  color={theme.textSecondary}
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: theme.textSecondary,
+                    fontWeight: "500",
+                  }}
+                >
+                  {invitee.boardName}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <MaterialCommunityIcons
+                  name="clock-outline"
+                  size={16}
+                  color={theme.textSecondary}
+                  style={{ marginRight: 8 }}
+                />
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: theme.textSecondary,
+                  }}
+                >
+                  Invited on {new Date(invitee.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+
   const renderEditModal = () => {
     if (!editModalVisible) return null;
 
     let modalContent;
-    console.log("editingItem <-", editingItem);
     switch (editingItem?.title) {
       case "Language":
         modalContent = renderLanguageSelector();
@@ -934,6 +1163,9 @@ export const SettingsScreen = ({ navigation }) => {
         break;
       case "Expense Board":
         modalContent = renderBoardDetails();
+        break;
+      case "Invitees":
+        modalContent = renderInvitees();
         break;
       default:
         return null;
@@ -1241,6 +1473,13 @@ export const SettingsScreen = ({ navigation }) => {
               icon: "account-outline",
               title: "Edit Profile",
               onPress: () => navigation.navigate("Profile"),
+              editable: false,
+            }),
+            renderSettingItem({
+              icon: "account-group",
+              title: "Invitations",
+              subtitle: `${invitees.length} pending`,
+              onPress: () => navigation.navigate("Profile2"),
               editable: false,
             }),
             renderSettingItem({
@@ -1732,5 +1971,32 @@ const styles = StyleSheet.create({
   successText: {
     color: "green",
     marginBottom: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 8,
+    paddingHorizontal: 32,
   },
 });

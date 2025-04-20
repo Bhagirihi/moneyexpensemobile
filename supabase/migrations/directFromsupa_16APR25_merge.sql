@@ -89,6 +89,9 @@ CREATE TABLE public.shared_users (
   shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   shared_with TEXT NOT NULL,
   board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE
+  total_expense numeric null default 0,
+  total_spent numeric null default 0,
+  user_id uuid null,
 );
 
 -- Enable pgcrypto extension
@@ -111,6 +114,17 @@ ALTER TABLE "public"."expenses" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."shared_users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- First, drop the incorrect constraint
+ALTER TABLE shared_users DROP CONSTRAINT fk_user_id;
+
+-- Then, create the correct foreign key on user_id
+ALTER TABLE shared_users
+ADD CONSTRAINT fk_user_id
+FOREIGN KEY (user_id) REFERENCES profiles(id);
+
+
+
 
 
 DO $$

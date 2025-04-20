@@ -510,6 +510,85 @@ export const DashboardScreen = ({ navigation }) => {
       {renderHeader()}
       {renderBalanceCard()}
       {renderQuickActions()}
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: theme.card }]}
+        onPress={async () => {
+          try {
+            // Get all boards
+            const { data: boards, error: boardsError } = await supabase
+              .from("expense_boards")
+              .select("*");
+
+            if (boardsError) throw boardsError;
+
+            console.log("Total number of boards:", boards.length);
+            console.log("Boards:", boards);
+
+            // Get shared users and their expenses for each board
+            for (const board of boards) {
+              const { data: sharedUsers, error: sharedError } = await supabase
+                .from("shared_users")
+                .select("*")
+                .eq("board_id", board.id);
+
+              if (sharedError) throw sharedError;
+
+              console.log(`\nBoard: ${board.name}`);
+              console.log("Shared with:", sharedUsers);
+
+              // Get expenses for each shared user
+              for (const sharedUser of sharedUsers) {
+                console.log("Shared user:", sharedUser);
+                const { data: userProfile, error: profileError } =
+                  await supabase.from("profiles").select("*");
+
+                if (profileError) throw profileError;
+
+                console.log(`\nUser Profile: ${JSON.stringify(userProfile)}`);
+
+                const { data: userExpenses, error: expensesError } =
+                  await supabase
+                    .from("expenses")
+                    .select(
+                      `
+                    *,
+                    category:category_id (
+                      name
+                    )
+                  `
+                    )
+                    .eq("board_id", board.id);
+                //.eq("created_by", sharedUser.user_id);
+
+                if (expensesError) throw expensesError;
+
+                console.log(`\nExpenses for user ${sharedUser.user_id}:`);
+                console.log("Total expenses:", userExpenses.length);
+                console.log(
+                  "Expense details:",
+                  userExpenses.map((expense) => ({
+                    amount: expense.amount,
+                    category: expense.category?.name,
+                    date: expense.date,
+                    description: expense.description,
+                  }))
+                );
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching board information:", error);
+          }
+        }}
+      >
+        <MaterialCommunityIcons
+          name="information"
+          size={24}
+          color={theme.warning}
+        />
+        <Text style={[styles.actionText, { color: theme.text }]}>
+          Board Info
+        </Text>
+      </TouchableOpacity>
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}

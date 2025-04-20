@@ -32,6 +32,7 @@ import { AnalysisScreen } from "./src/screens/AnalysisScreen";
 import { NotificationScreen } from "./src/screens/NotificationScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { InvitationsScreen } from "./src/screens/InvitationsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 import { View } from "react-native";
 import { showToast } from "./src/utils/toast";
@@ -212,6 +213,10 @@ const AppContent = () => {
                     />
                     <Stack.Screen name="Profile" component={ProfileScreen} />
                     <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen
+                      name="Profile2"
+                      component={InvitationsScreen}
+                    />
                     <Stack.Screen name="FontTest" component={FontTestScreen} />
                   </>
                 ) : (
