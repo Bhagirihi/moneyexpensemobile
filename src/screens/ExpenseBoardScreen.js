@@ -42,7 +42,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       setLoading(true);
       console.log("Fetching expense boards in screen... ==>");
       const data = await expenseBoardService.getExpenseBoards();
-
+      console.log("data expenseBoardService", data);
       if (!data) {
         console.error("No data received from service");
         showToast.error("Failed to fetch boards", "No data received");
@@ -99,9 +99,14 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             color={board.color || theme.primary}
           />
         </View>
-        <Text style={[styles.boardName, { color: theme.text }]}>
-          {board.name}
-        </Text>
+        <View style={styles.statItem}>
+          <Text style={[styles.boardName, { color: theme.text }]}>
+            {board.name}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+            {board.created_by}
+          </Text>
+        </View>
         <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation();
@@ -125,6 +130,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
           <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
         </TouchableOpacity>
       </View>
+
       <View style={styles.boardStats}>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
@@ -142,6 +148,8 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             ₹{board?.total_budget?.toFixed(2)}
           </Text>
         </View>
+      </View>
+      <View style={styles.boardStats}>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
             Transactions
@@ -150,7 +158,21 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             {board?.totalTransactions || 0}
           </Text>
         </View>
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+            status
+          </Text>
+          <Text
+            style={[
+              styles.statValue,
+              { color: board?.is_default ? theme.success : theme.text },
+            ]}
+          >
+            {board?.is_default ? "Default" : "Custom"}
+          </Text>
+        </View>
       </View>
+
       <View style={styles.progressContainer}>
         <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
           <View

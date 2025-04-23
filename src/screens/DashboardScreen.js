@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { getSession, supabase } from "../config/supabase";
+import { getSession, supabase, getUserProfile } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
@@ -62,9 +62,13 @@ export const DashboardScreen = ({ navigation }) => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        getSession().then(({ session }) => {
-          console.log("Session:", session.user.user_metadata);
-          setUserProfile(session.user.user_metadata);
+        getSession().then(async ({ session }) => {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          setUserProfile(data);
         });
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -224,43 +228,45 @@ export const DashboardScreen = ({ navigation }) => {
   };
 
   const renderBalanceCard = () => (
-    <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
-      <View style={styles.balanceMain}>
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceLabelContainer}>
-            <MaterialCommunityIcons
-              name="wallet-outline"
-              size={20}
-              color={theme.white}
-              style={styles.balanceIcon}
-            />
-            <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              Total Budget
+    console.log(theme.primary),
+    (
+      <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
+        <View style={styles.balanceMain}>
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceLabelContainer}>
+              <MaterialCommunityIcons
+                name="wallet-outline"
+                size={20}
+                color={theme.white}
+                style={styles.balanceIcon}
+              />
+              <Text style={[styles.balanceLabel, { color: theme.white }]}>
+                Total Budget
+              </Text>
+            </View>
+            <Text style={[styles.balanceValue, { color: theme.white }]}>
+              {formatCurrency(stats.totalBudget)}
             </Text>
           </View>
-          <Text style={[styles.balanceValue, { color: theme.white }]}>
-            {formatCurrency(stats.totalBudget)}
-          </Text>
-        </View>
 
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceLabelContainer}>
-            <MaterialCommunityIcons
-              name="cash-remove"
-              size={20}
-              color={theme.white}
-              style={styles.balanceIcon}
-            />
-            <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              Spent
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceLabelContainer}>
+              <MaterialCommunityIcons
+                name="cash-remove"
+                size={20}
+                color={theme.white}
+                style={styles.balanceIcon}
+              />
+              <Text style={[styles.balanceLabel, { color: theme.white }]}>
+                Spent
+              </Text>
+            </View>
+            <Text style={[styles.balanceValue, { color: theme.white }]}>
+              {formatCurrency(stats.totalExpenses)}
             </Text>
           </View>
-          <Text style={[styles.balanceValue, { color: theme.white }]}>
-            {formatCurrency(stats.totalExpenses)}
-          </Text>
-        </View>
 
-        {/* <View style={[styles.balanceRow, styles.remainingRow]}>
+          {/* <View style={[styles.balanceRow, styles.remainingRow]}>
           <View style={styles.balanceLabelContainer}>
             <MaterialCommunityIcons
               name="cash-check"
@@ -276,66 +282,67 @@ export const DashboardScreen = ({ navigation }) => {
             {formatCurrency(stats.remainingBudget)}
           </Text>
         </View> */}
-      </View>
+        </View>
 
-      <View style={styles.combinedProgressContainer}>
-        <View style={styles.progressLabels}>
-          <Text style={[styles.progressLabel, { color: theme.white }]}>
-            Budget Usage
-          </Text>
-          <Text style={[styles.progressLabel, { color: theme.white }]}>
-            {`${Math.round(
-              (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-            )}%`}
-          </Text>
-        </View>
-        <View
-          style={[
-            styles.combinedProgressBar,
-            { backgroundColor: "rgba(255, 255, 255, 0.2)" },
-          ]}
-        >
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.round(
-                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-                )}%`,
-                backgroundColor: theme.error,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.remainingFill,
-              {
-                width: `100%`,
-                backgroundColor: theme.success,
-              },
-            ]}
-          />
-        </View>
-        <View style={styles.progressLegend}>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: theme.error }]}
-            />
-            <Text style={[styles.legendText, { color: theme.white }]}>
-              Used
+        <View style={styles.combinedProgressContainer}>
+          <View style={styles.progressLabels}>
+            <Text style={[styles.progressLabel, { color: theme.white }]}>
+              Budget Usage
+            </Text>
+            <Text style={[styles.progressLabel, { color: theme.white }]}>
+              {`${Math.round(
+                (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+              )}%`}
             </Text>
           </View>
-          <View style={styles.legendItem}>
+          <View
+            style={[
+              styles.combinedProgressBar,
+              { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+            ]}
+          >
             <View
-              style={[styles.legendColor, { backgroundColor: theme.success }]}
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.round(
+                    (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+                  )}%`,
+                  backgroundColor: theme.error,
+                },
+              ]}
             />
-            <Text style={[styles.legendText, { color: theme.white }]}>
-              Remaining
-            </Text>
+            <View
+              style={[
+                styles.remainingFill,
+                {
+                  width: `100%`,
+                  backgroundColor: theme.success,
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.progressLegend}>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.error }]}
+              />
+              <Text style={[styles.legendText, { color: theme.white }]}>
+                Used
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.success }]}
+              />
+              <Text style={[styles.legendText, { color: theme.white }]}>
+                Remaining
+              </Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    )
   );
 
   const renderQuickActions = () => (
@@ -501,7 +508,7 @@ export const DashboardScreen = ({ navigation }) => {
       {renderHeader()}
       {renderBalanceCard()}
       {renderQuickActions()}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: theme.card }]}
         onPress={async () => {
           try {
@@ -639,7 +646,7 @@ export const DashboardScreen = ({ navigation }) => {
         <Text style={[styles.actionText, { color: theme.text }]}>
           Board Info
         </Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}

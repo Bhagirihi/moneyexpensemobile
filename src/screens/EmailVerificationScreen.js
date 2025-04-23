@@ -42,20 +42,29 @@ const EmailVerificationScreen = ({ navigation, route }) => {
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const cleanup = realTimeSync.subscribeToVerification(
+    const subscription = realTimeSync.subscribeToVerification(
       checkVerificationStatus
     );
-    return cleanup;
+    return () => {
+      subscription?.unsubscribe?.(); // Safe call to unsubscribe
+    };
   }, []);
 
   const checkVerificationStatus = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("Auth error:", error.message);
+        return;
+      }
+      console.log("Data:", data);
+
+      const user = data?.user;
 
       if (user?.email_confirmed_at) {
         setVerificationStatus("verified");
+        showToast.success("Email verified successfully!");
         setTimeout(() => {
           navigation.replace("Dashboard");
         }, 2000);

@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS profiles CASCADE;
 -- TABLE DEFINITIONS
 
 CREATE TABLE IF NOT EXISTS notifications (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid,
   type text NOT NULL,
   title text NOT NULL,
@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS notifications (
   read boolean,
   icon text,
   icon_color text,
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name text,
   email_address text,
   mobile text,
@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   current_plan text,
   is_google_connected boolean,
   account_status text,
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
   total_boards integer,
   default_board_budget numeric,
   board_id uuid,
@@ -42,38 +42,36 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 CREATE TABLE IF NOT EXISTS categories (
-  id uuid PRIMARY KEY,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   description text,
   icon text,
   color text,
   is_default boolean,
   user_id uuid,
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
 );
 
-
-
 CREATE TABLE IF NOT EXISTS expense_boards (
-  id uuid PRIMARY KEY, -- Unique identifier for each board
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Unique identifier for each board
   name text NOT NULL, -- Board title (e.g., Goa Trip)
   description text, -- Optional description
-  total_budget numeric, -- Total budget for the board
-  total_expense numeric, -- Calculated sum of all expenses
+  total_budget numeric DEFAULT 0, -- Total budget for the board
+  total_expense numeric DEFAULT 0, -- Calculated sum of all expenses
   created_by uuid REFERENCES profiles(id), -- Creator of the board
   created_at timestamp with time zone DEFAULT now(), -- Created timestamp
   updated_at timestamp with time zone DEFAULT now(), -- Last updated timestamp
   board_color text, -- Optional color for UI
   board_icon text, -- Optional icon for UI
-  per_person_budget numeric, -- Optional: divided budget among members
+  per_person_budget numeric DEFAULT 0, -- Optional: divided budget among members
   share_code text, -- Used for invite/share functionality
   is_default boolean DEFAULT false -- True if this is user's default board
 );
 
 
 CREATE TABLE IF NOT EXISTS expenses (
-  id uuid PRIMARY KEY, -- Unique ID for each expense
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Unique ID for each expense
   board_id uuid REFERENCES expense_boards(id) ON DELETE CASCADE, -- Link to the board
   category_id uuid REFERENCES categories(id), -- Optional category (assumes categories table exists)
   amount numeric NOT NULL, -- Expense amount
@@ -86,17 +84,18 @@ CREATE TABLE IF NOT EXISTS expenses (
 );
 
 CREATE TABLE IF NOT EXISTS shared_users (
-  id uuid PRIMARY KEY, -- Unique entry ID for sharing
-  created_at TIMESTAMPTZ DEFAULT timezone('utc', now()), -- Share timestamp
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Unique entry ID for sharing
+  created_at TIMESTAMPTZ DEFAULT now(), -- Share timestamp
   is_accepted BOOLEAN DEFAULT false, -- Whether invite was accepted
   accepted_at TIMESTAMPTZ, -- When invite was accepted (optional)
   shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, -- Who sent the invite
   shared_with TEXT NOT NULL, -- Email or identifier of invited user
   board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE, -- Board being shared
-  user_id uuid REFERENCES profiles(id), -- Once accepted, link to actual user
+  user_id uuid REFERENCES profiles(id), -- Once accepted, link to actual user (optional)
   total_expense numeric DEFAULT 0, -- Optional: personal expenses on this board
   total_spent numeric DEFAULT 0 -- Optional: personal spend summary
 );
+
 
 
 -- Enable pgcrypto extension
@@ -119,14 +118,6 @@ ALTER TABLE "public"."expenses" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."shared_users" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- First, drop the incorrect constraint
-ALTER TABLE shared_users DROP CONSTRAINT fk_user_id;
-
--- Then, create the correct foreign key on user_id
-ALTER TABLE shared_users
-ADD CONSTRAINT fk_user_id
-FOREIGN KEY (user_id) REFERENCES profiles(id);
 
 
 
@@ -162,7 +153,6 @@ CREATE POLICY "Allow read if related via shared_users"
     )
   );
 
-
 -- Create policies
 CREATE POLICY "Users can view their own profile"
     ON "public"."profiles"
@@ -179,7 +169,6 @@ CREATE POLICY "Users can view their own categories"
     ON "public"."categories"
     FOR SELECT
     USING (auth.uid() = user_id OR user_id IS NULL);
-
 
 CREATE POLICY "Allow owners to manage their boards"
   ON expense_boards
@@ -306,6 +295,27 @@ CREATE POLICY "Allow delete for authenticated users"
 
 -- FOREIGN KEY CONSTRAINTS
 
+-- Drop constraints on profiles table
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS fk_profiles_board_id;
+
+-- Drop constraints on categories table
+ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_user_id_fkey;
+
+-- Drop constraints on expense_boards table
+ALTER TABLE expense_boards DROP CONSTRAINT IF EXISTS expense_boards_created_by_fkey;
+
+-- Drop constraints on expenses table
+ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_board_id_fkey;
+ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_category_id_fkey;
+ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_created_by_fkey;
+
+-- Drop constraints on notifications table
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
+
+-- Drop constraints on shared_users table
+ALTER TABLE shared_users DROP CONSTRAINT IF EXISTS fk_user_id;
+
+
 ALTER TABLE profiles ADD CONSTRAINT fk_profiles_board_id
 FOREIGN KEY (board_id) REFERENCES expense_boards (id)
 DEFERRABLE INITIALLY DEFERRED;
@@ -332,6 +342,10 @@ DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey
 FOREIGN KEY (user_id) REFERENCES profiles (id)
+DEFERRABLE INITIALLY DEFERRED;
+
+ALTER TABLE shared_users ADD CONSTRAINT fk_user_id
+FOREIGN KEY (user_id) REFERENCES profiles(id)
 DEFERRABLE INITIALLY DEFERRED;
 
 -- FUNCTION DEFINITIONS
@@ -438,7 +452,7 @@ BEGIN
             default_board_id,
             'General Expenses',
             'Default board for tracking general expenses',
-            NULL,
+            0,
             NEW.id,
             share_code,
             TRUE,
@@ -692,6 +706,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- CREATE OR REPLACE FUNCTION set_shared_user_id()
+-- RETURNS trigger AS $$
+-- BEGIN
+--   IF NEW.user_id IS NULL THEN
+--     SELECT id INTO NEW.user_id
+--     FROM profiles
+--     WHERE email_address = NEW.shared_with
+--     LIMIT 1;
+--   END IF;
+
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
 
 
 -- TRIGGERS
@@ -765,3 +793,11 @@ CREATE TRIGGER trg_update_total_expense_on_delete
 AFTER DELETE ON expenses
 FOR EACH ROW
 EXECUTE FUNCTION update_total_expense();
+
+-- Drop the trigger if it already exists
+-- DROP TRIGGER IF EXISTS trg_set_shared_user_id ON shared_users;
+-- -- Trigger to set user_id for shared_users
+-- CREATE TRIGGER trg_set_shared_user_id
+-- BEFORE INSERT ON shared_users
+-- FOR EACH ROW
+-- EXECUTE FUNCTION set_shared_user_id();

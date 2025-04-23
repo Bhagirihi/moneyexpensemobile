@@ -42,6 +42,7 @@ export const dashboardService = {
         console.error("Error fetching owned boards:", ownedError.message);
         return;
       }
+      console.log("ownedBoards", ownedBoards);
 
       // Step 3: Fetch shared boards with the user, along with the user who shared them
       const { data: sharedBoards, error: sharedError } = await supabase
@@ -53,7 +54,7 @@ export const dashboardService = {
         console.error("Error fetching shared boards:", sharedError.message);
         return;
       }
-
+      console.log("sharedBoards", sharedBoards);
       // Step 4: Fetch user profiles for each shared user
       const userProfilePromises = sharedBoards.map((sharedBoard) => {
         return supabase
@@ -68,17 +69,16 @@ export const dashboardService = {
         if (result.data) {
           acc.push(result.data[0].id);
         }
-        acc.push(user.id);
         return acc;
       }, []);
+      userIdArray.push(userId);
 
-      console.log("userIdArray", userIdArray);
       // Combine board IDs (owned + shared)
       const boardIds = [
         ...ownedBoards.map((b) => b.id),
         ...sharedBoards.map((s) => s.board_id),
       ];
-
+      console.log("boardIds", boardIds);
       // Step 5: Fetch expenses from these boards
       const { data, error } = await supabase
         .from("expenses")

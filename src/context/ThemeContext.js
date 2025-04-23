@@ -25,7 +25,8 @@ const currentTheme = {
 
 // New professional light theme
 const lightTheme = {
-  primary: "#2563EB", // Modern, trustworthy blue
+  primary: "#31356e", // Modern, trustworthy blue
+
   secondary: "#6366F1", // Indigo for secondary actions
   background: "#FFFFFF", // Pure white for clean look
   card: "#F8FAFC", // Very light gray for cards
@@ -53,7 +54,7 @@ const lightTheme = {
 };
 
 const darkTheme = {
-  primary: "#3B82F6",
+  primary: "#31356e",
   secondary: "#6366F1",
   background: "#0F172A",
   card: "#1E293B",

@@ -82,6 +82,7 @@ const RegisterScreen = ({ navigation }) => {
         {
           full_name: formData.fullName.trim(),
           mobile: formData.mobile.trim(),
+          phone_number: formData.mobile.trim(),
           avatar_url: null,
           has_notifications: false,
         }

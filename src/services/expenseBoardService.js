@@ -6,34 +6,78 @@ export const expenseBoardService = {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       if (!user) throw new Error("No authenticated user");
 
-      // First, get all expense boards for the user
-      const { data: boards, error: boardsError } = await supabase
+      const userId = user.id;
+
+      // 1. Fetch boards CREATED BY user
+      const { data: ownedBoards, error: ownedBoardsError } = await supabase
         .from("expense_boards")
-        .select("*")
-        .eq("created_by", user.id)
+        .select(
+          `
+            *,
+            profiles:created_by (
+              id,
+              full_name,
+              email_address
+            )
+          `
+        )
+        .eq("created_by", userId)
         .order("created_at", { ascending: false });
 
-      if (boardsError) throw boardsError;
+      if (ownedBoardsError) throw ownedBoardsError;
 
-      // If no boards found, return empty array
-      if (!boards || boards.length === 0) {
-        return [];
-      }
+      // 2. Fetch boards SHARED WITH user
+      const { data: sharedBoardLinks, error: sharedError } = await supabase
+        .from("shared_users")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_accepted", true);
 
-      // Get all board IDs
-      const boardIds = boards.map((board) => board.id);
+      if (sharedError) throw sharedError;
 
-      // Fetch all expenses for these boards
+      console.log("Shared Board Links: - - -", sharedBoardLinks);
+      console.log("userId", userId);
+
+      const sharedBoardIds = sharedBoardLinks.map((link) => link.board_id);
+
+      console.log("Shared Board IDs: - - -", sharedBoardIds);
+      const { data: sharedBoards, error: sharedBoardsError } = await supabase
+        .from("expense_boards")
+        .select(
+          `
+            *,
+            profiles:created_by (
+              id,
+              full_name,
+              email_address
+            )
+          `
+        )
+        .in("id", sharedBoardIds)
+        .order("created_at", { ascending: false });
+
+      if (sharedBoardsError) throw sharedBoardsError;
+      console.log("Shared Boards: - - -", sharedBoards);
+
+      // 3. Combine all board IDs (owned + shared)
+      const allBoards = [...ownedBoards, ...sharedBoards];
+      if (allBoards.length === 0) return [];
+
+      const allBoardIds = allBoards.map((board) => board.id);
+      console.log("All Board IDs: - - -", allBoardIds);
+
+      // 4. Fetch expenses for all boards
       const { data: expenses, error: expensesError } = await supabase
         .from("expenses")
         .select("*")
-        .in("board_id", boardIds);
+        .in("board_id", allBoardIds);
 
       if (expensesError) throw expensesError;
 
-      // Create a map of board_id to expenses
+      // 5. Map expenses to board_id
       const expensesMap = expenses.reduce((acc, expense) => {
         if (!acc[expense.board_id]) {
           acc[expense.board_id] = [];
@@ -42,9 +86,13 @@ export const expenseBoardService = {
         return acc;
       }, {});
 
-      // Combine boards with their expenses
-      const boardsWithExpenses = boards.map((board) => ({
+      // 6. Combine board and expenses info
+      const boardsWithExpenses = allBoards.map((board) => ({
         ...board,
+        created_by:
+          board.profiles?.full_name === user.user_metadata.full_name
+            ? "You"
+            : board.profiles?.full_name || "Unknown",
         expenses: expensesMap[board.id] || [],
         totalExpenses:
           expensesMap[board.id]?.reduce(
@@ -52,11 +100,12 @@ export const expenseBoardService = {
             0
           ) || 0,
         totalTransactions: expensesMap[board.id]?.length || 0,
+        isShared: board.created_by !== userId, // Optional: flag if it's a shared board
       }));
 
       return boardsWithExpenses;
     } catch (error) {
-      console.error("Error fetching expense boards:", error);
+      console.error("Error fetching boards and expenses:", error.message);
       throw error;
     }
   },

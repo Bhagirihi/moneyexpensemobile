@@ -84,7 +84,7 @@ export const parseCurrency = (currencyString, currency = null) => {
  * @param {string} format - The format to use (default: 'medium')
  * @returns {string} Formatted date string
  */
-export const formatDate = (date, format = "medium") => {
+export const formatDate = (date = new Date(), format = "medium") => {
   const { language } = useAppSettings();
   const locale = language === "en" ? "en-US" : "en-IN";
 
