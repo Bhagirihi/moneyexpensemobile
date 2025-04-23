@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { supabase } from "../config/supabase";
+import { getSession, supabase } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
@@ -62,19 +62,10 @@ export const DashboardScreen = ({ navigation }) => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .single();
-
-        if (error) {
-          console.error("Error loading profile:", error);
-          return;
-        }
-
-        if (profile) {
-          setUserProfile(profile);
-        }
+        getSession().then(({ session }) => {
+          console.log("Session:", session.user.user_metadata);
+          setUserProfile(session.user.user_metadata);
+        });
       } catch (error) {
         console.error("Error loading profile:", error);
       }
@@ -212,7 +203,7 @@ export const DashboardScreen = ({ navigation }) => {
       if (transactionsError) {
         throw transactionsError;
       }
-
+      console.log("102102", JSON.stringify(transactionsData, null, 2));
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
@@ -514,67 +505,127 @@ export const DashboardScreen = ({ navigation }) => {
         style={[styles.actionButton, { backgroundColor: theme.card }]}
         onPress={async () => {
           try {
-            // Get all boards
-            const { data: boards, error: boardsError } = await supabase
-              .from("expense_boards")
-              .select("*");
+            // Step 1: Get logged-in user
+            const {
+              data: { user },
+              error: authError,
+            } = await supabase.auth.getUser();
 
-            if (boardsError) throw boardsError;
-
-            console.log("Total number of boards:", boards.length);
-            console.log("Boards:", boards);
-
-            // Get shared users and their expenses for each board
-            for (const board of boards) {
-              const { data: sharedUsers, error: sharedError } = await supabase
-                .from("shared_users")
-                .select("*")
-                .eq("board_id", board.id);
-
-              if (sharedError) throw sharedError;
-
-              console.log(`\nBoard: ${board.name}`);
-              console.log("Shared with:", sharedUsers);
-
-              // Get expenses for each shared user
-              for (const sharedUser of sharedUsers) {
-                console.log("Shared user:", sharedUser);
-                const { data: userProfile, error: profileError } =
-                  await supabase.from("profiles").select("*");
-
-                if (profileError) throw profileError;
-
-                console.log(`\nUser Profile: ${JSON.stringify(userProfile)}`);
-
-                const { data: userExpenses, error: expensesError } =
-                  await supabase
-                    .from("expenses")
-                    .select(
-                      `
-                    *,
-                    category:category_id (
-                      name
-                    )
-                  `
-                    )
-                    .eq("board_id", board.id);
-                //.eq("created_by", sharedUser.user_id);
-
-                if (expensesError) throw expensesError;
-
-                console.log(`\nExpenses for user ${sharedUser.user_id}:`);
-                console.log("Total expenses:", userExpenses.length);
-                console.log(
-                  "Expense details:",
-                  userExpenses.map((expense) => ({
-                    amount: expense.amount,
-                    category: expense.category?.name,
-                    date: expense.date,
-                    description: expense.description,
-                  }))
-                );
-              }
+            if (authError || !user) {
+              console.error(
+                "Auth error:",
+                authError?.message || "No user found"
+              );
+              return;
             }
+
+            const userId = user.id;
+
+            // Step 2: Fetch boards owned by the user
+            const { data: ownedBoards, error: ownedError } = await supabase
+              .from("expense_boards")
+              .select("id")
+              .eq("created_by", userId);
+
+            if (ownedError) {
+              console.error("Error fetching owned boards:", ownedError.message);
+              return;
+            }
+
+            // Step 3: Fetch board_ids from shared_users where user_id = current user
+            const { data: sharedBoards, error: sharedError } = await supabase
+              .from("shared_users")
+              .select("board_id")
+              .eq("user_id", userId)
+              .eq("is_accepted", true); // optional if you only want accepted ones
+
+            if (sharedError) {
+              console.error(
+                "Error fetching shared boards:",
+                sharedError.message
+              );
+              return;
+            }
+
+            // Combine board IDs
+            const boardIds = [
+              ...ownedBoards.map((b) => b.id),
+              ...sharedBoards.map((s) => s.board_id),
+            ];
+
+            // Step 4: Fetch expenses from all these boards
+            const { data: expenses, error: expensesError } = await supabase
+              .from("expenses")
+              .select("*")
+              .in("board_id", boardIds);
+
+            if (expensesError) {
+              console.error("Error fetching expenses:", expensesError.message);
+            } else {
+              console.log("Expenses from shared + owned boards:", expenses);
+            }
+
+            // // Get all boards
+            // const { data: boards, error: boardsError } = await supabase
+            //   .from("expense_boards")
+            //   .select("*");
+
+            // if (boardsError) throw boardsError;
+
+            // console.log("Total number of boards:", boards.length);
+            // console.log("Boards:", boards);
+
+            // // Get shared users and their expenses for each board
+            // for (const board of boards) {
+            //   const { data: sharedUsers, error: sharedError } = await supabase
+            //     .from("shared_users")
+            //     .select("*")
+            //     .eq("board_id", board.id);
+
+            //   if (sharedError) throw sharedError;
+
+            //   console.log(`\nBoard: ${board.name}`);
+            //   console.log("Shared with:", sharedUsers);
+
+            //   // Get expenses for each shared user
+            //   for (const sharedUser of sharedUsers) {
+            //     console.log("Shared user:", sharedUser);
+            //     const { data: userProfile, error: profileError } =
+            //       await supabase.from("profiles").select("*");
+
+            //     if (profileError) throw profileError;
+
+            //     console.log(`\nUser Profile: ${JSON.stringify(userProfile)}`);
+
+            //     const { data: userExpenses, error: expensesError } =
+            //       await supabase
+            //         .from("expenses")
+            //         .select(
+            //           `
+            //         *,
+            //         category:category_id (
+            //           name
+            //         )
+            //       `
+            //         )
+            //         .eq("board_id", board.id);
+            //     //.eq("created_by", sharedUser.user_id);
+
+            //     if (expensesError) throw expensesError;
+
+            //     console.log(`\nExpenses for user ${sharedUser.user_id}:`);
+            //     console.log("Total expenses:", userExpenses.length);
+            //     console.log(
+            //       "Expense details:",
+            //       userExpenses.map((expense) => ({
+            //         amount: expense.amount,
+            //         category: expense.category?.name,
+            //         date: expense.date,
+            //         description: expense.description,
+            //       }))
+            //     );
+            //   }
+            // }
           } catch (error) {
             console.error("Error fetching board information:", error);
           }

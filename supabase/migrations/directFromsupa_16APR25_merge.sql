@@ -53,46 +53,51 @@ CREATE TABLE IF NOT EXISTS categories (
   updated_at timestamp with time zone
 );
 
+
+
 CREATE TABLE IF NOT EXISTS expense_boards (
-  id uuid PRIMARY KEY,
-  name text NOT NULL,
-  description text,
-  total_budget numeric,
-  total_expense numeric,
-  created_by uuid,
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone,
-  board_color text,
-  board_icon text,
-  per_person_budget numeric,
-  share_code text,
-  is_default boolean
+  id uuid PRIMARY KEY, -- Unique identifier for each board
+  name text NOT NULL, -- Board title (e.g., Goa Trip)
+  description text, -- Optional description
+  total_budget numeric, -- Total budget for the board
+  total_expense numeric, -- Calculated sum of all expenses
+  created_by uuid REFERENCES profiles(id), -- Creator of the board
+  created_at timestamp with time zone DEFAULT now(), -- Created timestamp
+  updated_at timestamp with time zone DEFAULT now(), -- Last updated timestamp
+  board_color text, -- Optional color for UI
+  board_icon text, -- Optional icon for UI
+  per_person_budget numeric, -- Optional: divided budget among members
+  share_code text, -- Used for invite/share functionality
+  is_default boolean DEFAULT false -- True if this is user's default board
 );
+
 
 CREATE TABLE IF NOT EXISTS expenses (
-  id uuid PRIMARY KEY,
-  board_id uuid,
-  category_id uuid,
-  amount numeric NOT NULL,
-  description text,
-  date timestamp with time zone,
-  created_by uuid,
-  created_at timestamp with time zone,
-  updated_at timestamp with time zone,
-  payment_method text
+  id uuid PRIMARY KEY, -- Unique ID for each expense
+  board_id uuid REFERENCES expense_boards(id) ON DELETE CASCADE, -- Link to the board
+  category_id uuid REFERENCES categories(id), -- Optional category (assumes categories table exists)
+  amount numeric NOT NULL, -- Expense amount
+  description text, -- Description of expense
+  date timestamp with time zone DEFAULT now(), -- Date of expense
+  created_by uuid REFERENCES profiles(id), -- Who added the expense
+  created_at timestamp with time zone DEFAULT now(), -- When expense was added
+  updated_at timestamp with time zone DEFAULT now(), -- Last updated time
+  payment_method text -- Optional: cash, card, UPI, etc.
 );
 
-CREATE TABLE public.shared_users (
-  id uuid PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
-  is_accepted BOOLEAN DEFAULT false,
-  shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  shared_with TEXT NOT NULL,
-  board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE
-  total_expense numeric null default 0,
-  total_spent numeric null default 0,
-  user_id uuid null,
+CREATE TABLE IF NOT EXISTS shared_users (
+  id uuid PRIMARY KEY, -- Unique entry ID for sharing
+  created_at TIMESTAMPTZ DEFAULT timezone('utc', now()), -- Share timestamp
+  is_accepted BOOLEAN DEFAULT false, -- Whether invite was accepted
+  accepted_at TIMESTAMPTZ, -- When invite was accepted (optional)
+  shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, -- Who sent the invite
+  shared_with TEXT NOT NULL, -- Email or identifier of invited user
+  board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE, -- Board being shared
+  user_id uuid REFERENCES profiles(id), -- Once accepted, link to actual user
+  total_expense numeric DEFAULT 0, -- Optional: personal expenses on this board
+  total_spent numeric DEFAULT 0 -- Optional: personal spend summary
 );
+
 
 -- Enable pgcrypto extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -221,6 +226,17 @@ CREATE POLICY "Users can delete their own expense boards"
     ON "public"."expense_boards"
     FOR DELETE
     USING (auth.uid() = created_by);
+
+-- Allow read access if user is part of a shared board
+CREATE POLICY "Allow users to read expenses from shared boards"
+ON expenses
+FOR SELECT
+USING (
+  created_by = auth.uid() OR
+  board_id IN (
+    SELECT board_id FROM shared_users WHERE user_id = auth.uid() AND is_accepted = true
+  )
+);
 
 -- Expenses policies
 CREATE POLICY "Users can view their own expenses"

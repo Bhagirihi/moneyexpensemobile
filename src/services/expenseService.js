@@ -3,11 +3,114 @@ import { supabase } from "../config/supabase";
 export const expenseService = {
   async getExpenses(category = null, page = 1, limit = 10) {
     try {
-      console.log("Fetching expenses from Supabase...", {
-        page,
-        limit,
-        category,
-      });
+      const offset = (page - 1) * limit;
+
+      // Step 1: Auth
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("User not authenticated");
+
+      // Step 2: Fetch boards
+      const { data: ownedBoards, error: ownedError } = await supabase
+        .from("expense_boards")
+        .select("id")
+        .eq("created_by", user.id);
+      if (ownedError) throw ownedError;
+
+      const { data: sharedBoards, error: sharedError } = await supabase
+        .from("shared_users")
+        .select("board_id, user_id, shared_with")
+        .eq("user_id", user.id)
+        .eq("is_accepted", true);
+      if (sharedError) throw sharedError;
+
+      const boardIds = [
+        ...ownedBoards.map((b) => b.id),
+        ...sharedBoards.map((s) => s.board_id),
+      ];
+
+      // Step 3: Get creator user IDs
+      const sharedUserProfileResults = await Promise.all(
+        sharedBoards.map((sb) =>
+          supabase
+            .from("profiles")
+            .select("id")
+            .eq("email_address", sb.shared_with)
+            .maybeSingle()
+        )
+      );
+      const sharedUserIds = sharedUserProfileResults
+        .filter((r) => r.data)
+        .map((r) => r.data.id);
+
+      const createdByIds = [...new Set([user.id, ...sharedUserIds])];
+
+      // Step 4: Fetch expenses
+      let query = supabase
+        .from("expenses")
+        .select(
+          `
+          *,
+          categories (name, color, icon),
+          expense_boards (name)
+          `,
+          { count: "exact" }
+        )
+        .in("board_id", boardIds)
+        .in("created_by", createdByIds)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (category) query = query.eq("category_id", category);
+
+      const { data: expenses, error, count } = await query;
+      if (error) throw error;
+
+      // Step 5: Fetch profiles for all creators
+      const userIds = [...new Set(expenses.map((e) => e.created_by))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      if (profilesError) throw profilesError;
+
+      const userMap = profiles.reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+
+      // Step 6: Format result
+      const transformed = expenses.map((expense) => ({
+        id: expense.id,
+        amount: expense.amount,
+        description: expense.description,
+        date: expense.created_at,
+        icon: expense.categories?.icon || "receipt",
+        color: expense.categories?.color || "#6C5CE7",
+        category: expense.categories?.name || "Uncategorized",
+        board: expense.expense_boards?.name || "Default Board",
+        payment_method: expense.payment_method || "Unknown",
+        created_by_profile: userMap[expense.created_by] || null,
+      }));
+
+      return {
+        data: transformed,
+        total: count,
+        hasMore: offset + limit < count,
+        currentPage: page,
+        totalPages: Math.ceil(count / limit),
+      };
+    } catch (error) {
+      console.error("Error in getMergedExpenses:", error.message);
+      return { data: [], error: error.message };
+    }
+  },
+
+  async getExpensesbyBoardId(boardId, category = null, page = 1, limit = 10) {
+    console.log("getExpensesByBoardId --", boardId);
+    try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -17,9 +120,43 @@ export const expenseService = {
         return { data: [], total: 0, hasMore: false };
       }
 
-      // Calculate offset
+      const userId = user.id;
       const offset = (page - 1) * limit;
 
+      // Fetch boards owned by user
+      const { data: ownedBoards, error: ownedError } = await supabase
+        .from("expense_boards")
+        .select("id")
+        .eq("created_by", userId);
+      if (ownedError)
+        throw new Error("Error fetching owned boards: " + ownedError.message);
+
+      // Fetch shared boards
+      const { data: sharedBoards, error: sharedError } = await supabase
+        .from("shared_users")
+        .select("board_id, shared_with")
+        .eq("user_id", userId)
+        .eq("is_accepted", true);
+      if (sharedError)
+        throw new Error("Error fetching shared boards: " + sharedError.message);
+
+      // Get profile IDs of shared board owners
+      const userProfilePromises = sharedBoards.map((sb) =>
+        supabase
+          .from("profiles")
+          .select("id")
+          .eq("email_address", sb.shared_with)
+          .maybeSingle()
+      );
+      const userProfileResults = await Promise.all(userProfilePromises);
+
+      const sharedUserIds = userProfileResults
+        .map((res) => res?.data?.id)
+        .filter((id) => !!id); // Remove undefined/null
+
+      const allowedUserIds = Array.from(new Set([userId, ...sharedUserIds]));
+
+      // Build query
       let query = supabase
         .from("expenses")
         .select(
@@ -36,53 +173,41 @@ export const expenseService = {
         `,
           { count: "exact" }
         )
-        .eq("created_by", user.id)
-        .order("date", { ascending: false })
+        .eq("board_id", boardId)
+        .in("created_by", allowedUserIds)
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (category) {
         query = query.eq("category_id", category);
       }
 
-      const { data, error, count } = await query;
+      const { data: expenses, error: expensesError, count } = await query;
+      if (expensesError)
+        throw new Error("Error fetching expenses: " + expensesError.message);
 
-      if (error) {
-        console.error("Error fetching expenses:", error.message);
-        throw error;
-      }
-
-      // Get user profiles for all expenses
-      const userIds = [...new Set(data.map((expense) => expense.created_by))];
+      // Fetch profile info of creators
+      const creatorIds = [...new Set(expenses.map((e) => e.created_by))];
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name")
-        .in("id", userIds);
+        .in("id", creatorIds);
+      if (profilesError)
+        throw new Error("Error fetching profiles: " + profilesError.message);
 
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError.message);
-        throw profilesError;
-      }
-
-      // Create a map of user IDs to profiles
       const userMap = profiles.reduce((acc, profile) => {
         acc[profile.id] = profile;
         return acc;
       }, {});
 
       const hasMore = offset + limit < count;
-      console.log("Fetched expenses:", {
-        count,
-        currentPage: page,
-        hasMore,
-        totalItems: count,
-      });
 
       return {
-        data: data.map((expense) => ({
+        data: expenses.map((expense) => ({
           ...expense,
           icon: expense.category?.icon || "receipt",
           color: expense.category?.color || "#6C5CE7",
-          board: expense.expense_boards?.name || "Default Board",
+          board: expense.expense_boards?.name || "Unnamed Board",
           created_by_profile: userMap[expense.created_by] || null,
         })),
         total: count,
@@ -91,100 +216,8 @@ export const expenseService = {
         totalPages: Math.ceil(count / limit),
       };
     } catch (error) {
-      console.error("Error in getExpenses:", error.message);
-      throw error;
-    }
-  },
-
-  async getExpensesbyBoardId(boardId, category = null, page = 1, limit = 10) {
-    try {
-      console.log("Fetching expenses from Supabase...", { page, limit });
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        console.log("No user found");
-        return { data: [], total: 0, hasMore: false };
-      }
-
-      // Calculate offset
-      const offset = (page - 1) * limit;
-
-      let query = supabase
-        .from("expenses")
-        .select(
-          `
-          *,
-          category:categories (
-            name,
-            icon,
-            color
-          ),
-          expense_boards (
-            name
-          )
-        `,
-          { count: "exact" }
-        )
-        .eq("created_by", user.id)
-        .eq("board_id", boardId)
-        .order("date", { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      if (category) {
-        query = query.eq("category", category);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error("Error fetching expenses:", error.message);
-        throw error;
-      }
-
-      // Get user profiles for all expenses
-      const userIds = [...new Set(data.map((expense) => expense.created_by))];
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name ")
-        .in("id", userIds);
-
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError.message);
-        throw profilesError;
-      }
-
-      // Create a map of user IDs to profiles
-      const userMap = profiles.reduce((acc, profile) => {
-        acc[profile.id] = profile;
-        return acc;
-      }, {});
-
-      const hasMore = offset + limit < count;
-      console.log("Fetched expenses:", {
-        count,
-        currentPage: page,
-        hasMore,
-        totalItems: count,
-      });
-
-      return {
-        data: data.map((expense) => ({
-          ...expense,
-          icon: expense.category?.icon || "receipt",
-          color: expense.category?.color || "#6C5CE7",
-          board: expense.expense_boards?.name || "Default Board",
-          created_by_profile: userMap[expense.created_by] || null,
-        })),
-        total: count,
-        hasMore,
-        currentPage: page,
-        totalPages: Math.ceil(count / limit),
-      };
-    } catch (error) {
-      console.error("Error in getExpenses:", error.message);
-      throw error;
+      console.error("Error in getExpensesByBoardId:", error.message);
+      return { data: [], total: 0, hasMore: false, error: error.message };
     }
   },
 

@@ -22,6 +22,7 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { supabase } from "../config/supabase";
+import { userService } from "../services/supabaseService";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
@@ -117,15 +118,17 @@ export const SettingsScreen = ({ navigation }) => {
       setLoading(true);
 
       // Fetch monthly budget
-      const { data: budgetData, error: budgetError } = await supabase
-        .from("profiles")
-        .select("*")
-        .single();
+      // const { data: budgetData, error: budgetError } = await supabase
+      //   .from("profiles")
+      //   .select("*")
+      //   .single();
+      var budgetData = await userService.getProfile();
+
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
-      if (budgetError) throw budgetError;
-      console.log("budgetData", budgetData);
-      setUserID(budgetData.id);
+      console.log("budgetData -- 99", budgetData.profile);
+      budgetData = budgetData.profile;
+      setUserID(budgetData.sub);
       setBudget(budgetData);
       setBoardCount(budgetData.total_boards);
       // setBoardName(budgetData.board_id);
@@ -137,8 +140,9 @@ export const SettingsScreen = ({ navigation }) => {
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
         .select(`*`);
-
       const board = await boardsData.find((b) => b.id === budgetData.board_id);
+      console.log("boardsData --", budgetData.board_id);
+
       const isDefaultBoard = await boardsData.find((b) => b.is_default);
 
       if (isDefaultBoard) {
@@ -935,6 +939,8 @@ export const SettingsScreen = ({ navigation }) => {
         .eq("board_id", boardID);
 
       if (error) throw error;
+
+      console.log("sharedUsers -- 999", JSON.stringify(sharedUsers));
 
       const formattedInvitees = sharedUsers.map((sharedUser) => ({
         id: sharedUser.id,
