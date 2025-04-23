@@ -104,7 +104,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             {board.name}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {board.created_by}
+            {`by ${board.created_by}`}
           </Text>
         </View>
         <TouchableOpacity

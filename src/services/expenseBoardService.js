@@ -3,33 +3,31 @@ import { supabase } from "../config/supabase";
 export const expenseBoardService = {
   async getExpenseBoards() {
     try {
+      // 0. Get the authenticated user
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
-      if (!user) throw new Error("No authenticated user");
-
+      if (authError || !user)
+        throw new Error(authError?.message || "No authenticated user");
       const userId = user.id;
 
-      // 1. Fetch boards CREATED BY user
+      // 1. Fetch boards CREATED BY the user
       const { data: ownedBoards, error: ownedBoardsError } = await supabase
         .from("expense_boards")
         .select(
           `
-            *,
-            profiles:created_by (
-              id,
-              full_name,
-              email_address
-            )
-          `
+          *,
+          profiles:created_by ( id, full_name, email_address )
+        `
         )
         .eq("created_by", userId)
         .order("created_at", { ascending: false });
 
       if (ownedBoardsError) throw ownedBoardsError;
 
-      // 2. Fetch boards SHARED WITH user
+      // 2. Fetch boards SHARED WITH the user
       const { data: sharedBoardLinks, error: sharedError } = await supabase
         .from("shared_users")
         .select("*")
@@ -37,39 +35,44 @@ export const expenseBoardService = {
         .eq("is_accepted", true);
 
       if (sharedError) throw sharedError;
-
-      console.log("Shared Board Links: - - -", sharedBoardLinks);
-      console.log("userId", userId);
+      console.log("Shared Board Links:", sharedBoardLinks);
 
       const sharedBoardIds = sharedBoardLinks.map((link) => link.board_id);
+      const sharedUserIds = sharedBoardLinks.map((link) => link.shared_by);
+      console.log("sharedBoardIds", sharedBoardIds);
+      console.log("sharedUserIds", sharedUserIds);
 
-      console.log("Shared Board IDs: - - -", sharedBoardIds);
+      const { data: sharedUsers, error: sharedUsersError } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("id", "ecf7d1e6-ddd2-4f2a-8e75-5984ded41d77");
+
+      console.log("sharedUsers", sharedUsers);
+
+      // Fetch board details for shared boards
       const { data: sharedBoards, error: sharedBoardsError } = await supabase
         .from("expense_boards")
         .select(
           `
-            *,
-            profiles:created_by (
-              id,
-              full_name,
-              email_address
-            )
-          `
+          *,
+          profiles:created_by ( id, full_name, email_address )
+        `
         )
-        .in("id", sharedBoardIds)
+        .eq("id", sharedBoardIds)
         .order("created_at", { ascending: false });
 
       if (sharedBoardsError) throw sharedBoardsError;
-      console.log("Shared Boards: - - -", sharedBoards);
 
-      // 3. Combine all board IDs (owned + shared)
+      console.log("sharedBoards 000", sharedBoards);
+
+      // 3. Combine all board data (only owned and sharedBoards)
       const allBoards = [...ownedBoards, ...sharedBoards];
+
       if (allBoards.length === 0) return [];
 
       const allBoardIds = allBoards.map((board) => board.id);
-      console.log("All Board IDs: - - -", allBoardIds);
 
-      // 4. Fetch expenses for all boards
+      // 4. Fetch all expenses for these board IDs
       const { data: expenses, error: expensesError } = await supabase
         .from("expenses")
         .select("*")
@@ -77,30 +80,25 @@ export const expenseBoardService = {
 
       if (expensesError) throw expensesError;
 
-      // 5. Map expenses to board_id
+      // 5. Map board_id → expenses
       const expensesMap = expenses.reduce((acc, expense) => {
-        if (!acc[expense.board_id]) {
-          acc[expense.board_id] = [];
-        }
+        if (!acc[expense.board_id]) acc[expense.board_id] = [];
         acc[expense.board_id].push(expense);
         return acc;
       }, {});
 
-      // 6. Combine board and expenses info
+      // 6. Merge board and expenses info
       const boardsWithExpenses = allBoards.map((board) => ({
         ...board,
         created_by:
-          board.profiles?.full_name === user.user_metadata.full_name
+          board.profiles?.full_name === user.user_metadata?.full_name
             ? "You"
             : board.profiles?.full_name || "Unknown",
         expenses: expensesMap[board.id] || [],
         totalExpenses:
-          expensesMap[board.id]?.reduce(
-            (sum, expense) => sum + expense.amount,
-            0
-          ) || 0,
+          expensesMap[board.id]?.reduce((sum, exp) => sum + exp.amount, 0) || 0,
         totalTransactions: expensesMap[board.id]?.length || 0,
-        isShared: board.created_by !== userId, // Optional: flag if it's a shared board
+        isShared: board.created_by !== userId,
       }));
 
       return boardsWithExpenses;

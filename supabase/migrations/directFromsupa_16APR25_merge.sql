@@ -292,6 +292,31 @@ CREATE POLICY "Allow delete for authenticated users"
   TO authenticated
   USING (true);
 
+-- RLS Policy for debugging (make sure to restrict later!)
+CREATE POLICY "Allow read for authenticated users"
+ON shared_users
+FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Allow users to view boards shared with them
+CREATE POLICY "Allow access to shared boards"
+  ON expense_boards
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM shared_users
+      WHERE shared_users.board_id = expense_boards.id
+      AND shared_users.user_id = auth.uid()
+      AND shared_users.is_accepted = true
+    )
+    OR created_by = auth.uid() -- Optional: also allow board owners
+  );
+
+  CREATE POLICY "Allow read access to all profiles for testing"
+  ON profiles
+  FOR SELECT
+  USING (true);
+
 
 -- FOREIGN KEY CONSTRAINTS
 
