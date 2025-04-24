@@ -1,17 +1,19 @@
-import { supabase } from "../config/supabase";
+import { getSession, supabase } from "../config/supabase";
 
 export const dashboardService = {
   // Fetch user profile
   async getUserProfile(userId) {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      getSession().then(async ({ session }) => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
 
-      if (error) throw error;
-      return { data, error: null };
+        if (error) throw error;
+        return { data, error: null };
+      });
     } catch (error) {
       console.error("Error fetching profile:", error.message);
       return { data: null, error };

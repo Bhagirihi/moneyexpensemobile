@@ -42,7 +42,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       setLoading(true);
       console.log("Fetching expense boards in screen... ==>");
       const data = await expenseBoardService.getExpenseBoards();
-      console.log("data expenseBoardService", data);
+
       if (!data) {
         console.error("No data received from service");
         showToast.error("Failed to fetch boards", "No data received");

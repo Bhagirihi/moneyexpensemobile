@@ -58,7 +58,6 @@ const EmailVerificationScreen = ({ navigation, route }) => {
         console.error("Auth error:", error.message);
         return;
       }
-      console.log("Data:", data);
 
       const user = data?.user;
 

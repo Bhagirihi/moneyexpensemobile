@@ -104,10 +104,57 @@ export const expenseBoardService = {
         supabase.from("expense_boards").select("*").eq("id", id),
         supabase
           .from("shared_users")
-          .select("id, shared_with, shared_by")
-          .eq("board_id", id)
-          .eq("shared_by", user.id),
+          .select(
+            `
+      *,
+      board_id,
+          shared_by_profile:profiles!shared_users_shared_by_fkey(*),
+          user_profile:profiles!shared_users_user_id_fkey(*)
+        `
+          )
+          .eq("board_id", id),
       ]);
+
+      const { data, error } = await supabase.from("shared_users").select("*");
+      console.log("Raw shared_users:", id, data);
+      console.log("sharedUsersRes", user);
+      const boardUsers = [];
+      sharedUsersRes.data.length > 0
+        ? sharedUsersRes.data.map((item) => {
+            boardUsers.push(
+              {
+                id: item.user_profile.id,
+                name: item.user_profile.full_name,
+                board_id: item.user_profile.board_id,
+                email: item.user_profile.email_address,
+              },
+              {
+                id: item.shared_by_profile.id,
+                name: item.shared_by_profile.full_name,
+                board_id: item.shared_by_profile.board_id,
+                email: item.shared_by_profile.email_address,
+              }
+            );
+          })
+        : boardUsers.push({
+            id: user.user_metadata.sub,
+            name: user.user_metadata.full_name,
+            board_id: id,
+            email: user.user_metadata.email,
+          });
+      console.log("boardUsers", boardUsers);
+
+      // 2. Calculate total per user
+      const userExpenseMap = {};
+      expensesRes.data.forEach((expense) => {
+        console.log("expense", expense);
+        if (!userExpenseMap[expense.created_by]) {
+          userExpenseMap[expense.created_by] = 0;
+        }
+        userExpenseMap[expense.created_by] += expense.amount;
+      });
+
+      console.log("userExpenseMap", userExpenseMap);
 
       if (expensesRes.error || boardRes.error || sharedUsersRes.error) {
         throw expensesRes.error || boardRes.error || sharedUsersRes.error;
@@ -119,12 +166,71 @@ export const expenseBoardService = {
       if (!board) return [];
 
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+      console.log("totalExpenses", totalExpenses, "sharedUsersRes");
+      const perPersonBudget = totalExpenses / boardUsers.length;
 
+      // 3. Map to boardUsers with percentage
+      const boardUsersWithStats = boardUsers.map((user) => {
+        const userTotal = userExpenseMap[user.id] || 0;
+        const percent =
+          totalExpenses > 0
+            ? ((userTotal / totalExpenses) * 100).toFixed(2)
+            : "0.00";
+
+        return {
+          ...user,
+          spent: userTotal,
+          percentage: percent,
+        };
+      });
+      console.log("boardUsersWithStats", boardUsersWithStats);
+
+      // 4. Calculate fair share per user
+      const fairShare = totalExpenses / boardUsersWithStats.length;
+
+      const creditors = [];
+      const debtors = [];
+
+      // Split users into creditors and debtors
+      boardUsersWithStats.forEach((user) => {
+        const difference = user.spent - fairShare;
+        if (difference > 0) {
+          creditors.push({ ...user, amount: difference });
+        } else if (difference < 0) {
+          debtors.push({ ...user, amount: -difference }); // positive amount to settle
+        }
+      });
+
+      const settlements = [];
+
+      // Simple greedy algorithm to settle debts
+      for (let debtor of debtors) {
+        let amountToSettle = debtor.amount;
+
+        for (let creditor of creditors) {
+          if (amountToSettle === 0) break;
+          if (creditor.amount === 0) continue;
+
+          const settleAmount = Math.min(amountToSettle, creditor.amount);
+
+          settlements.push({
+            from: debtor.name,
+            to: creditor.name,
+            amount: Number(settleAmount.toFixed(2)),
+          });
+
+          amountToSettle -= settleAmount;
+          creditor.amount -= settleAmount;
+        }
+      }
+      console.log("settlements", settlements);
+      console.log("perPersonBudget", perPersonBudget);
       return {
         totalBudget: board.total_budget,
-        perPersonBudget: board.per_person_budget || "100000", // fallback
+        perPersonBudget: perPersonBudget || "0", // fallback
         totalExpenses,
-        participants: sharedUsersRes.data || [],
+        participants: boardUsersWithStats || [],
+        settlements: settlements || [],
       };
     } catch (error) {
       console.error("Error fetching board by ID:", error.message);
@@ -221,16 +327,15 @@ export const expenseBoardService = {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("No authenticated user");
-      console.log("User:", user.id);
+      if (!user) console.log("No authenticated user");
 
       const { data, error } = await supabase
         .from("shared_users")
         .select("*")
         .eq("shared_by", user.id);
 
-      if (error) throw error;
-      console.log("Shared members:", data);
+      if (error) console.log("getSharedMembers", error);
+
       return data;
     } catch (error) {
       console.error("Error fetching shared members:", error);

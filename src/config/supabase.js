@@ -135,10 +135,10 @@ export const resetPassword = async (email) => {
 
 // User profile helpers
 export const updateUserProfile = async (updates) => {
-  console.log("data updatedData ini", updates);
+  console.log("data updatedData ini");
   try {
     const { data } = await supabase.auth.getUser();
-    console.log("user updateUserProfile", data.user?.id, new Date());
+    console.log("user updateUserProfile");
     const { data: updatedData, error } = await supabase
       .from("profiles")
       .update({ ...updates, updated_at: new Date() })

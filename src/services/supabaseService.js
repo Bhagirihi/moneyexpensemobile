@@ -69,7 +69,6 @@ export const categoryService = {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      console.log("🔍 Fetching categories for user:", user.id);
       const { data, error } = await supabase
         .from("categories")
         .select("*")
@@ -77,7 +76,7 @@ export const categoryService = {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      console.log("📦 Categories fetched:", data?.length || 0);
+
       return { categories: data, error: null };
     } catch (error) {
       console.error("Error fetching categories:", error.message);

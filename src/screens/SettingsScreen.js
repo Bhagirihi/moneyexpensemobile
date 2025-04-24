@@ -126,7 +126,6 @@ export const SettingsScreen = ({ navigation }) => {
 
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
-      console.log("budgetData -- 99", budgetData.profile);
       budgetData = budgetData.profile;
       setUserID(budgetData.sub);
       setBudget(budgetData);
@@ -141,7 +140,6 @@ export const SettingsScreen = ({ navigation }) => {
         .from("expense_boards")
         .select(`*`);
       const board = await boardsData.find((b) => b.id === budgetData.board_id);
-      console.log("boardsData --", budgetData.board_id);
 
       const isDefaultBoard = await boardsData.find((b) => b.is_default);
 
@@ -194,7 +192,6 @@ export const SettingsScreen = ({ navigation }) => {
 
         if (result.action === Share.sharedAction) {
           showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
-          console.log("User shared the invite", result);
         } else if (result.action === Share.dismissedAction) {
           // Optional: silently ignore or log
           console.log("User dismissed the share dialog.");
@@ -939,8 +936,6 @@ export const SettingsScreen = ({ navigation }) => {
         .eq("board_id", boardID);
 
       if (error) throw error;
-
-      console.log("sharedUsers -- 999", JSON.stringify(sharedUsers));
 
       const formattedInvitees = sharedUsers.map((sharedUser) => ({
         id: sharedUser.id,

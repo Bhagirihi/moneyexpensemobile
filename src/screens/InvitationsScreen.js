@@ -39,7 +39,6 @@ export const InvitationsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchSharedUsers();
-    console.log("session", session);
   }, []);
 
   const fetchSharedUsers = async () => {
@@ -89,7 +88,6 @@ export const InvitationsScreen = ({ navigation }) => {
         })
       );
 
-      console.log("setSharedUsers enrichedData", enrichedData);
       setSharedUsers(enrichedData);
       setLoading(false);
     } catch (error) {

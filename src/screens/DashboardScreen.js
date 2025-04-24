@@ -68,6 +68,7 @@ export const DashboardScreen = ({ navigation }) => {
             .select("*")
             .eq("id", session.user.id)
             .single();
+
           setUserProfile(data);
         });
       } catch (error) {
@@ -203,11 +204,11 @@ export const DashboardScreen = ({ navigation }) => {
       // Fetch recent transactions
       const { data: transactionsData, error: transactionsError } =
         await dashboardService.getRecentTransactions();
-      console.log("transactionsData", transactionsData);
+
       if (transactionsError) {
         console.log("Error fetching transactions:", transactionsError);
       }
-      //  console.log("102102", JSON.stringify(transactionsData, null, 2));
+
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);
@@ -228,45 +229,43 @@ export const DashboardScreen = ({ navigation }) => {
   };
 
   const renderBalanceCard = () => (
-    console.log(theme.primary),
-    (
-      <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
-        <View style={styles.balanceMain}>
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceLabelContainer}>
-              <MaterialCommunityIcons
-                name="wallet-outline"
-                size={20}
-                color={theme.white}
-                style={styles.balanceIcon}
-              />
-              <Text style={[styles.balanceLabel, { color: theme.white }]}>
-                Total Budget
-              </Text>
-            </View>
-            <Text style={[styles.balanceValue, { color: theme.white }]}>
-              {formatCurrency(stats.totalBudget)}
+    <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
+      <View style={styles.balanceMain}>
+        <View style={styles.balanceRow}>
+          <View style={styles.balanceLabelContainer}>
+            <MaterialCommunityIcons
+              name="wallet-outline"
+              size={20}
+              color={theme.white}
+              style={styles.balanceIcon}
+            />
+            <Text style={[styles.balanceLabel, { color: theme.white }]}>
+              Total Budget
             </Text>
           </View>
+          <Text style={[styles.balanceValue, { color: theme.white }]}>
+            {formatCurrency(stats.totalBudget)}
+          </Text>
+        </View>
 
-          <View style={styles.balanceRow}>
-            <View style={styles.balanceLabelContainer}>
-              <MaterialCommunityIcons
-                name="cash-remove"
-                size={20}
-                color={theme.white}
-                style={styles.balanceIcon}
-              />
-              <Text style={[styles.balanceLabel, { color: theme.white }]}>
-                Spent
-              </Text>
-            </View>
-            <Text style={[styles.balanceValue, { color: theme.white }]}>
-              {formatCurrency(stats.totalExpenses)}
+        <View style={styles.balanceRow}>
+          <View style={styles.balanceLabelContainer}>
+            <MaterialCommunityIcons
+              name="cash-remove"
+              size={20}
+              color={theme.white}
+              style={styles.balanceIcon}
+            />
+            <Text style={[styles.balanceLabel, { color: theme.white }]}>
+              Spent
             </Text>
           </View>
+          <Text style={[styles.balanceValue, { color: theme.white }]}>
+            {formatCurrency(stats.totalExpenses)}
+          </Text>
+        </View>
 
-          {/* <View style={[styles.balanceRow, styles.remainingRow]}>
+        {/* <View style={[styles.balanceRow, styles.remainingRow]}>
           <View style={styles.balanceLabelContainer}>
             <MaterialCommunityIcons
               name="cash-check"
@@ -282,67 +281,66 @@ export const DashboardScreen = ({ navigation }) => {
             {formatCurrency(stats.remainingBudget)}
           </Text>
         </View> */}
-        </View>
+      </View>
 
-        <View style={styles.combinedProgressContainer}>
-          <View style={styles.progressLabels}>
-            <Text style={[styles.progressLabel, { color: theme.white }]}>
-              Budget Usage
-            </Text>
-            <Text style={[styles.progressLabel, { color: theme.white }]}>
-              {`${Math.round(
-                (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-              )}%`}
-            </Text>
-          </View>
+      <View style={styles.combinedProgressContainer}>
+        <View style={styles.progressLabels}>
+          <Text style={[styles.progressLabel, { color: theme.white }]}>
+            Budget Usage
+          </Text>
+          <Text style={[styles.progressLabel, { color: theme.white }]}>
+            {`${Math.round(
+              (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+            )}%`}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.combinedProgressBar,
+            { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+          ]}
+        >
           <View
             style={[
-              styles.combinedProgressBar,
-              { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+              styles.progressFill,
+              {
+                width: `${Math.round(
+                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+                )}%`,
+                backgroundColor: theme.error,
+              },
             ]}
-          >
+          />
+          <View
+            style={[
+              styles.remainingFill,
+              {
+                width: `100%`,
+                backgroundColor: theme.success,
+              },
+            ]}
+          />
+        </View>
+        <View style={styles.progressLegend}>
+          <View style={styles.legendItem}>
             <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${Math.round(
-                    (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-                  )}%`,
-                  backgroundColor: theme.error,
-                },
-              ]}
+              style={[styles.legendColor, { backgroundColor: theme.error }]}
             />
-            <View
-              style={[
-                styles.remainingFill,
-                {
-                  width: `100%`,
-                  backgroundColor: theme.success,
-                },
-              ]}
-            />
+            <Text style={[styles.legendText, { color: theme.white }]}>
+              Used
+            </Text>
           </View>
-          <View style={styles.progressLegend}>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: theme.error }]}
-              />
-              <Text style={[styles.legendText, { color: theme.white }]}>
-                Used
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: theme.success }]}
-              />
-              <Text style={[styles.legendText, { color: theme.white }]}>
-                Remaining
-              </Text>
-            </View>
+          <View style={styles.legendItem}>
+            <View
+              style={[styles.legendColor, { backgroundColor: theme.success }]}
+            />
+            <Text style={[styles.legendText, { color: theme.white }]}>
+              Remaining
+            </Text>
           </View>
         </View>
       </View>
-    )
+    </View>
   );
 
   const renderQuickActions = () => (
@@ -508,145 +506,7 @@ export const DashboardScreen = ({ navigation }) => {
       {renderHeader()}
       {renderBalanceCard()}
       {renderQuickActions()}
-      {/* <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: theme.card }]}
-        onPress={async () => {
-          try {
-            // Step 1: Get logged-in user
-            const {
-              data: { user },
-              error: authError,
-            } = await supabase.auth.getUser();
 
-            if (authError || !user) {
-              console.error(
-                "Auth error:",
-                authError?.message || "No user found"
-              );
-              return;
-            }
-
-            const userId = user.id;
-
-            // Step 2: Fetch boards owned by the user
-            const { data: ownedBoards, error: ownedError } = await supabase
-              .from("expense_boards")
-              .select("id")
-              .eq("created_by", userId);
-
-            if (ownedError) {
-              console.error("Error fetching owned boards:", ownedError.message);
-              return;
-            }
-
-            // Step 3: Fetch board_ids from shared_users where user_id = current user
-            const { data: sharedBoards, error: sharedError } = await supabase
-              .from("shared_users")
-              .select("board_id")
-              .eq("user_id", userId)
-              .eq("is_accepted", true); // optional if you only want accepted ones
-
-            if (sharedError) {
-              console.error(
-                "Error fetching shared boards:",
-                sharedError.message
-              );
-              return;
-            }
-
-            // Combine board IDs
-            const boardIds = [
-              ...ownedBoards.map((b) => b.id),
-              ...sharedBoards.map((s) => s.board_id),
-            ];
-
-            // Step 4: Fetch expenses from all these boards
-            const { data: expenses, error: expensesError } = await supabase
-              .from("expenses")
-              .select("*")
-              .in("board_id", boardIds);
-
-            if (expensesError) {
-              console.error("Error fetching expenses:", expensesError.message);
-            } else {
-              console.log("Expenses from shared + owned boards:", expenses);
-            }
-
-            // // Get all boards
-            // const { data: boards, error: boardsError } = await supabase
-            //   .from("expense_boards")
-            //   .select("*");
-
-            // if (boardsError) throw boardsError;
-
-            // console.log("Total number of boards:", boards.length);
-            // console.log("Boards:", boards);
-
-            // // Get shared users and their expenses for each board
-            // for (const board of boards) {
-            //   const { data: sharedUsers, error: sharedError } = await supabase
-            //     .from("shared_users")
-            //     .select("*")
-            //     .eq("board_id", board.id);
-
-            //   if (sharedError) throw sharedError;
-
-            //   console.log(`\nBoard: ${board.name}`);
-            //   console.log("Shared with:", sharedUsers);
-
-            //   // Get expenses for each shared user
-            //   for (const sharedUser of sharedUsers) {
-            //     console.log("Shared user:", sharedUser);
-            //     const { data: userProfile, error: profileError } =
-            //       await supabase.from("profiles").select("*");
-
-            //     if (profileError) throw profileError;
-
-            //     console.log(`\nUser Profile: ${JSON.stringify(userProfile)}`);
-
-            //     const { data: userExpenses, error: expensesError } =
-            //       await supabase
-            //         .from("expenses")
-            //         .select(
-            //           `
-            //         *,
-            //         category:category_id (
-            //           name
-            //         )
-            //       `
-            //         )
-            //         .eq("board_id", board.id);
-            //     //.eq("created_by", sharedUser.user_id);
-
-            //     if (expensesError) throw expensesError;
-
-            //     console.log(`\nExpenses for user ${sharedUser.user_id}:`);
-            //     console.log("Total expenses:", userExpenses.length);
-            //     console.log(
-            //       "Expense details:",
-            //       userExpenses.map((expense) => ({
-            //         amount: expense.amount,
-            //         category: expense.category?.name,
-            //         date: expense.date,
-            //         description: expense.description,
-            //       }))
-            //     );
-            //   }
-            // }
-          } catch (error) {
-            console.error("Error fetching board information:", error);
-          }
-        }}
-      >
-        <MaterialCommunityIcons
-          name="information"
-          size={24}
-          color={theme.warning}
-        />
-        <Text style={[styles.actionText, { color: theme.text }]}>
-          Board Info
-        </Text>
-      </TouchableOpacity> */}
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}

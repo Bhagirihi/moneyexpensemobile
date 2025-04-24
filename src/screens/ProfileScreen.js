@@ -45,7 +45,6 @@ export const ProfileScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchUserProfile();
-    console.log("session", session);
   }, []);
 
   const fetchUserProfile = async () => {
@@ -60,8 +59,6 @@ export const ProfileScreen = ({ navigation }) => {
         const { data: ImageData, error: ImageError } = await supabase.storage
           .from("avatars")
           .list(session.user.id);
-
-        console.log("Image", ImageData, ImageError);
 
         if (error) throw error;
 
@@ -80,8 +77,6 @@ export const ProfileScreen = ({ navigation }) => {
     const expenseBoards = await expenseBoardService.getExpenseBoards();
     const categories = await categoryService.getCategories();
     const sharedMembers = await expenseBoardService.getSharedMembers();
-
-    console.log("sharedMembers", sharedMembers);
 
     const totalExpenses = expenseBoards.reduce(
       (sum, board) => sum + (board.totalExpenses || 0),
@@ -126,7 +121,6 @@ export const ProfileScreen = ({ navigation }) => {
         if (!userId) {
           throw new Error("User ID is missing.");
         }
-        console.log("userId", userId);
       }
       // Ask for permission
       const { status } =
@@ -171,14 +165,10 @@ export const ProfileScreen = ({ navigation }) => {
       const userId = session?.user?.id; // Ensure user is logged in
       if (!userId) throw new Error("User not logged in");
 
-      console.log("Uploading image with URI:", uri);
-
       // Convert image URI to base64
       const base64Image = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-
-      // console.log("Base64 Image:", base64Image); // Check base64 string
 
       // Create a filename and path
       const fileExt = uri.split(".").pop()?.split("?")[0] || "jpg";
@@ -186,7 +176,6 @@ export const ProfileScreen = ({ navigation }) => {
       const path = `${userId}/${filename}`;
       const fileType = `image/${fileExt}`;
 
-      console.log("base64Image", JSON.stringify(base64Image), fileType, path);
       const file = {
         uri: uri,
         name: filename,
@@ -213,107 +202,71 @@ export const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  // const uploadImageToSupabase = async (uri) => {
-  //   let userId = session?.user?.id;
-  //   console.log("uri uploadImageToSupabase", uri);
-
-  //   const response = await fetch(uri);
-  //   const blob = await response.blob();
-
-  //   const ext = uri.split(".").pop() || "jpg";
-  //   const filename = `${Date.now()}.${ext}`;
-  //   const path = `${userId}/${filename}`;
-  //   console.log("path", userId, path, response, blob);
-
-  //   const { error: uploadError } = await supabase.storage
-  //     .from("avatars")
-  //     .upload(path, blob, {
-  //       cacheControl: "3600",
-  //       upsert: true,
-  //     });
-
-  //   if (uploadError) throw uploadError;
-
-  //   const {
-  //     data: { publicUrl },
-  //   } = supabase.storage.from("avatars").getPublicUrl(path);
-  //   console.log("publicUrl 9090", publicUrl);
-
-  //   return publicUrl;
-  // };
-
   const renderProfileImage = () => (
-    console.log("userProfile?.avatar_url", userProfile?.avatar_url),
-    (
-      <View
-        style={[
-          styles.profileImageSection,
-          { backgroundColor: theme.cardBackground },
-        ]}
-      >
-        <View style={styles.profileRow}>
-          <View style={styles.profileImageContainer}>
-            <TouchableOpacity onPress={pickAndUploadImage}>
-              <View
-                style={[
-                  styles.profileImage,
-                  { backgroundColor: `${theme.primary}15` },
-                ]}
-              >
-                {userProfile?.avatar_url ? (
-                  <Image
-                    source={{ uri: userProfile.avatar_url }}
-                    style={styles.profileImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <MaterialCommunityIcons
-                    name="account"
-                    size={50}
-                    color={theme.primary}
-                  />
-                )}
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.editImageButton,
-                  { backgroundColor: theme.primary },
-                ]}
-                onPress={pickAndUploadImage}
-              >
-                <MaterialCommunityIcons
-                  name="camera"
-                  size={14}
-                  color="#FFFFFF"
+    <View
+      style={[
+        styles.profileImageSection,
+        { backgroundColor: theme.cardBackground },
+      ]}
+    >
+      <View style={styles.profileRow}>
+        <View style={styles.profileImageContainer}>
+          <TouchableOpacity onPress={pickAndUploadImage}>
+            <View
+              style={[
+                styles.profileImage,
+                { backgroundColor: `${theme.primary}15` },
+              ]}
+            >
+              {userProfile?.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.avatar_url }}
+                  style={styles.profileImage}
+                  resizeMode="cover"
                 />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.profileDetails}>
-            <Text style={[styles.profileName, { color: theme.text }]}>
-              {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
-            </Text>
-            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-              {userProfile?.email_address || "No email Address"}
-            </Text>
-            <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-              {userProfile?.mobile || "No phone Number"}
-            </Text>
-            <View style={styles.profileBadge}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={14}
-                color={theme.success}
-              />
-              <Text style={[styles.profileBadgeText, { color: theme.success }]}>
-                Verified Account
-              </Text>
+              ) : (
+                <MaterialCommunityIcons
+                  name="account"
+                  size={50}
+                  color={theme.primary}
+                />
+              )}
             </View>
+            <TouchableOpacity
+              style={[
+                styles.editImageButton,
+                { backgroundColor: theme.primary },
+              ]}
+              onPress={pickAndUploadImage}
+            >
+              <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.profileDetails}>
+          <Text style={[styles.profileName, { color: theme.text }]}>
+            {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
+          </Text>
+          <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+            {userProfile?.email_address || "No email Address"}
+          </Text>
+          <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
+            {userProfile?.mobile || "No phone Number"}
+          </Text>
+          <View style={styles.profileBadge}>
+            <MaterialCommunityIcons
+              name="check-circle"
+              size={14}
+              color={theme.success}
+            />
+            <Text style={[styles.profileBadgeText, { color: theme.success }]}>
+              Verified Account
+            </Text>
           </View>
         </View>
       </View>
-    )
+    </View>
   );
 
   const renderSubscriptionStatus = () => (

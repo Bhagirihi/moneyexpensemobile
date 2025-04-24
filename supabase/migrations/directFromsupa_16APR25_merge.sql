@@ -334,6 +334,8 @@ ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_board_id_fkey;
 ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_category_id_fkey;
 ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_created_by_fkey;
 
+ALTER TABLE shared_users DROP CONSTRAINT shared_users_shared_by_fkey;
+
 -- Drop constraints on notifications table
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
 
@@ -372,6 +374,17 @@ DEFERRABLE INITIALLY DEFERRED;
 ALTER TABLE shared_users ADD CONSTRAINT fk_user_id
 FOREIGN KEY (user_id) REFERENCES profiles(id)
 DEFERRABLE INITIALLY DEFERRED;
+
+-- Link shared_by to profiles.id
+ALTER TABLE shared_users ADD CONSTRAINT shared_users_shared_by_fkey
+FOREIGN KEY (shared_by) REFERENCES profiles(id);
+DEFERRABLE INITIALLY DEFERRED;
+
+-- Link user_id to profiles.id
+ALTER TABLE shared_users ADD CONSTRAINT shared_users_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES profiles(id);
+DEFERRABLE INITIALLY DEFERRED;
+
 
 -- FUNCTION DEFINITIONS
 

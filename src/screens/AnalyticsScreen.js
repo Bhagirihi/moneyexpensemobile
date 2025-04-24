@@ -334,6 +334,7 @@ export const AnalyticsScreen = ({ navigation }) => {
       };
 
       await setAnalytics(dummyData);
+      await setLoading(false);
     } catch (error) {
       console.error("Error fetching analytics:", error);
     } finally {
@@ -351,10 +352,8 @@ export const AnalyticsScreen = ({ navigation }) => {
 
         const analytics = await fetchAnalytics(user.id, selectedPeriod);
         const trends = await fetchExpenseTrends(user.id, selectedPeriod);
-        console.log("Analytics Data:", analytics);
-        console.log("Expense Trends:", trends);
       } catch (error) {
-        console.error("Error checking analytics:", error);
+        console.log("Error checking analytics:", error);
       }
     };
 
@@ -594,52 +593,46 @@ export const AnalyticsScreen = ({ navigation }) => {
   );
 
   const renderCategoryBreakdown = () => (
-    console.log("analytics.topCategories", analytics.topCategories),
-    (
-      <View style={styles.categoryBreakdown}>
-        <Text
-          style={[
-            styles.summaryTitle,
-            { color: theme.text, marginVertical: 10 },
-          ]}
-        >
-          Category Breakdown
-        </Text>
+    <View style={styles.categoryBreakdown}>
+      <Text
+        style={[styles.summaryTitle, { color: theme.text, marginVertical: 10 }]}
+      >
+        Category Breakdown
+      </Text>
 
-        {analytics.topCategories.map((category, index) => (
+      {analytics.topCategories.map((category, index) => (
+        <View
+          key={index}
+          style={[styles.categoryItem, { backgroundColor: theme.card }]}
+        >
           <View
-            key={index}
-            style={[styles.categoryItem, { backgroundColor: theme.card }]}
+            style={[
+              styles.categoryIcon,
+              { backgroundColor: `${category.color}15` },
+            ]}
           >
-            <View
-              style={[
-                styles.categoryIcon,
-                { backgroundColor: `${category.color}15` },
-              ]}
+            <MaterialCommunityIcons
+              name={category.icon}
+              size={24}
+              color={category.color}
+            />
+          </View>
+          <View style={styles.categoryInfo}>
+            <Text style={[styles.categoryName, { color: theme.text }]}>
+              {category.name}
+            </Text>
+            <Text
+              style={[styles.categoryAmount, { color: theme.textSecondary }]}
             >
-              <MaterialCommunityIcons
-                name={category.icon}
-                size={24}
-                color={category.color}
-              />
-            </View>
-            <View style={styles.categoryInfo}>
-              <Text style={[styles.categoryName, { color: theme.text }]}>
-                {category.name}
-              </Text>
-              <Text
-                style={[styles.categoryAmount, { color: theme.textSecondary }]}
-              >
-                {formatCurrency(category.amount)}
-              </Text>
-            </View>
-            <Text style={[styles.categoryPercentage, { color: theme.primary }]}>
-              {`${category.percentage}% (${category.count})`}
+              {formatCurrency(category.amount)}
             </Text>
           </View>
-        ))}
-      </View>
-    )
+          <Text style={[styles.categoryPercentage, { color: theme.primary }]}>
+            {`${category.percentage}% (${category.count})`}
+          </Text>
+        </View>
+      ))}
+    </View>
   );
 
   return (

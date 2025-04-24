@@ -66,7 +66,7 @@ const ShareModal = ({
 
         if (result.action === Share.sharedAction) {
           showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
-          console.log("User shared the invite", result);
+          console.log("User shared the invite");
         } else if (result.action === Share.dismissedAction) {
           // Optional: silently ignore or log
           console.log("User dismissed the share dialog.");

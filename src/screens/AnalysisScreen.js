@@ -21,6 +21,8 @@ const { width } = Dimensions.get("window");
 
 export const AnalysisScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { boardId } = route.params;
+  console.log("boardId", boardId);
   const [loading, setLoading] = useState(true);
   const [showTripSelector, setShowTripSelector] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState({
@@ -45,14 +47,14 @@ export const AnalysisScreen = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    fetchBoardsDetails();
+    fetchBoardsDetails(boardId);
   }, []);
 
   useEffect(() => {
     fetchAnalysisData();
   }, [selectedTrip]);
 
-  const fetchBoardsDetails = async () => {
+  const fetchBoardsDetails = async (boardId) => {
     try {
       const {
         data: { user },
@@ -79,10 +81,11 @@ export const AnalysisScreen = ({ navigation, route }) => {
         date: new Date(board.created_at).toLocaleDateString(),
         total_budget: board.total_budget,
       }));
-
+      console.log("formattedBoards", formattedBoards);
       setTrips(formattedBoards);
       if (formattedBoards.length > 0) {
-        setSelectedTrip(formattedBoards[0]);
+        const selected = formattedBoards.find((board) => board.id === boardId);
+        setSelectedTrip(selected || formattedBoards[0]);
       }
     } catch (error) {
       console.error("Error fetching boards details:", error);
@@ -96,27 +99,21 @@ export const AnalysisScreen = ({ navigation, route }) => {
       const data = await expenseBoardService.getExpenseBoardsByID(
         selectedTrip.id
       );
-      console.log("Analysis data:", JSON.stringify(data, null, 2));
 
       // Calculate per person budget properly
       const totalBudget = Number(data.totalBudget);
       const totalExpenses = Number(data.totalExpenses);
-      const participantCount = "3" || data.participants?.length; // Fallback to 1 if no participants
+      const participantCount = data.participants?.length; // Fallback to 1 if no participants
       const perPersonBudget = Number(data.perPersonBudget);
+      const participant = data.participants;
+      const settlements = data.settlements;
 
       setAnalysisData({
         totalExpense: totalExpenses,
         totalBudget: totalBudget,
         perPersonBudget: Number(perPersonBudget.toFixed(2)),
-        participants: [
-          { id: 1, name: "John", spent: 800, percentage: 53.33 },
-          { id: 2, name: "Alice", spent: 400, percentage: 26.67 },
-          { id: 3, name: "Bob", spent: 300, percentage: 20 },
-        ],
-        settlements: [
-          { from: "Alice", to: "John", amount: 150 },
-          { from: "Bob", to: "John", amount: 200 },
-        ],
+        participants: participant,
+        settlements: settlements,
         participantCount: participantCount,
       });
     } catch (error) {
@@ -329,7 +326,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.participantDetails}>
               <Text style={[styles.participantName, { color: theme.text }]}>
-                {participant.name || participant.shared_with}
+                {participant.name}
               </Text>
               <View style={styles.percentageBar}>
                 <View
@@ -345,7 +342,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
               <Text
                 style={[
                   styles.participantPercentage,
-                  { color: theme.textSecondary },
+                  { color: theme.textSecondary, fontWeight: "800" },
                 ]}
               >
                 {participant.percentage}% of total
@@ -353,7 +350,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
             </View>
           </View>
           <Text style={[styles.participantAmount, { color: theme.text }]}>
-            ${participant.spent}
+            {formatCurrency(participant.spent)}
           </Text>
         </View>
       ))}
@@ -372,7 +369,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
           </Text>
         </View>
         <MaterialCommunityIcons
-          name="cash-transfer"
+          name="bank-transfer"
           size={24}
           color={theme.primary}
         />
@@ -428,14 +425,8 @@ export const AnalysisScreen = ({ navigation, route }) => {
               { backgroundColor: theme.primary + "10" },
             ]}
           >
-            <MaterialCommunityIcons
-              name="cash"
-              size={16}
-              color={theme.primary}
-              style={styles.settlementAmountIcon}
-            />
             <Text style={[styles.settlementAmount, { color: theme.primary }]}>
-              ${settlement.amount}
+              {formatCurrency(settlement.amount)}
             </Text>
           </View>
         </View>

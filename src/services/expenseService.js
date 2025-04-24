@@ -109,7 +109,6 @@ export const expenseService = {
   },
 
   async getExpensesbyBoardId(boardId, category = null, page = 1, limit = 10) {
-    console.log("getExpensesByBoardId --", boardId);
     try {
       const {
         data: { user },
@@ -149,13 +148,9 @@ export const expenseService = {
         query = query.eq("category_id", category);
       }
 
-      console.log("Query:", query);
-
       const { data: expenses, error: expensesError, count } = await query;
       if (expensesError)
         throw new Error("Error fetching expenses: " + expensesError.message);
-
-      console.log("Expenses:", expenses);
 
       // Fetch profile info of creators
       const creatorIds = [...new Set(expenses.map((e) => e.created_by))];
@@ -165,8 +160,6 @@ export const expenseService = {
         .in("id", creatorIds);
       if (profilesError)
         throw new Error("Error fetching profiles: " + profilesError.message);
-
-      console.log("Profiles:", profiles);
 
       const userMap = profiles.reduce((acc, profile) => {
         acc[profile.id] = profile;
@@ -414,11 +407,6 @@ export const expenseService = {
       const totalBudget = 2000; // This should come from user settings
       const remainingBalance = totalBudget - totalExpenses;
 
-      console.log("Monthly stats:", {
-        totalExpenses,
-        totalBudget,
-        remainingBalance,
-      });
       return { totalExpenses, totalBudget, remainingBalance };
     } catch (error) {
       console.error("Error in getMonthlyStats:", error.message);

@@ -13,8 +13,7 @@ export const fetchAnalytics = async (userId, period) => {
     const { data: expenseBoard, error: boardError } = await supabase
       .from("expense_boards")
       .select("id")
-      .eq("created_by", userId)
-      .single();
+      .eq("created_by", userId);
 
     if (boardError) throw boardError;
     if (!expenseBoard) throw new Error("No expense board found");
@@ -164,12 +163,22 @@ export const fetchExpenseTrends = async (userId, period) => {
     // Get the current user's expense board
     const { data: expenseBoard, error: boardError } = await supabase
       .from("expense_boards")
-      .select("id")
-      .eq("created_by", userId)
-      .single();
+      .select("id, created_by")
+      .eq("created_by", userId.toString());
 
-    if (boardError) throw boardError;
-    if (!expenseBoard) throw new Error("No expense board found");
+    console.log("expenseBoard fetchExpenseTrends", userId, expenseBoard);
+
+    const { data: sharedBoards, error: sharedError } = await supabase
+      .from("shared_users")
+      .select("board_id, user_id, shared_with")
+      .eq("user_id", userId.toString())
+      .eq("is_accepted", true);
+    console.log("sharedBoards", sharedBoards);
+    const boardIds = [
+      ...expenseBoard.map((b) => b.id),
+      ...sharedBoards.map((s) => s.board_id),
+    ];
+    console.log("-----", boardIds);
 
     // Calculate date ranges for current and previous period
     const now = new Date();
@@ -218,18 +227,16 @@ export const fetchExpenseTrends = async (userId, period) => {
         )
       `
       )
-      .eq("board_id", expenseBoard.id)
+      .in("board_id", boardIds)
       .gte("date", startDate.toISOString())
       .lte("date", endDate.toISOString())
       .order("date", { ascending: true });
-
-    if (currentError) throw currentError;
 
     // Fetch previous period expenses
     const { data: previousData, error: previousError } = await supabase
       .from("expenses")
       .select("amount")
-      .eq("board_id", expenseBoard.id)
+      .in("board_id", boardIds)
       .gte("date", previousStartDate.toISOString())
       .lt("date", previousEndDate.toISOString());
 
