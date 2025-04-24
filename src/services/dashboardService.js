@@ -79,6 +79,7 @@ export const dashboardService = {
         ...sharedBoards.map((s) => s.board_id),
       ];
       console.log("boardIds", boardIds);
+
       // Step 5: Fetch expenses from these boards
       const { data, error } = await supabase
         .from("expenses")
@@ -90,7 +91,7 @@ export const dashboardService = {
         `
         )
         .in("board_id", boardIds) // Filter by boards
-        .in("created_by", userIdArray) // Filter by specific users
+        // .in("created_by", userIdArray) // Filter by specific users
         .order("created_at", { ascending: false })
         .limit(limit);
 

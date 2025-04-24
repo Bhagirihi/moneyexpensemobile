@@ -203,11 +203,11 @@ export const DashboardScreen = ({ navigation }) => {
       // Fetch recent transactions
       const { data: transactionsData, error: transactionsError } =
         await dashboardService.getRecentTransactions();
-
+      console.log("transactionsData", transactionsData);
       if (transactionsError) {
-        throw transactionsError;
+        console.log("Error fetching transactions:", transactionsError);
       }
-      console.log("102102", JSON.stringify(transactionsData, null, 2));
+      //  console.log("102102", JSON.stringify(transactionsData, null, 2));
       setExpenses(transactionsData);
     } catch (error) {
       console.error("Error fetching dashboard data:", error.message);

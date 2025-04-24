@@ -123,39 +123,6 @@ export const expenseService = {
       const userId = user.id;
       const offset = (page - 1) * limit;
 
-      // Fetch boards owned by user
-      const { data: ownedBoards, error: ownedError } = await supabase
-        .from("expense_boards")
-        .select("id")
-        .eq("created_by", userId);
-      if (ownedError)
-        throw new Error("Error fetching owned boards: " + ownedError.message);
-
-      // Fetch shared boards
-      const { data: sharedBoards, error: sharedError } = await supabase
-        .from("shared_users")
-        .select("board_id, shared_with")
-        .eq("user_id", userId)
-        .eq("is_accepted", true);
-      if (sharedError)
-        throw new Error("Error fetching shared boards: " + sharedError.message);
-
-      // Get profile IDs of shared board owners
-      const userProfilePromises = sharedBoards.map((sb) =>
-        supabase
-          .from("profiles")
-          .select("id")
-          .eq("email_address", sb.shared_with)
-          .maybeSingle()
-      );
-      const userProfileResults = await Promise.all(userProfilePromises);
-
-      const sharedUserIds = userProfileResults
-        .map((res) => res?.data?.id)
-        .filter((id) => !!id); // Remove undefined/null
-
-      const allowedUserIds = Array.from(new Set([userId, ...sharedUserIds]));
-
       // Build query
       let query = supabase
         .from("expenses")
@@ -174,7 +141,7 @@ export const expenseService = {
           { count: "exact" }
         )
         .eq("board_id", boardId)
-        .in("created_by", allowedUserIds)
+
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -182,9 +149,13 @@ export const expenseService = {
         query = query.eq("category_id", category);
       }
 
+      console.log("Query:", query);
+
       const { data: expenses, error: expensesError, count } = await query;
       if (expensesError)
         throw new Error("Error fetching expenses: " + expensesError.message);
+
+      console.log("Expenses:", expenses);
 
       // Fetch profile info of creators
       const creatorIds = [...new Set(expenses.map((e) => e.created_by))];
@@ -194,6 +165,8 @@ export const expenseService = {
         .in("id", creatorIds);
       if (profilesError)
         throw new Error("Error fetching profiles: " + profilesError.message);
+
+      console.log("Profiles:", profiles);
 
       const userMap = profiles.reduce((acc, profile) => {
         acc[profile.id] = profile;

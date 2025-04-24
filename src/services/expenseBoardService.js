@@ -45,7 +45,7 @@ export const expenseBoardService = {
       const { data: sharedUsers, error: sharedUsersError } = await supabase
         .from("profiles")
         .select("*")
-        .in("id", "ecf7d1e6-ddd2-4f2a-8e75-5984ded41d77");
+        .in("id", sharedUserIds);
 
       console.log("sharedUsers", sharedUsers);
 
