@@ -340,7 +340,7 @@ ALTER TABLE shared_users DROP CONSTRAINT shared_users_shared_by_fkey;
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_user_id_fkey;
 
 -- Drop constraints on shared_users table
-ALTER TABLE shared_users DROP CONSTRAINT IF EXISTS fk_user_id;
+ALTER TABLE shared_users DROP CONSTRAINT IF EXISTS shared_users_user_id_fkey;
 
 
 ALTER TABLE profiles ADD CONSTRAINT fk_profiles_board_id
@@ -371,7 +371,7 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey
 FOREIGN KEY (user_id) REFERENCES profiles (id)
 DEFERRABLE INITIALLY DEFERRED;
 
-ALTER TABLE shared_users ADD CONSTRAINT fk_user_id
+ALTER TABLE shared_users ADD CONSTRAINT shared_users_user_id_fkey
 FOREIGN KEY (user_id) REFERENCES profiles(id)
 DEFERRABLE INITIALLY DEFERRED;
 

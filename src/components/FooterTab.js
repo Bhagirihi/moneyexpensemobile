@@ -13,11 +13,11 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
   const { theme } = useTheme();
 
   const getTabColor = (tabName) => {
-    return activeRoute === tabName ? theme.primary : theme.textSecondary;
+    return activeRoute === tabName ? theme.white : theme.white;
   };
 
   const getTextColor = (tabName) => {
-    return activeRoute === tabName ? theme.primary : theme.textSecondary;
+    return activeRoute === tabName ? theme.white : theme.white;
   };
 
   const getTabStyle = (tabName) => {
@@ -25,14 +25,19 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
       styles.tabItem,
       activeRoute === tabName && [
         styles.activeTabItem,
-        { backgroundColor: `${theme.primary}15` },
+        { backgroundColor: `${theme.textSecondary}65` },
       ],
     ];
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.card }]}>
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: "transparent" }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.primary, overflow: "hidden" },
+        ]}
+      >
         <TouchableOpacity
           style={getTabStyle("Home")}
           onPress={() => navigation.navigate("Dashboard")}

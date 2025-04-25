@@ -56,7 +56,8 @@ export const SettingsScreen = ({ navigation }) => {
   const [success, setSuccess] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [sharedMembers, setSharedMembers] = useState([]);
-  const [invitees, setInvitees] = useState([]);
+  const [SharedMemberCount, setSharedMemberCount] = useState(0);
+  const [invitees, setInvitees] = useState(0);
   const [loadingInvitees, setLoadingInvitees] = useState(false);
 
   const languages = [
@@ -116,20 +117,14 @@ export const SettingsScreen = ({ navigation }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-
-      // Fetch monthly budget
-      // const { data: budgetData, error: budgetError } = await supabase
-      //   .from("profiles")
-      //   .select("*")
-      //   .single();
       var budgetData = await userService.getProfile();
-
+      console.log("budgetData", budgetData);
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
       budgetData = budgetData.profile;
       setUserID(budgetData.sub);
       setBudget(budgetData);
-      setBoardCount(budgetData.total_boards);
+
       // setBoardName(budgetData.board_id);
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
@@ -152,7 +147,7 @@ export const SettingsScreen = ({ navigation }) => {
         console.log("Board not found for the given ID");
       }
       if (boardsError) throw boardsError;
-
+      setBoardCount(boardsData.length);
       setExpenseBoards(boardsData || []);
     } catch (error) {
       console.error("Error fetching data: <-", error);
@@ -676,7 +671,7 @@ export const SettingsScreen = ({ navigation }) => {
       {expenseBoards.slice(-3).map((board) => {
         const members =
           sharedMembers?.filter((member) => member.board_id === board.id) || [];
-
+        setSharedMemberCount(members);
         return (
           <View key={board.id} style={styles.boardDetailItem}>
             <View style={styles.boardDetailHeader}>
@@ -915,40 +910,32 @@ export const SettingsScreen = ({ navigation }) => {
   const fetchInvitees = async () => {
     try {
       setLoadingInvitees(true);
-
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
       // Get all shared users with their profile information
-      const { data: sharedUsers, error } = await supabase
+      const { count, error } = await supabase
         .from("shared_users")
-        .select(
-          `
-          *,
-          profiles: user_id (
-            id,
-            full_name,
-            email_address
-          ),
-          expense_boards: board_id (
-            id,
-            name
-          )
-        `
-        )
-        .eq("board_id", boardID);
+        .select("*", { count: "exact", head: true })
+        .eq("shared_by", session.user.id);
 
       if (error) throw error;
 
-      const formattedInvitees = sharedUsers.map((sharedUser) => ({
-        id: sharedUser.id,
-        userId: sharedUser.user_id,
-        userName: sharedUser.profiles?.full_name || "Unknown",
-        userEmail: sharedUser.profiles?.email_address || "Unknown",
-        boardId: sharedUser.board_id,
-        boardName: sharedUser.expense_boards?.name || "Unknown Board",
-        status: sharedUser.is_accepted ? "accepted" : "pending",
-        createdAt: sharedUser.created_at,
-      }));
+      console.log("sharedUsers", count);
 
-      setInvitees(formattedInvitees);
+      // const formattedInvitees = sharedUsers.map((sharedUser) => ({
+      //   id: sharedUser.id,
+      //   userId: sharedUser.user_id,
+      //   userName: sharedUser.profiles?.full_name || "Unknown",
+      //   userEmail: sharedUser.profiles?.email_address || "Unknown",
+      //   boardId: sharedUser.board_id,
+      //   boardName: sharedUser.expense_boards?.name || "Unknown Board",
+      //   status: sharedUser.is_accepted ? "accepted" : "pending",
+      //   createdAt: sharedUser.created_at,
+      // }));
+
+      setInvitees(count);
     } catch (error) {
       console.error("Error fetching invitees:", error);
       showToast.error("Error", "Failed to load invitees");
@@ -1476,10 +1463,11 @@ export const SettingsScreen = ({ navigation }) => {
               onPress: () => navigation.navigate("Profile"),
               editable: false,
             }),
+
             renderSettingItem({
               icon: "account-group",
               title: "Shared Users ",
-              subtitle: `${invitees.length} pending`,
+              subtitle: `${invitees} Invited`,
               onPress: () => navigation.navigate("Profile2"),
               editable: false,
             }),

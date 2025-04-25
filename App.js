@@ -90,6 +90,9 @@ const AppContent = () => {
   const { theme } = useTheme();
   const [session, setSession] = useState(null);
   const [appIsReady, setAppIsReady] = useState(false);
+  const [fontsLoaded] = Font.useFonts({
+    "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
+  });
 
   useEffect(() => {
     async function prepare() {
@@ -160,10 +163,6 @@ const AppContent = () => {
       await SplashScreen.hideAsync();
     }
   }, [appIsReady]);
-
-  if (!appIsReady) {
-    return <View style={{ flex: 1, backgroundColor: "#f3f2ef" }} />;
-  }
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>

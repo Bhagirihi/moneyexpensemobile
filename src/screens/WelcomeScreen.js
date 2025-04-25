@@ -57,12 +57,13 @@ const WelcomeScreen = ({ navigation }) => {
       if (authError) throw authError;
 
       setTimeout(() => {
-        if (user) {
-          navigation.replace("Dashboard");
-        } else {
+        if (!user) {
           navigation.replace("Login");
         }
-      }, 2500);
+        // else {
+        //   navigation.replace("Dashboard");
+        // }
+      }, 3000);
     } catch (error) {
       console.log("Error checking auth state:", error);
       setTimeout(() => {

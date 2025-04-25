@@ -218,42 +218,35 @@ export const NotificationScreen = ({ navigation }) => {
         title="Notifications"
         onBack={() => navigation.goBack()}
         rightComponent={
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity
-              style={[
-                styles.markAllReadButton,
-                {
-                  opacity: hasUnreadNotifications ? 1 : 0.5,
-                  backgroundColor: hasUnreadNotifications
-                    ? `${theme.primary}15`
-                    : "rgba(0,0,0,0.05)",
-                },
-              ]}
-              onPress={markAllAsRead}
-              disabled={!hasUnreadNotifications}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons
-                name="check-all"
-                size={18}
-                color={theme.primary}
-                style={styles.markAllReadIcon}
-              />
-              <Text style={[styles.markAllReadText, { color: theme.primary }]}>
-                Mark all
-              </Text>
-              {unreadCount > 0 && (
-                <View
-                  style={[
-                    styles.unreadBadge,
-                    { backgroundColor: theme.primary },
-                  ]}
-                >
-                  <Text style={styles.unreadCount}>{unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
+          <TouchableOpacity
+            style={[
+              styles.markAllReadButton,
+              {
+                opacity: hasUnreadNotifications ? 1 : 0.5,
+                backgroundColor: hasUnreadNotifications
+                  ? `${theme.primary}15`
+                  : "rgba(0,0,0,0.05)",
+              },
+            ]}
+            onPress={markAllAsRead}
+            disabled={!hasUnreadNotifications}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons
+              name="check-all"
+              size={18}
+              color={theme.primary}
+              style={styles.markAllReadIcon}
+            />
+
+            {unreadCount > 0 && (
+              <View
+                style={[styles.unreadBadge, { backgroundColor: theme.primary }]}
+              >
+                <Text style={styles.unreadCount}>{unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         }
       />
       <ScrollView

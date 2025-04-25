@@ -74,15 +74,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   leftSection: {
-    width: "10%",
+    width: "15%",
     alignItems: "center",
   },
   rightSection: {
-    Width: "10%",
+    Width: "20%",
     alignItems: "center",
   },
   titleSection: {
-    width: "80%",
+    width: "65%",
     alignItems: "center",
   },
   backButton: {
