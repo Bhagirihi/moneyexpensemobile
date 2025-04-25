@@ -32,7 +32,8 @@
     "react-native-ui-datepicker": "^3.1.2",
     "supabase": "^2.20.12",
     "expo-image-picker": "~16.0.6",
-    "expo-file-system": "~18.0.12"
+    "expo-file-system": "~18.0.12",
+    "expo-asset": "~11.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

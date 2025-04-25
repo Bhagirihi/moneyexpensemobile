@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { supabase, updateUserProfile } from "../config/supabase";
@@ -86,16 +87,39 @@ export const LoginScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <MaterialCommunityIcons
+            {/* <MaterialCommunityIcons
               name="wallet-outline"
               size={64}
               color={theme.primary}
+            /> */}
+            <Image
+              source={require("../../assets/app_logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
             />
-            <Text style={[styles.title, { color: theme.text }]}>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: theme.text,
+                  fontFamily: "Poppins-Bold",
+                  fontWeight: "bold",
+                },
+              ]}
+            >
               Welcome Back
             </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Sign in to continue tracking your expenses
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  color: theme.textSecondary,
+                  fontFamily: "Poppins-Light",
+                  fontWeight: "200",
+                },
+              ]}
+            >
+              SignIn to continue tracking
             </Text>
           </View>
 
@@ -246,7 +270,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    marginTop: 40,
+    // marginTop: 40,
     marginBottom: 40,
   },
   title: {
@@ -297,6 +321,10 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: 14,
+  },
+  logo: {
+    height: 120,
+    width: 240,
   },
   loginButton: {
     height: 48,

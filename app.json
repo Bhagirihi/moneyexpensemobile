@@ -4,11 +4,11 @@
     "slug": "Trivense",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon_0.png",
+    "icon": "./assets/app_logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/welcome.png",
+      "image": "./assets/app_logo.png",
       "resizeMode": "cover",
       "backgroundColor": "#f3f2ef"
     },
@@ -20,14 +20,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon_0.png",
+        "foregroundImage": "./assets/app_logo.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.trivense.app",
       "versionCode": 1
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/app_logo.png"
     },
     "extra": {
       "eas": {
@@ -44,7 +44,15 @@
             "./assets/fonts/Inter_Medium.ttf",
             "./assets/fonts/Inter_Regular.ttf",
             "./assets/fonts/Manrope-Bold.ttf",
-            "./assets/fonts/Manrope-Medium.ttf"
+            "./assets/fonts/Manrope-Medium.ttf",
+            "./assets/fonts/Poppins-Bold.ttf",
+            "./assets/fonts/Poppins-Medium.ttf",
+            "./assets/fonts/Poppins-Light.ttf",
+            "./assets/fonts/Poppins-ExtraLight.ttf",
+            "./assets/fonts/Poppins-Regular.ttf",
+            "./assets/fonts/Poppins-SemiBold.ttf",
+            "./assets/fonts/Poppins-Thin.ttf",
+            "./assets/fonts/Poppins-ExtraBold.ttf"
           ]
         }
       ],
@@ -52,19 +60,20 @@
         "expo-splash-screen",
         {
           "ios": {
-            "image": "./assets/welcome.png",
+            "image": "./assets/app_logo.png",
             "resizeMode": "cover",
             "backgroundColor": "#f3f2ef",
             "statusBarStyle": "dark"
           },
           "android": {
-            "image": "./assets/welcome.png",
+            "image": "./assets/app_logo.png",
             "resizeMode": "cover",
             "backgroundColor": "#f3f2ef",
             "statusBarTranslucent": true
           }
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

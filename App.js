@@ -9,6 +9,8 @@ import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
+import { Asset } from "expo-asset";
+
 import { StatusBar } from "expo-status-bar";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
 import WelcomeScreen from "./src/screens/WelcomeScreen";
@@ -93,13 +95,22 @@ const AppContent = () => {
     async function prepare() {
       try {
         await SplashScreen.preventAutoHideAsync();
-
+        await Asset.loadAsync([require("./assets/app_logo.png")]);
         await Font.loadAsync({
           Inter_Bold: require("./assets/fonts/Inter_Bold.ttf"),
           Inter_Medium: require("./assets/fonts/Inter_Medium.ttf"),
           Inter_Regular: require("./assets/fonts/Inter_Regular.ttf"),
           "Manrope-Bold": require("./assets/fonts/Manrope-Bold.ttf"),
           "Manrope-Medium": require("./assets/fonts/Manrope-Medium.ttf"),
+
+          "Poppins-Bold": require("./assets/fonts/Poppins-Bold.ttf"),
+          "Poppins-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
+          "Poppins-Light": require("./assets/fonts/Poppins-Light.ttf"),
+          "Poppins-ExtraLight": require("./assets/fonts/Poppins-ExtraLight.ttf"),
+          "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
+          "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
+          "Poppins-Thin": require("./assets/fonts/Poppins-Thin.ttf"),
+          "Poppins-ExtraBold": require("./assets/fonts/Poppins-ExtraBold.ttf"),
         });
 
         const {
@@ -111,8 +122,6 @@ const AppContent = () => {
           showToast.error("Error", "User session not found.");
           return;
         }
-
-        console.log("session updated_at:", session.user.updated_at);
 
         const { data, error } = await supabase
           .from("profiles")
@@ -222,7 +231,7 @@ const AppContent = () => {
                 ) : (
                   // Public routes
                   <>
-                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
+                    <Stack.Screen name="Welcome" component={WelcomeScreen} />
                     {/* <Stack.Screen
                       name="Onboarding"
                       component={OnboardingScreen}

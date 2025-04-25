@@ -7,10 +7,12 @@ import {
   Animated,
   Dimensions,
   Image,
+  Text,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../config/supabase";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
@@ -70,7 +72,7 @@ const WelcomeScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: "#F3F2EF" }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.white }]}>
       <StatusBar barStyle="dark-content" />
       <Animated.View
         style={[
@@ -83,11 +85,34 @@ const WelcomeScreen = ({ navigation }) => {
       >
         <View style={styles.illustrationContainer}>
           <Image
-            source={require("../../assets/welcome.png")}
-            resizeMode="cover"
+            source={require("../../assets/app_logo.png")}
+            resizeMode="contain"
             resizeMethod="auto"
-            style={styles.logo}
+            style={[styles.logo]}
+            tintColor={theme.primary}
           />
+
+          <Text
+            style={{
+              fontSize: 72,
+              fontFamily: "Poppins-Bold",
+              fontWeight: "bold",
+              color: theme.primary,
+            }}
+          >
+            Trivense
+          </Text>
+          <Text
+            style={{
+              fontSize: 26,
+              includeFontPadding: true,
+              fontFamily: "Poppines-Medium",
+              fontWeight: "300",
+              color: theme.primary,
+            }}
+          >
+            Split Smarter. Travel Lighter
+          </Text>
         </View>
       </Animated.View>
     </SafeAreaView>
@@ -102,7 +127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    // padding: 20,
   },
   illustrationContainer: {
     flex: 1,
@@ -110,8 +135,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: width,
-    height: height * 0.6,
+    width: 360,
+    height: 240,
   },
 });
 

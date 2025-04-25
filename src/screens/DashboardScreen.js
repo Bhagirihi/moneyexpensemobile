@@ -415,7 +415,8 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <View style={styles.illustrationContainer}>
             <Image
-              source={require("../../assets/welcome.png")}
+              source={require("../../assets/app_logo.png")}
+              resizeMode="cover"
               style={styles.logo}
             />
             {/* <Animated.Text

@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   Linking,
   SafeAreaView,
+  Image,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -129,10 +130,15 @@ const RegisterScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <MaterialCommunityIcons
+            {/* <MaterialCommunityIcons
               name="account-plus"
               size={64}
               color={theme.primary}
+            /> */}
+            <Image
+              source={require("../../assets/app_logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
             />
             <Text style={[styles.title, { color: theme.text }]}>
               Create Account
@@ -431,6 +437,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
   },
+  logo: {
+    height: 100,
+    width: 200,
+  },
   header: {
     alignItems: "center",
     marginVertical: 8,
@@ -438,8 +448,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginTop: 16,
-    marginBottom: 8,
+    // marginTop: 16,
+    // marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
