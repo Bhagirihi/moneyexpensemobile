@@ -12,6 +12,11 @@
       "resizeMode": "cover",
       "backgroundColor": "#f3f2ef"
     },
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -28,11 +33,6 @@
     },
     "web": {
       "favicon": "./assets/app_logo.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "8c56fa33-ba34-46a0-b155-227b0c5aaca6"
-      }
     },
     "owner": "takeyshi",
     "plugins": [
@@ -74,6 +74,11 @@
         }
       ],
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "373dac47-60b0-4de3-8dfc-aea74ec58784"
+      }
+    }
   }
 }

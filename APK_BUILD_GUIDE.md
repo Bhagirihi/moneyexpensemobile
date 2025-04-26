@@ -74,6 +74,8 @@ eas login
 eas build:configure
 ```
 
+ID: 373dac47-60b0-4de3-8dfc-aea74ec58784
+
 ### Step 4: Start the Build Process
 
 ```bash
