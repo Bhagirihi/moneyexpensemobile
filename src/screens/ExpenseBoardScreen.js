@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
@@ -40,7 +41,6 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const fetchExpenseBoards = async () => {
     try {
       setLoading(true);
-      console.log("Fetching expense boards in screen... ==>");
       const data = await expenseBoardService.getExpenseBoards();
 
       if (!data) {
@@ -107,6 +107,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             {`by ${board.created_by}`}
           </Text>
         </View>
+
         <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation();

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Platform,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
@@ -51,6 +52,7 @@ export const Header = ({
       </View>
       <View style={styles.titleSection}>
         <Text
+          adjustsFontSizeToFit
           numberOfLines={1}
           ellipsizeMode="middle"
           style={[styles.title, { color: theme.text }, titleStyle]}
@@ -68,9 +70,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    height: 50,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    height: Platform.OS == "ios" ? "auto" : "10%",
+    marginTop: Platform.OS == "ios" ? null : 10,
     borderBottomWidth: 1,
   },
   leftSection: {
@@ -78,11 +79,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rightSection: {
-    Width: "20%",
+    Width: "15%",
     alignItems: "center",
   },
   titleSection: {
-    width: "65%",
+    width: "70%",
     alignItems: "center",
   },
   backButton: {

@@ -93,11 +93,13 @@ export const LoginScreen = ({ navigation }) => {
               color={theme.primary}
             /> */}
             <Image
-              source={require("../../assets/app_logo.png")}
+              source={require("../../assets/logo.png")}
               style={styles.logo}
               resizeMode="contain"
+              tintColor={theme.primary}
             />
             <Text
+              adjustsFontSizeToFit
               style={[
                 styles.title,
                 {
@@ -110,6 +112,7 @@ export const LoginScreen = ({ navigation }) => {
               Welcome Back
             </Text>
             <Text
+              adjustsFontSizeToFit
               style={[
                 styles.subtitle,
                 {

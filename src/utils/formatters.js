@@ -6,7 +6,7 @@ import { useAppSettings } from "../context/AppSettingsContext";
  * @param {string} currency - The currency code (default: null)
  * @returns {string} Formatted currency string
  */
-export const formatCurrency = (amount, currency = null) => {
+export const formatCurrency = (amount, currency = "INR") => {
   const { currency: selectedCurrency } = useAppSettings();
   const currencyToUse = currency || selectedCurrency;
 
@@ -17,7 +17,7 @@ export const formatCurrency = (amount, currency = null) => {
     INR: { locale: "en-IN", currency: "INR" },
   };
 
-  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
+  const config = currencyConfig[currencyToUse] || currencyConfig.INR;
 
   return new Intl.NumberFormat(config.locale, {
     style: "currency",
@@ -33,7 +33,7 @@ export const formatCurrency = (amount, currency = null) => {
  * @param {string} currency - The currency code (default: null)
  * @returns {string} Formatted compact currency string
  */
-export const formatCompactCurrency = (amount, currency = null) => {
+export const formatCompactCurrency = (amount, currency = "INR") => {
   const { currency: selectedCurrency } = useAppSettings();
   const currencyToUse = currency || selectedCurrency;
 
@@ -44,7 +44,7 @@ export const formatCompactCurrency = (amount, currency = null) => {
     INR: { locale: "en-IN", currency: "INR" },
   };
 
-  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
+  const config = currencyConfig[currencyToUse] || currencyConfig.INR;
 
   return new Intl.NumberFormat(config.locale, {
     style: "currency",

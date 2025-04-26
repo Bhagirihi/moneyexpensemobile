@@ -174,7 +174,7 @@ export const DashboardScreen = ({ navigation }) => {
       showToast.error("Failed to delete expense", "Please try again later");
     }
   };
-
+  let remainingBudget;
   const fetchDashboardData = async () => {
     try {
       //setLoading(true);
@@ -192,7 +192,7 @@ export const DashboardScreen = ({ navigation }) => {
         (sum, board) => sum + (board.totalExpenses || 0),
         0
       );
-      const remainingBudget = totalBudget - totalExpenses;
+      remainingBudget = totalBudget - totalExpenses;
 
       // Update stats
       setStats({
@@ -288,11 +288,41 @@ export const DashboardScreen = ({ navigation }) => {
           <Text style={[styles.progressLabel, { color: theme.white }]}>
             Budget Usage
           </Text>
-          <Text style={[styles.progressLabel, { color: theme.white }]}>
-            {`${Math.round(
-              (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-            )}%`}
-          </Text>
+
+          <View style={styles.progressLegend}>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.error }]}
+              />
+              <Text style={[styles.legendText, { color: theme.white }]}>
+                Used
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.success }]}
+              />
+              <Text style={[styles.legendText, { color: theme.white }]}>
+                Remaining
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[
+                  styles.legendColor,
+                  {
+                    backgroundColor:
+                      stats.totalBudget >= 0 ? theme.success : theme.error,
+                  },
+                ]}
+              />
+              <Text style={[styles.progressLabel, { color: theme.white }]}>
+                {`${Math.round(
+                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
+                )}%`}
+              </Text>
+            </View>
+          </View>
         </View>
         <View
           style={[
@@ -320,24 +350,6 @@ export const DashboardScreen = ({ navigation }) => {
               },
             ]}
           />
-        </View>
-        <View style={styles.progressLegend}>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: theme.error }]}
-            />
-            <Text style={[styles.legendText, { color: theme.white }]}>
-              Used
-            </Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: theme.success }]}
-            />
-            <Text style={[styles.legendText, { color: theme.white }]}>
-              Remaining
-            </Text>
-          </View>
         </View>
       </View>
     </View>
@@ -415,7 +427,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <View style={styles.illustrationContainer}>
             <Image
-              source={require("../../assets/app_logo.png")}
+              source={require("../../assets/icon.png")}
               resizeMode="cover"
               style={styles.logo}
             />

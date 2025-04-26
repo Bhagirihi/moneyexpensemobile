@@ -7,7 +7,7 @@ import { AuthProvider } from "./src/context/AuthContext";
 import { supabase } from "./src/config/supabase";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
-import * as SplashScreen from "expo-splash-screen";
+// import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import { Asset } from "expo-asset";
 
@@ -97,8 +97,8 @@ const AppContent = () => {
   useEffect(() => {
     async function prepare() {
       try {
-        await SplashScreen.preventAutoHideAsync();
-        await Asset.loadAsync([require("./assets/app_logo.png")]);
+        //  await SplashScreen.preventAutoHideAsync();
+        await Asset.loadAsync([require("./assets/icon.png")]);
         await Font.loadAsync({
           Inter_Bold: require("./assets/fonts/Inter_Bold.ttf"),
           Inter_Medium: require("./assets/fonts/Inter_Medium.ttf"),
@@ -158,14 +158,16 @@ const AppContent = () => {
     prepare();
   }, []);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (appIsReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [appIsReady]);
+  // const onLayoutRootView = useCallback(async () => {
+  //   if (appIsReady) {
+  //     await SplashScreen.hideAsync();
+  //   }
+  // }, [appIsReady]);
 
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
+    <SafeAreaProvider
+    // onLayout={onLayoutRootView}
+    >
       <StatusBar
         barStyle={
           theme.background === "#FFFFFF" ? "dark-content" : "light-content"
@@ -230,7 +232,7 @@ const AppContent = () => {
                 ) : (
                   // Public routes
                   <>
-                    <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
                     {/* <Stack.Screen
                       name="Onboarding"
                       component={OnboardingScreen}

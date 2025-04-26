@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { supabase } from "../config/supabase";
 
 export const expenseBoardService = {
@@ -71,18 +72,27 @@ export const expenseBoardService = {
       }, {});
 
       // Step 6: Format final result
-      const boardsWithExpenses = allBoards.map((board) => ({
-        ...board,
-        created_by:
-          board.profiles?.full_name === user.user_metadata?.full_name
-            ? "You"
-            : board.profiles?.full_name || "Unknown",
-        expenses: expensesMap[board.id] || [],
-        totalExpenses:
-          expensesMap[board.id]?.reduce((sum, e) => sum + e.amount, 0) || 0,
-        totalTransactions: expensesMap[board.id]?.length || 0,
-        isShared: board.created_by !== userId,
-      }));
+      const boardsWithExpenses = allBoards
+        .map((board) => ({
+          ...board,
+          created_by:
+            board.profiles.id === user.id
+              ? "You"
+              : board.profiles?.full_name || "Unknown",
+          expenses: expensesMap[board.id] || [],
+          totalExpenses:
+            expensesMap[board.id]?.reduce((sum, e) => sum + e.amount, 0) || 0,
+          totalTransactions: expensesMap[board.id]?.length || 0,
+          isShared: board.created_by !== userId,
+        }))
+        .sort((a, b) => {
+          // Default board goes first
+          if (a.is_default) return -1;
+          if (b.is_default) return 1;
+
+          // Then sort by created_at descending
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
 
       return boardsWithExpenses;
     } catch (error) {

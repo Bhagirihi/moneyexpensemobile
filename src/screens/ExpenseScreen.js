@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -179,11 +180,37 @@ export const ExpenseScreen = ({ navigation }) => {
           <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
             Budget Usage
           </Text>
-          <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
-            {`${Math.round(
-              (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
-            )}%`}
-          </Text>
+
+          <View style={styles.progressLegend}>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.primary }]}
+              />
+              <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+                Used
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.success }]}
+              />
+              <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+                Remaining
+              </Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendColor, { backgroundColor: theme.success }]}
+              />
+              <Text
+                style={[styles.progressLabel, { color: theme.textSecondary }]}
+              >
+                {`${Math.round(
+                  (monthlyStats.totalExpenses / monthlyStats.totalBudget) * 100
+                )}%`}
+              </Text>
+            </View>
+          </View>
         </View>
         <View
           style={[
@@ -211,24 +238,6 @@ export const ExpenseScreen = ({ navigation }) => {
               },
             ]}
           />
-        </View>
-        <View style={styles.progressLegend}>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: theme.primary }]}
-            />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-              Used
-            </Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: theme.success }]}
-            />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-              Remaining
-            </Text>
-          </View>
         </View>
       </View>
     </View>
@@ -332,8 +341,8 @@ const styles = StyleSheet.create({
   monthlyStats: {
     justifyContent: "space-between",
     marginHorizontal: 18,
-    marginBottom: 10,
-    padding: 16,
+    marginBottom: Platform.OS == "ios" ? 10 : 6,
+    padding: Platform.OS == "ios" ? 16 : 12,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: {
@@ -348,7 +357,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: Platform.OS == "ios" ? 16 : 12,
   },
   statsItem: {
     flex: 1,
@@ -365,7 +374,7 @@ const styles = StyleSheet.create({
   },
   combinedProgressContainer: {
     width: "100%",
-    marginTop: 8,
+    marginTop: Platform.OS == "ios" ? 8 : 4,
   },
   progressLabels: {
     flexDirection: "row",

@@ -4,18 +4,13 @@
     "slug": "Trivense",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/app_logo.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/app_logo.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "cover",
-      "backgroundColor": "#f3f2ef"
-    },
-    "doctor": {
-      "reactNativeDirectoryCheck": {
-        "listUnknownPackages": false
-      }
+      "backgroundColor": "#31356e"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -25,14 +20,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/app_logo.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#31356e"
       },
       "package": "com.trivense.app",
       "versionCode": 1
     },
     "web": {
-      "favicon": "./assets/app_logo.png"
+      "favicon": "./assets/icon.png"
     },
     "owner": "takeyshi",
     "plugins": [
@@ -54,23 +49,6 @@
             "./assets/fonts/Poppins-Thin.ttf",
             "./assets/fonts/Poppins-ExtraBold.ttf"
           ]
-        }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "ios": {
-            "image": "./assets/app_logo.png",
-            "resizeMode": "cover",
-            "backgroundColor": "#f3f2ef",
-            "statusBarStyle": "dark"
-          },
-          "android": {
-            "image": "./assets/app_logo.png",
-            "resizeMode": "cover",
-            "backgroundColor": "#f3f2ef",
-            "statusBarTranslucent": true
-          }
         }
       ],
       "expo-asset"

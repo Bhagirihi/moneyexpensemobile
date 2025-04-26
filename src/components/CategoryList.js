@@ -132,10 +132,17 @@ export const CategoryList = ({
             <MaterialCommunityIcons
               name="view-grid"
               size={22}
-              color={theme.text}
+              color={selectedCategory === 0 ? theme.white : theme.text}
             />
           </View>
-          <Text style={[styles.addNewText, { color: theme.text }]}>All</Text>
+          <Text
+            style={[
+              styles.addNewText,
+              { color: selectedCategory === 0 ? theme.white : theme.text },
+            ]}
+          >
+            All
+          </Text>
         </TouchableOpacity>
         {categories.map((category) => (
           <TouchableOpacity

@@ -303,10 +303,54 @@ export const ExpenseBoardDetailsScreen = () => {
                 <Text style={[styles.progressLabel, { color: theme.text }]}>
                   Budget Usage
                 </Text>
-                <Text style={[styles.progressLabel, { color: theme.text }]}>
-                  {`${Math.round((totalExpenses / (totalBudget || 1)) * 100)}%`}
-                </Text>
+                <View style={styles.progressLegend}>
+                  <View style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColor,
+                        {
+                          backgroundColor:
+                            remainingBudget >= 0 ? theme.error : theme.error,
+                        },
+                      ]}
+                    />
+                    <Text style={[styles.legendText, { color: theme.text }]}>
+                      Used
+                    </Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColor,
+                        {
+                          backgroundColor:
+                            remainingBudget >= 0 ? theme.success : theme.error,
+                        },
+                      ]}
+                    />
+                    <Text style={[styles.legendText, { color: theme.text }]}>
+                      Remaining
+                    </Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColor,
+                        {
+                          backgroundColor:
+                            remainingBudget >= 0 ? theme.success : theme.error,
+                        },
+                      ]}
+                    />
+                    <Text style={[styles.progressLabel, { color: theme.text }]}>
+                      {`${Math.round(
+                        (totalExpenses / (totalBudget || 1)) * 100
+                      )}%`}
+                    </Text>
+                  </View>
+                </View>
               </View>
+
               <View
                 style={[
                   styles.combinedProgressBar,
@@ -335,36 +379,6 @@ export const ExpenseBoardDetailsScreen = () => {
                     },
                   ]}
                 />
-              </View>
-              <View style={styles.progressLegend}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendColor,
-                      {
-                        backgroundColor:
-                          remainingBudget >= 0 ? theme.error : theme.error,
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.legendText, { color: theme.text }]}>
-                    Used
-                  </Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendColor,
-                      {
-                        backgroundColor:
-                          remainingBudget >= 0 ? theme.success : theme.error,
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.legendText, { color: theme.text }]}>
-                    Remaining
-                  </Text>
-                </View>
               </View>
             </View>
           </View>

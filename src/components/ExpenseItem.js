@@ -1,5 +1,11 @@
 import React, { memo, useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { formatCurrency } from "../utils/formatters";
@@ -33,9 +39,9 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
         expenseItem: {
           flexDirection: "row",
           alignItems: "center",
-          padding: 16,
+          padding: Platform.OS == "ios" ? 16 : 12,
           borderRadius: 16,
-          marginBottom: 12,
+          marginBottom: Platform.OS == "ios" ? 12 : 8,
           backgroundColor: theme.card,
           shadowColor: "#000",
           shadowOffset: {

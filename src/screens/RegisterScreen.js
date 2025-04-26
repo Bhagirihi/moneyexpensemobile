@@ -136,7 +136,7 @@ const RegisterScreen = ({ navigation }) => {
               color={theme.primary}
             /> */}
             <Image
-              source={require("../../assets/app_logo.png")}
+              source={require("../../assets/icon.png")}
               style={styles.logo}
               resizeMode="contain"
             />
