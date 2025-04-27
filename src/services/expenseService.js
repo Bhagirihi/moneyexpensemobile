@@ -58,8 +58,8 @@ export const expenseService = {
           `,
           { count: "exact" }
         )
-        .in("board_id", boardIds)
-        .in("created_by", createdByIds)
+        // .in("board_id", boardIds)
+        // .in("created_by", createdByIds)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
