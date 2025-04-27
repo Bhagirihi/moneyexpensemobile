@@ -46,10 +46,11 @@ export const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email.trim(),
         password: formData.password,
       });
+      console.log("SUCCESS LOGIN", data);
 
       if (error) {
         if (error.message === "Email not confirmed") {
@@ -65,6 +66,9 @@ export const LoginScreen = ({ navigation }) => {
           });
           return;
         }
+      }
+      if (data) {
+        navigation.replace("Dashboard");
       }
     } catch (error) {
       console.error("Login error:", error.message);
@@ -279,7 +283,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginTop: 16,
+    // marginTop: 16,
     marginBottom: 8,
   },
   subtitle: {
@@ -326,8 +330,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   logo: {
-    height: 120,
-    width: 240,
+    height: 100,
+    width: 200,
   },
   loginButton: {
     height: 48,

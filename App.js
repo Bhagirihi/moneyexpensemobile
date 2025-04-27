@@ -95,6 +95,15 @@ const AppContent = () => {
   });
 
   useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Session is ==> onAuthStateChange", session);
+      setSession(session);
+    });
+  }, []);
+
+  useEffect(() => {
     async function prepare() {
       try {
         //  await SplashScreen.preventAutoHideAsync();
@@ -140,14 +149,6 @@ const AppContent = () => {
         }
 
         setSession(session);
-
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-          setSession(session);
-        });
-
-        return () => subscription.unsubscribe();
       } catch (e) {
         console.warn(e);
       } finally {

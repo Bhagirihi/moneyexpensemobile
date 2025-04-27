@@ -267,6 +267,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
   const [description, setDescription] = useState("");
   const [perPersonBudget, setPerPersonBudget] = useState("");
   const [shareCode, setShareCode] = useState("");
+  const [inviteLink, setinviteLink] = useState("");
   const [errors, setErrors] = useState({});
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -418,6 +419,22 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     borderRadius: 6,
     backgroundColor: theme.primary,
   });
+
+  const renderInviteeURIInput = () => (
+    <FormInput
+      label="Invite Link"
+      value={inviteLink}
+      onChangeText={(link) => {
+        setinviteLink(link);
+        if (errors.inviteLink) {
+          setErrors((prev) => ({ ...prev, inviteLink: undefined }));
+        }
+      }}
+      placeholder="Enter invite link (if you have one)"
+      error={errors.inviteLink}
+      maxLength={50}
+    />
+  );
 
   const renderBoardNameInput = () => (
     <FormInput
@@ -573,6 +590,8 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
             { backgroundColor: theme.background },
           ]}
         >
+          {renderInviteeURIInput()}
+
           {renderBoardNameInput()}
           {renderDescriptionInput()}
           {renderBudgetInput()}

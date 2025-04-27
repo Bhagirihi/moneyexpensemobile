@@ -205,6 +205,8 @@ export const DashboardScreen = ({ navigation }) => {
       const { data: transactionsData, error: transactionsError } =
         await dashboardService.getRecentTransactions();
 
+      console.log("transactionsData", transactionsData);
+
       if (transactionsError) {
         console.log("Error fetching transactions:", transactionsError);
       }

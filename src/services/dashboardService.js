@@ -40,10 +40,13 @@ export const dashboardService = {
         supabase.from("expense_boards").select("id").eq("created_by", userId),
         supabase
           .from("shared_users")
-          .select("board_id")
+          .select(" board_id, shared_by,user_id ")
           .eq("user_id", userId)
           .eq("is_accepted", true),
       ]);
+
+      console.log("ownedBoardsRes", ownedBoardsRes);
+      console.log("sharedBoardsRes", sharedBoardsRes);
 
       if (ownedBoardsRes.error || sharedBoardsRes.error) {
         console.error(
@@ -60,6 +63,11 @@ export const dashboardService = {
         ...ownedBoardsRes.data.map((b) => b.id),
         ...sharedBoardsRes.data.map((s) => s.board_id),
       ];
+      const userIds = [
+        ...sharedBoardsRes.data.map((s) => s.shared_by),
+        ...sharedBoardsRes.data.map((s) => s.user_id),
+      ];
+      console.log("userId", userIds);
 
       if (boardIds.length === 0) return { data: [], error: null };
 
@@ -68,12 +76,11 @@ export const dashboardService = {
         .from("expenses")
         .select(
           `
-          *,
-          categories (name, color, icon),
-          expense_boards (name)
-        `
+        *,
+        categories (name, color, icon),
+        expense_boards (name)
+      `
         )
-        .in("board_id", boardIds)
         .order("created_at", { ascending: false })
         .limit(limit);
 

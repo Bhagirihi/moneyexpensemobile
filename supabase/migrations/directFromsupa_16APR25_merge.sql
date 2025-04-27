@@ -317,6 +317,35 @@ CREATE POLICY "Allow access to shared boards"
   FOR SELECT
   USING (true);
 
+  create policy "Allow access to board owner or accepted shared user"
+on expenses
+for select
+using (
+  -- Step 1: Allow if user created the board (board's created_by == current_user)
+  (
+    exists (
+      select 1
+      from expense_boards
+      where
+        expense_boards.id = expenses.board_id
+        and expense_boards.created_by = auth.uid()
+    )
+  )
+  -- Step 2: OR allow if user is in shared_users table (accepted)
+  OR
+  (
+    exists (
+      select 1
+      from shared_users
+      where
+        shared_users.board_id = expenses.board_id
+        and shared_users.user_id = auth.uid()
+        and shared_users.is_accepted = true
+    )
+  )
+);
+
+
 
 -- FOREIGN KEY CONSTRAINTS
 
