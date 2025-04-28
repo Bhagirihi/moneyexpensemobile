@@ -33,7 +33,9 @@
     "supabase": "^2.22.6",
     "expo-image-picker": "~16.0.6",
     "expo-file-system": "~18.0.12",
-    "expo-asset": "~11.0.5"
+    "expo-asset": "~11.0.5",
+    "expo-notifications": "~0.29.14",
+    "expo-device": "~7.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

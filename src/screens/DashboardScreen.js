@@ -31,6 +31,7 @@ import { capitalizeFirstLetter, formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
 import { realTimeSync } from "../services/realTimeSync";
+import { sendPushNotification } from "../services/pushNotificationService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -52,6 +53,8 @@ export const DashboardScreen = ({ navigation }) => {
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const pushToken = userProfile?.expo_push_token; // Replace with actual token
+  const message = "Hello, you have a new notification!";
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -390,6 +393,15 @@ export const DashboardScreen = ({ navigation }) => {
         <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
         <Text style={[styles.actionText, { color: theme.text }]}>
           Categories
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButton, { backgroundColor: theme.card }]}
+        onPress={() => sendPushNotification(pushToken, message)}
+      >
+        <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
+        <Text style={[styles.actionText, { color: theme.text }]}>
+          Notifications
         </Text>
       </TouchableOpacity>
     </View>

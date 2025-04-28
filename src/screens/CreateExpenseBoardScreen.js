@@ -25,6 +25,7 @@ import FormButton from "../components/common/FormButton";
 import ShareModal from "../components/ShareModal";
 import { showToast } from "../utils/toast";
 import { formatNumber } from "../utils/formatters";
+import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -348,8 +349,11 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         total_budget: parseFloat(perPersonBudget),
         share_code: shareCode || generateShareCode(),
       };
-
-      const newBoard = await expenseBoardService.createExpenseBoard(boardData);
+      await sendCreateExpenseBoardNotification({
+        boardName: boardName.trim(),
+        icon: selectedIcon.name,
+        color: selectedColor.value,
+      });
 
       showToast.success("Expense board created successfully");
       navigation.goBack();

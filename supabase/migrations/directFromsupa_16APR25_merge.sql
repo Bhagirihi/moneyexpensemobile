@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   default_board_budget numeric,
   board_id uuid,
   referral_code text
+  expo_push_token character varying(255) null,
 );
 
 CREATE TABLE IF NOT EXISTS categories (

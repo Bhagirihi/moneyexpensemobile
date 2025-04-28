@@ -10,6 +10,8 @@ import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 // import * as SplashScreen from "expo-splash-screen";
 import * as Font from "expo-font";
 import { Asset } from "expo-asset";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 
 import { StatusBar } from "expo-status-bar";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
@@ -38,6 +40,11 @@ import { InvitationsScreen } from "./src/screens/InvitationsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 import { View } from "react-native";
 import { showToast } from "./src/utils/toast";
+import {
+  handleBackgroundNotifications,
+  handleForegroundNotifications,
+  registerForPushNotificationsAsync,
+} from "./src/services/pushNotificationService";
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
@@ -101,9 +108,13 @@ const AppContent = () => {
       console.log("Session is ==> onAuthStateChange", session);
       setSession(session);
     });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
+  useEffect(async () => {
     async function prepare() {
       try {
         //  await SplashScreen.preventAutoHideAsync();
@@ -156,8 +167,96 @@ const AppContent = () => {
       }
     }
 
-    prepare();
+    await prepare();
+    // await registerForPushNotificationsAsync();
   }, []);
+
+  useEffect(() => {
+    // Register for push notifications when the app is loaded
+    registerForPushNotificationsAsync();
+
+    // Handle foreground notifications
+    handleForegroundNotifications();
+
+    // Handle background notifications
+    handleBackgroundNotifications();
+  }, []);
+
+  // async function registerForPushNotificationsAsync() {
+  //   const {
+  //     data: { session },
+  //     error: sessionError,
+  //   } = await supabase.auth.getSession();
+
+  //   if (sessionError || !session?.user) {
+  //     console.error(
+  //       "Session error:",
+  //       sessionError?.message || "No user session found"
+  //     );
+  //     alert("Login required to get push notifications!");
+  //     return null;
+  //   }
+
+  //   if (!Device.isDevice) {
+  //     alert("Must use physical device for Push Notifications!");
+  //     return null;
+  //   }
+
+  //   // Step 1: Check for existing notification permissions
+  //   const { status: existingStatus } =
+  //     await Notifications.getPermissionsAsync();
+  //   let finalStatus = existingStatus;
+
+  //   // If permissions are denied, prompt the user to enable them in settings
+  //   if (existingStatus === "denied") {
+  //     alert(
+  //       "Push notifications are currently denied. Please go to your device settings to enable them."
+  //     );
+  //     return null;
+  //   }
+
+  //   // Step 2: If permissions are not granted, request permissions
+  //   if (existingStatus !== "granted") {
+  //     const { status } = await Notifications.requestPermissionsAsync();
+  //     finalStatus = status;
+  //   }
+
+  //   console.log("finalStatus:", finalStatus);
+
+  //   // Step 3: If permissions are still not granted, show an error
+  //   if (finalStatus !== "granted") {
+  //     alert("Failed to get push token for push notification!");
+  //     return null;
+  //   }
+
+  //   // Step 4: Get the Expo push token
+  //   const { data: tokenData } = await Notifications.getExpoPushTokenAsync();
+  //   const token = tokenData;
+
+  //   console.log("Expo Push Token:", token);
+
+  //   // Step 5: Send the token to your backend (e.g., Supabase)
+  //   if (token) {
+  //     const { error: updateError } = await supabase
+  //       .from("profiles")
+  //       .update({ expo_push_token: token })
+  //       .eq("id", session.user.id);
+
+  //     if (updateError) {
+  //       console.error("Error updating token in profiles:", updateError.message);
+  //     }
+  //   }
+
+  //   // Step 6: Android-specific notification channel (optional)
+  //   if (Platform.OS === "android") {
+  //     await Notifications.setNotificationChannelAsync("default", {
+  //       name: "default",
+  //       importance: Notifications.AndroidImportance.MAX,
+  //     });
+  //   }
+
+  //   return token;
+  // }
 
   // const onLayoutRootView = useCallback(async () => {
   //   if (appIsReady) {
