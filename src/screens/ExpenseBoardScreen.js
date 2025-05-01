@@ -16,6 +16,8 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import ShareModal from "../components/ShareModal";
+import AddBoardModal from "../components/AddBoardModal";
+import JoinBoardModal from "../components/JoinBoardModal";
 import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
 
@@ -26,6 +28,8 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState(null);
 
   useEffect(() => {
@@ -69,6 +73,14 @@ export const ExpenseBoardScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Error in deleteBoard:", error);
       showToast.error("Failed to delete board", error.message);
+    }
+  };
+
+  const handleJoinBoard = async (boardId) => {
+    try {
+      navigation.navigate("CreateExpenseBoard", { boardId });
+    } catch (error) {
+      showToast.error("Error", error.message);
     }
   };
 
@@ -233,7 +245,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity
-            onPress={() => navigation.navigate("CreateExpenseBoard")}
+            onPress={() => setShowAddModal(true)}
             style={styles.addButton}
           >
             <MaterialCommunityIcons
@@ -270,6 +282,23 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         boardId={selectedBoard?.id || ""}
         boardColor={selectedBoard?.color || theme.primary}
         boardIcon={selectedBoard?.icon || "view-grid"}
+      />
+      <AddBoardModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCreateNew={() => {
+          setShowAddModal(false);
+          navigation.navigate("CreateExpenseBoard");
+        }}
+        onJoinExisting={() => {
+          setShowAddModal(false);
+          setShowJoinModal(true);
+        }}
+      />
+      <JoinBoardModal
+        visible={showJoinModal}
+        onClose={() => setShowJoinModal(false)}
+        onJoin={handleJoinBoard}
       />
     </SafeAreaView>
   );

@@ -302,7 +302,7 @@ export const ExpenseScreen = ({ navigation }) => {
       >
         <CategoryList
           selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
+          onSelectCategory={(categoryId) => setSelectedCategory(categoryId)}
           showLabel={true}
         />
 

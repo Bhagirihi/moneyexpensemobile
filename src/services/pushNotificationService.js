@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { supabase } from "../config/supabase";
 import { Alert } from "react-native";
+import { formatCurrency } from "../utils/formatters";
 
 // Function to register for push notifications and save the token
 export async function registerForPushNotificationsAsync() {
@@ -90,7 +91,7 @@ export async function sendPushNotification(
     .select("*")
     .eq("id", session.user.id);
 
-  console.log("user", user.expo_push_token);
+  console.log("user", user[0].expo_push_token);
   const body = {
     to: user[0].expo_push_token,
     sound: "default",
@@ -116,14 +117,14 @@ export async function sendPushNotification(
   }
 }
 
-export async function sendNotification({
+export async function sendNotification(
   type = "info",
   title = "New Notification",
   message = "You have a new notification!",
   tripName = null,
   icon = "dots-horizontal",
-  iconColor = "#000000",
-}) {
+  iconColor = "#000000"
+) {
   try {
     const {
       data: { session },
@@ -240,15 +241,13 @@ export async function sendCreateExpenseNotification({
   await sendNotification({
     type: "info",
     title: "Expense created",
-    message: "You have created an expense",
+    message: `You have created an expense of ${formatCurrency(expenseAmount)}.`,
     tripName: boardName,
     icon: icon,
     iconColor: iconColor,
-    expenseName: expenseName,
-    expenseAmount: expenseAmount,
   });
   await sendPushNotification(
-    (message = `You have created an expense ${expenseName} for ${expenseAmount}`),
+    (message = `You have created ${expenseName} expense of ${expenseAmount}`),
     (title = "Expense created")
   );
 }
@@ -298,24 +297,28 @@ export async function sendExpenseOverBudgetNotification({
 }
 
 export async function sendExpenseDeletedNotification({
-  boardName,
-  icon,
-  iconColor,
-  expenseName,
-  expenseAmount,
+  boardName = "Board Name",
+  icon = "dots-horizontal",
+  iconColor = "#000000",
+  expenseName = "Expense Name",
+  expenseAmount = 0,
 }) {
-  await sendNotification({
-    type: "info",
-    title: "Expense deleted",
-    message: "You have deleted an expense",
-    tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-    expenseName: expenseName,
-    expenseAmount: expenseAmount,
-  });
-  await sendPushNotification(
-    (message = `You have deleted an expense ${expenseName}`),
+  sendNotification(
+    "info",
+    "Expense deleted",
+    `You have deleted ${expenseName} expense of ${formatCurrency(
+      expenseAmount
+    )}`,
+    boardName,
+    icon,
+    iconColor,
+    expenseName,
+    expenseAmount
+  );
+  sendPushNotification(
+    (message = `You have deleted ${expenseName} expense of ${formatCurrency(
+      expenseAmount
+    )} from ${boardName}`),
     (title = "Expense deleted")
   );
 }

@@ -97,7 +97,7 @@ export const ExpenseBoardList = ({
                   selectedBoard === board.id ? theme.primary : theme.border,
               },
             ]}
-            onPress={() => onSelectBoard(board.id)}
+            onPress={() => onSelectBoard(board.id, board.name)}
           >
             <View
               style={[

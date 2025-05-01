@@ -96,6 +96,8 @@ const styles = StyleSheet.create({
   },
   colorList: {
     paddingRight: 12,
+    flex: 1,
+    flexWrap: "wrap",
   },
   colorItem: {
     width: 40,
@@ -104,6 +106,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 6,
+    marginBottom: 6,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -115,15 +118,19 @@ const styles = StyleSheet.create({
   },
   iconList: {
     paddingRight: 12,
+    flex: 1,
+    flexWrap: "wrap",
   },
   iconItem: {
-    width: 70,
+    width: "auto",
     height: 70,
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
+
     marginRight: 6,
-    padding: 6,
+    marginBottom: 6,
+    padding: 12,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -424,22 +431,6 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     backgroundColor: theme.primary,
   });
 
-  const renderInviteeURIInput = () => (
-    <FormInput
-      label="Invite Link"
-      value={inviteLink}
-      onChangeText={(link) => {
-        setinviteLink(link);
-        if (errors.inviteLink) {
-          setErrors((prev) => ({ ...prev, inviteLink: undefined }));
-        }
-      }}
-      placeholder="Enter invite link (if you have one)"
-      error={errors.inviteLink}
-      maxLength={50}
-    />
-  );
-
   const renderBoardNameInput = () => (
     <FormInput
       label="Board Name"
@@ -528,32 +519,34 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.iconList}
       >
-        {BOARD_ICONS.map((icon) => (
-          <TouchableOpacity
-            key={icon.id}
-            style={[
-              styles.iconItem,
-              getIconItemStyle(selectedIcon.id === icon.id),
-            ]}
-            onPress={() => setSelectedIcon(icon)}
-          >
-            <MaterialCommunityIcons
-              name={icon.name}
-              size={24}
-              color={getIconColor(selectedIcon.id === icon.id)}
-            />
-            <Text
+        {BOARD_ICONS.sort((a, b) => a.name.length - b.name.length).map(
+          (icon) => (
+            <TouchableOpacity
+              key={icon.id}
               style={[
-                styles.iconLabel,
-                {
-                  color: getIconLabelColor(selectedIcon.id === icon.id),
-                },
+                styles.iconItem,
+                getIconItemStyle(selectedIcon.id === icon.id),
               ]}
+              onPress={() => setSelectedIcon(icon)}
             >
-              {icon.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <MaterialCommunityIcons
+                name={icon.name}
+                size={24}
+                color={getIconColor(selectedIcon.id === icon.id)}
+              />
+              <Text
+                style={[
+                  styles.iconLabel,
+                  {
+                    color: getIconLabelColor(selectedIcon.id === icon.id),
+                  },
+                ]}
+              >
+                {icon.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        )}
       </ScrollView>
     </View>
   );
@@ -594,8 +587,6 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
             { backgroundColor: theme.background },
           ]}
         >
-          {renderInviteeURIInput()}
-
           {renderBoardNameInput()}
           {renderDescriptionInput()}
           {renderBudgetInput()}

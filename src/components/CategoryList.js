@@ -119,7 +119,7 @@ export const CategoryList = ({
                 selectedCategory === 0 ? theme.primary : theme.border,
             },
           ]}
-          onPress={() => onSelectCategory(0)}
+          onPress={() => onSelectCategory(0, "All")}
         >
           <View
             style={[
@@ -159,7 +159,7 @@ export const CategoryList = ({
                     : theme.border,
               },
             ]}
-            onPress={() => onSelectCategory(category.id)}
+            onPress={() => onSelectCategory(category.id, category.name)}
           >
             <View
               style={[
