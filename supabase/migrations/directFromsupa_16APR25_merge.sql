@@ -84,17 +84,25 @@ CREATE TABLE IF NOT EXISTS expenses (
   payment_method text -- Optional: cash, card, UPI, etc.
 );
 
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'shared_status') THEN
+        CREATE TYPE shared_status AS ENUM ('accepted', 'pending', 'rejected');
+    END IF;
+END$$;
+-- Step 2: Create the table
 CREATE TABLE IF NOT EXISTS shared_users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Unique entry ID for sharing
-  created_at TIMESTAMPTZ DEFAULT now(), -- Share timestamp
-  is_accepted BOOLEAN DEFAULT false, -- Whether invite was accepted
-  accepted_at TIMESTAMPTZ, -- When invite was accepted (optional)
-  shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, -- Who sent the invite
-  shared_with TEXT NOT NULL, -- Email or identifier of invited user
-  board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE, -- Board being shared
-  user_id uuid REFERENCES profiles(id), -- Once accepted, link to actual user (optional)
-  total_expense numeric DEFAULT 0, -- Optional: personal expenses on this board
-  total_spent numeric DEFAULT 0 -- Optional: personal spend summary
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(), -- Unique entry ID for sharing
+    created_at TIMESTAMPTZ DEFAULT now(), -- Share timestamp
+    is_accepted BOOLEAN DEFAULT false, -- Whether invite was accepted
+    accepted_at TIMESTAMPTZ, -- When invite was accepted (optional)
+    shared_by uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, -- Who sent the invite
+    shared_with TEXT NOT NULL, -- Email or identifier of invited user
+    board_id uuid NOT NULL REFERENCES expense_boards(id) ON DELETE CASCADE, -- Board being shared
+    user_id uuid REFERENCES profiles(id), -- Once accepted, link to actual user (optional)
+    total_expense numeric DEFAULT 0, -- Optional: personal expenses on this board
+    total_spent numeric DEFAULT 0, -- Optional: personal spend summary
+    status shared_status NOT NULL DEFAULT 'pending' -- Invite status
 );
 
 

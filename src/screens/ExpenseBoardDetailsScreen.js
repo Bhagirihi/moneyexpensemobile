@@ -64,6 +64,43 @@ export const ExpenseBoardDetailsScreen = () => {
         setExpenses((prev) => [...prev, ...(transactionsData || [])]);
       }
 
+      // Calculate budget usage and send notifications
+      const budgetUsage = (totalExpenses / (totalBudget || 1)) * 100;
+
+      if (budgetUsage >= 100) {
+        sendExpenseOverBudgetNotification({
+          boardName: boardName,
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 90) {
+        sendExpenseOverBudgetNotification({
+          boardName: boardName,
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 70) {
+        sendExpenseOverBudgetNotification({
+          boardName: boardName,
+          icon: "alert",
+          iconColor: "#FF9800",
+          budgetAmount: totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 50) {
+        sendExpenseOverBudgetNotification({
+          boardName: boardName,
+          icon: "alert",
+          iconColor: "#FFC107",
+          budgetAmount: totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      }
+
       setHasMore((transactionsData?.length || 0) === ITEMS_PER_PAGE);
       setPage(pageNum);
     } catch (error) {

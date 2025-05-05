@@ -15,6 +15,10 @@ import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { categoryService } from "../services/categoryService";
 import { showToast } from "../utils/toast";
+import {
+  sendCreateCategoryNotification,
+  sendUpdateCategoryNotification,
+} from "../services/pushNotificationService";
 
 // Constants
 const CATEGORY_COLORS = [
@@ -103,14 +107,45 @@ export const AddCategoryScreen = ({ navigation, route }) => {
         icon: formData.icon.name,
       };
 
-      const { error } = await categoryService.createCategory(categoryData);
+      if (route.params?.category) {
+        // Update existing category
+        const { error } = await categoryService.updateCategory(
+          route.params.category.id,
+          categoryData
+        );
+        if (error) {
+          showToast.error(error.message || "Failed to update category");
+          return;
+        }
 
-      if (error) {
-        showToast.error(error.message || "Failed to create category");
-        return;
+        // Send notification for category update
+        await sendUpdateCategoryNotification({
+          boardName: "Categories",
+          icon: formData.icon.name,
+          iconColor: formData.color.value,
+          categoryName: formData.name.trim(),
+        });
+
+        showToast.success("Category updated successfully");
+      } else {
+        // Create new category
+        const { error } = await categoryService.createCategory(categoryData);
+        if (error) {
+          showToast.error(error.message || "Failed to create category");
+          return;
+        }
+
+        // Send notification for category creation
+        await sendCreateCategoryNotification({
+          boardName: "Categories",
+          icon: formData.icon.name,
+          iconColor: formData.color.value,
+          categoryName: formData.name.trim(),
+        });
+
+        showToast.success("Category created successfully");
       }
 
-      showToast.success("Category created successfully");
       if (route.params?.onCategoryCreated) {
         route.params.onCategoryCreated(formData.id);
       }

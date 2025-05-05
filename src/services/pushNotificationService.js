@@ -78,8 +78,8 @@ export async function registerForPushNotificationsAsync() {
 
 // Function to send a push notification
 export async function sendPushNotification(
-  title = "New Notification",
-  message = "You have a new notification!"
+  title,
+  message
 ) {
   const {
     data: { session },
@@ -191,6 +191,8 @@ export function handleBackgroundNotifications() {
   });
 }
 
+// Notification Triggers
+
 export async function sendCreateExpenseBoardNotification({
   boardName,
   icon,
@@ -206,8 +208,8 @@ export async function sendCreateExpenseBoardNotification({
   });
 
   await sendPushNotification(
-    (message = `Your expense board ${boardName} has been created successfully`),
-    (title = "Expense board created")
+    `Your expense board ${boardName} has been created successfully`,
+    "Expense board created"
   );
 }
 
@@ -226,8 +228,8 @@ export async function sendExpenseBoardInviteNotification({
     iconColor: iconColor,
   });
   await sendPushNotification(
-    (message = `You have been invited to an expense board ${boardName}`),
-    (title = "Expense board invited")
+    `You have been invited to an expense board ${boardName}`,
+    "Expense board invited"
   );
 }
 
@@ -247,8 +249,8 @@ export async function sendCreateExpenseNotification({
     iconColor: iconColor,
   });
   await sendPushNotification(
-    (message = `You have created ${expenseName} expense of ${expenseAmount}`),
-    (title = "Expense created")
+    `You have created ${expenseName} expense of ${expenseAmount}`,
+    "Expense created"
   );
 }
 
@@ -268,8 +270,50 @@ export async function sendCreateCategoryNotification({
     categoryName: categoryName,
   });
   await sendPushNotification(
-    (message = `You have created a category ${categoryName}`),
-    (title = "Category created")
+    `You have created a category ${categoryName}`,
+    "Category created"
+  );
+}
+
+export async function sendDeleteCategoryNotification({
+  boardName,
+  icon,
+  iconColor,
+  categoryName,
+}) {
+  await sendNotification({
+    type: "info",
+    title: "Category deleted",
+    message: "You have deleted a category",
+    tripName: boardName,
+    icon: icon,
+    iconColor: iconColor,
+    categoryName: categoryName,
+  });
+  await sendPushNotification(
+    `You have deleted a category ${categoryName}`,
+    "Category deleted"
+  );
+}
+
+export async function sendUpdateCategoryNotification({
+  boardName,
+  icon,
+  iconColor,
+  categoryName,
+}) {
+  await sendNotification({
+    type: "info",
+    title: "Category updated",
+    message: "You have updated a category",
+    tripName: boardName,
+    icon: icon,
+    iconColor: iconColor,
+    categoryName: categoryName,
+  });
+  await sendPushNotification(
+    `You have updated a category ${categoryName}`,
+    "Category updated"
   );
 }
 
@@ -291,8 +335,8 @@ export async function sendExpenseOverBudgetNotification({
     expenseAmount: expenseAmount,
   });
   await sendPushNotification(
-    (message = `You have exceeded your budget ${expenseAmount}`),
-    (title = "Expense over budget")
+    `You have exceeded your budget ${expenseAmount}`,
+    "Expense over budget"
   );
 }
 
@@ -303,60 +347,16 @@ export async function sendExpenseDeletedNotification({
   expenseName = "Expense Name",
   expenseAmount = 0,
 }) {
-  sendNotification(
+  await sendNotification(
     "info",
     "Expense deleted",
-    `You have deleted ${expenseName} expense of ${formatCurrency(
-      expenseAmount
-    )}`,
+    `You have deleted ${expenseName} expense of ${formatCurrency(expenseAmount)}`,
     boardName,
     icon,
-    iconColor,
-    expenseName,
-    expenseAmount
+    iconColor
   );
-  sendPushNotification(
-    (message = `You have deleted ${expenseName} expense of ${formatCurrency(
-      expenseAmount
-    )} from ${boardName}`),
-    (title = "Expense deleted")
-  );
-}
-
-export async function sendExpenseBoardDeletedNotification({
-  boardName,
-  icon,
-  iconColor,
-}) {
-  await sendNotification({
-    type: "info",
-    title: "Expense board deleted",
-    message: "You have deleted an expense board",
-    tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-  });
   await sendPushNotification(
-    (message = `You have deleted an expense board ${boardName}`),
-    (title = "Expense board deleted")
-  );
-}
-
-export async function sendExpenseBoardUpdatedNotification({
-  boardName,
-  icon,
-  iconColor,
-}) {
-  await sendNotification({
-    type: "info",
-    title: "Expense board updated",
-    message: "You have updated an expense board",
-    tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-  });
-  await sendPushNotification(
-    (message = `You have updated an expense board ${boardName}`),
-    (title = "Expense board updated")
+    `You have deleted ${expenseName} expense of ${formatCurrency(expenseAmount)} from ${boardName}`,
+    "Expense deleted"
   );
 }

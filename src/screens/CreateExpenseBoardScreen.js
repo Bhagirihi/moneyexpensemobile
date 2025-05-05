@@ -356,10 +356,18 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         total_budget: parseFloat(perPersonBudget),
         share_code: shareCode || generateShareCode(),
       };
+
+      // Create the board first
+      const { data: createdBoard, error } =
+        await expenseBoardService.createExpenseBoard(boardData);
+
+      if (error) throw error;
+
+      // Send notification after successful board creation
       await sendCreateExpenseBoardNotification({
         boardName: boardName.trim(),
         icon: selectedIcon.name,
-        color: selectedColor.value,
+        iconColor: selectedColor.value,
       });
 
       showToast.success("Expense board created successfully");

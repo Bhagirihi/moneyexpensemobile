@@ -51,6 +51,49 @@ const lightTheme = {
   textLight: "#94A3B8", // Light text color
   borderLight: "#E2E8F0", // Light border color
   inputBackground: "#F8FAFC", // Light gray for input backgrounds
+  // Colors for InvitationsScreen
+  inviteCard: {
+    background: "#FFFFFF",
+    border: "#E2E8F0",
+    shadow: "#000000",
+  },
+  avatar: {
+    text: "#FFFFFF",
+    shadow: "#000000",
+  },
+  badge: {
+    member: {
+      background: "#DCFCE7",
+      text: "#16A34A",
+    },
+    invited: {
+      background: "#DBEAFE",
+      text: "#2563EB",
+    },
+    admin: {
+      background: "#F3E8FF",
+      text: "#7C3AED",
+    },
+    board: {
+      background: "#F1F5F9",
+      text: "#64748B",
+    },
+  },
+  button: {
+    accept: {
+      background: "#10B981",
+      text: "#FFFFFF",
+    },
+    reject: {
+      background: "#EF4444",
+      text: "#FFFFFF",
+    },
+  },
+  checkmark: {
+    background: "#FFFFFF",
+    icon: "#10B981",
+    shadow: "#000000",
+  },
 };
 
 const darkTheme = {
@@ -79,6 +122,49 @@ const darkTheme = {
   textLight: "#64748B", // Dark text color
   borderLight: "#334155", // Dark border color
   inputBackground: "#1E293B", // Dark gray for input backgrounds
+  // Colors for InvitationsScreen
+  inviteCard: {
+    background: "#1E293B",
+    border: "#334155",
+    shadow: "#000000",
+  },
+  avatar: {
+    text: "#FFFFFF",
+    shadow: "#000000",
+  },
+  badge: {
+    member: {
+      background: "#064E3B",
+      text: "#34D399",
+    },
+    invited: {
+      background: "#1E40AF",
+      text: "#60A5FA",
+    },
+    admin: {
+      background: "#5B21B6",
+      text: "#A78BFA",
+    },
+    board: {
+      background: "#1E293B",
+      text: "#94A3B8",
+    },
+  },
+  button: {
+    accept: {
+      background: "#059669",
+      text: "#FFFFFF",
+    },
+    reject: {
+      background: "#DC2626",
+      text: "#FFFFFF",
+    },
+  },
+  checkmark: {
+    background: "#1E293B",
+    icon: "#34D399",
+    shadow: "#000000",
+  },
 };
 
 const ThemeContext = createContext();

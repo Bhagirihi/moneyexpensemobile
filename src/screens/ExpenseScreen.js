@@ -21,6 +21,10 @@ import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
+import {
+  sendExpenseDeletedNotification,
+  sendExpenseOverBudgetNotification,
+} from "../services/pushNotificationService";
 
 const calculateMonthlyStats = (expensesData, setMonthlyStats) => {
   const totalExpenses = expensesData.reduce(
@@ -49,9 +53,53 @@ export const ExpenseScreen = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const memoizedCalculateMonthlyStats = useCallback((expensesData) => {
-    calculateMonthlyStats(expensesData, setMonthlyStats);
-  }, []);
+  const memoizedCalculateMonthlyStats = useCallback(
+    (expensesData) => {
+      const totalExpenses = expensesData.reduce(
+        (sum, expense) => sum + expense.amount,
+        0
+      );
+      const budgetUsage = (totalExpenses / monthlyStats.totalBudget) * 100;
+
+      // Check budget usage thresholds and send notifications
+      if (budgetUsage >= 100) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Expenses",
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: monthlyStats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 90) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Expenses",
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: monthlyStats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 70) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Expenses",
+          icon: "alert",
+          iconColor: "#FF9800",
+          budgetAmount: monthlyStats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 50) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Expenses",
+          icon: "alert",
+          iconColor: "#FFC107",
+          budgetAmount: monthlyStats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      }
+
+      calculateMonthlyStats(expensesData, setMonthlyStats);
+    },
+    [monthlyStats.totalBudget]
+  );
 
   useEffect(() => {
     fetchExpenses();
@@ -117,7 +165,30 @@ export const ExpenseScreen = ({ navigation }) => {
 
   const handleDeletePress = async (expenseId) => {
     try {
+      // Find the expense before deleting it
+      const expenseToDelete = expenses.find(
+        (expense) => expense.id === expenseId
+      );
+      if (!expenseToDelete) {
+        throw new Error("Expense not found");
+      }
+
+      // Delete the expense
       await expenseService.deleteExpense(expenseId);
+
+      // Send notification for expense deletion
+      await sendExpenseDeletedNotification({
+        boardName: expenseToDelete?.board || "Unknown",
+        icon: expenseToDelete.icon,
+        iconColor: expenseToDelete.color,
+        expenseName:
+          typeof expenseToDelete.category === "string"
+            ? expenseToDelete.category
+            : expenseToDelete.category?.name || "Uncategorized",
+        expenseAmount: expenseToDelete.amount,
+      });
+
+      // Update the UI
       const updatedExpenses = expenses.filter(
         (expense) => expense.id !== expenseId
       );

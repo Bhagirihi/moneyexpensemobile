@@ -20,6 +20,7 @@ import ListHeader from "../components/common/ListHeader";
 import { showToast } from "../utils/toast";
 import { AddCategoryScreen } from "./AddCategoryScreen";
 import { realTimeSync } from "../services/realTimeSync";
+import { sendDeleteCategoryNotification } from "../services/pushNotificationService";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -354,11 +355,21 @@ export const CategoriesScreen = ({ navigation }) => {
 
   const handleDelete = async (categoryId) => {
     try {
+      const categoryToDelete = categories.find((cat) => cat.id === categoryId);
       const { error } = await categoryService.deleteCategory(categoryId);
       if (error) {
         showToast.error("Failed to delete category");
         return;
       }
+
+      // Send notification for category deletion
+      await sendDeleteCategoryNotification({
+        boardName: "Categories",
+        icon: categoryToDelete.icon,
+        iconColor: categoryToDelete.color,
+        categoryName: categoryToDelete.name,
+      });
+
       showToast.success("Category deleted successfully");
       fetchCategories();
     } catch (error) {

@@ -9,6 +9,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { formatCurrency } from "../utils/formatters";
+import { sendExpenseDeletedNotification } from "../services/pushNotificationService";
 
 const formatDate = (date) => {
   const today = new Date();
@@ -31,6 +32,11 @@ const formatDate = (date) => {
 
 const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
   const { theme } = useTheme();
+
+  const handleDelete = () => {
+    // Pass the expense data to the parent component
+    onDelete(expense);
+  };
 
   // Memoize styles
   const styles = useMemo(
@@ -190,7 +196,7 @@ const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
       </View>
       <TouchableOpacity
         style={styles.deleteButton}
-        onPress={onDelete}
+        onPress={handleDelete}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <MaterialCommunityIcons

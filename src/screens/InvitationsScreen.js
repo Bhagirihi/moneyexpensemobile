@@ -28,6 +28,29 @@ import { categoryService } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
 import * as FileSystem from "expo-file-system";
 
+function getInitials(name) {
+  if (!name) return "";
+  const names = name.split(" ");
+  return names.length === 1
+    ? names[0][0].toUpperCase()
+    : (names[0][0] + names[names.length - 1][0]).toUpperCase();
+}
+
+function getAvatarColor(email) {
+  // Simple hash for color selection
+  const colors = [
+    "#FFD700",
+    "#FFB6C1",
+    "#87CEEB",
+    "#90EE90",
+    "#FFA07A",
+    "#9370DB",
+  ];
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) hash += email.charCodeAt(i);
+  return colors[hash % colors.length];
+}
+
 export const InvitationsScreen = ({ navigation }) => {
   const { theme } = useTheme();
 
@@ -36,6 +59,7 @@ export const InvitationsScreen = ({ navigation }) => {
   const { session } = useAuth();
   const [sharedUsers, setSharedUsers] = useState([]);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchSharedUsers();
@@ -63,9 +87,39 @@ export const InvitationsScreen = ({ navigation }) => {
 
       if (error) throw error;
 
+      // Add dummy records for testing
+      const dummyRecords = [
+        {
+          id: "dummy-accepted",
+          profiles: {
+            full_name: "John Doe",
+            email_address: "john.doe@example.com",
+          },
+          expense_boards: [
+            { name: "Test Board 1" },
+            { name: "Test Board 2" },
+            { name: "Test Board 3" },
+          ],
+          is_accepted: true,
+          status: "accepted",
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "dummy-rejected",
+          profiles: {
+            full_name: "Jane Smith",
+            email_address: "jane.smith@example.com",
+          },
+          expense_boards: [{ name: "Test Board 1" }, { name: "Test Board 2" }],
+          is_accepted: false,
+          status: "rejected",
+          created_at: new Date().toISOString(),
+        },
+      ];
+
       // Enrich users with fallback profile data if needed
       const enrichedData = await Promise.all(
-        (data || []).map(async (user) => {
+        [...(data || []), ...dummyRecords].map(async (user) => {
           let profile = user.profiles;
 
           // Fallback: fetch profile using shared_with email
@@ -87,12 +141,69 @@ export const InvitationsScreen = ({ navigation }) => {
           };
         })
       );
+      console.log("enrichedData", enrichedData);
 
       setSharedUsers(enrichedData);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching shared users:", error.message);
       setLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (sharedUserId) => {
+    try {
+      setIsUpdating(true);
+
+      // Update the invitation status in the database
+      const { error } = await supabase
+        .from("shared_users")
+        .update({ is_accepted: true, status: "accepted" })
+        .eq("id", sharedUserId);
+
+      if (error) throw error;
+
+      // Refresh the shared users list
+      await fetchSharedUsers();
+
+      Alert.alert("Success", "Invitation accepted successfully", [
+        { text: "OK" },
+      ]);
+    } catch (error) {
+      console.error("Error accepting invitation:", error.message);
+      Alert.alert("Error", "Failed to accept invitation. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRejectInvitation = async (sharedUserId) => {
+    try {
+      setIsUpdating(true);
+
+      // Update the invitation status in the database
+      const { error } = await supabase
+        .from("shared_users")
+        .update({ is_accepted: false, status: "rejected" })
+        .eq("id", sharedUserId);
+
+      if (error) throw error;
+
+      // Refresh the shared users list
+      await fetchSharedUsers();
+
+      Alert.alert("Success", "Invitation rejected successfully", [
+        { text: "OK" },
+      ]);
+    } catch (error) {
+      console.error("Error rejecting invitation:", error.message);
+      Alert.alert("Error", "Failed to reject invitation. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -141,102 +252,229 @@ export const InvitationsScreen = ({ navigation }) => {
     );
   };
 
-  const renderUserCard = (user) => (
-    <View
-      key={user.id}
-      style={[styles.userCard, { backgroundColor: theme.cardBackground }]}
-    >
-      <View style={styles.userInfo}>
-        <View style={styles.avatarContainer}>
-          <View
-            style={[
-              styles.avatarFallback,
-              { backgroundColor: `${theme.primary}15` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="account"
-              size={24}
-              color={theme.primary}
-            />
-          </View>
-        </View>
-        <View style={styles.userDetails}>
-          <View style={styles.userHeader}>
-            <View style={styles.userInfoText}>
-              <Text style={[styles.userName, { color: theme.text }]}>
-                {user?.profiles?.full_name || "No name"}
-              </Text>
-              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-                {user?.profiles?.email_address || "No email"}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.removeButton,
-                { backgroundColor: `${theme.error}15` },
-              ]}
-              onPress={() =>
-                confirmRemoveUser(
-                  user.id,
-                  user.board_id,
-                  user.profiles?.full_name || "User"
-                )
-              }
-              disabled={isRemoving}
-            >
-              <MaterialCommunityIcons
-                name="account-remove"
-                size={16}
-                color={theme.error}
-              />
-              <Text style={[styles.removeText, { color: theme.error }]}>
-                Remove
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.boardInfo}>
-            <MaterialCommunityIcons
-              name="view-grid"
-              size={14}
-              color={theme.textSecondary}
-            />
-            <Text style={[styles.boardName, { color: theme.textSecondary }]}>
-              {user.expense_boards?.name || "Unknown Board"}
-            </Text>
-          </View>
-        </View>
-      </View>
-      <View style={styles.userMeta}>
-        <Text style={[styles.sharedDate, { color: theme.textSecondary }]}>
-          Shared on {formatDateTime(user.created_at)}
-        </Text>
+  // Dummy expiration for demonstration
+  function getExpirationText(user) {
+    // You can replace this with real logic if you have expiration info
+    if (user.id === "dummy-accepted") return "48h";
+    if (user.id === "dummy-rejected") return "15h";
+    return "24h";
+  }
+
+  function getStatusBadge(user) {
+    if (user?.is_accepted) {
+      return (
         <View
           style={[
-            styles.statusBadge,
-            {
-              backgroundColor: user.is_accepted
-                ? `${theme.success}15`
-                : `${theme.warning}15`,
+            styles.badge,
+            { backgroundColor: theme.badge.member.background },
+          ]}
+        >
+          <Text style={[styles.badgeText, { color: theme.badge.member.text }]}>
+            Member
+          </Text>
+        </View>
+      );
+    } else {
+      return (
+        <View
+          style={[
+            styles.badge,
+            { backgroundColor: theme.badge.invited.background },
+          ]}
+        >
+          <Text style={[styles.badgeText, { color: theme.badge.invited.text }]}>
+            Invited
+          </Text>
+        </View>
+      );
+    }
+  }
+
+  
+
+  function getBoardBadge(user) {
+    if (!user?.expense_boards) return null;
+
+    // Handle single board object
+    if (!Array.isArray(user.expense_boards)) {
+      return (
+        <View
+          key={user.expense_boards.name}
+          style={[
+            styles.badge,
+            { 
+              backgroundColor: theme.badge.board.background,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4
             },
           ]}
         >
           <MaterialCommunityIcons
-            name={user.is_accepted ? "check-circle" : "clock-outline"}
+            name="clipboard-list-outline"
             size={14}
-            color={user.is_accepted ? theme.success : theme.warning}
+            color={theme.badge.board.text}
           />
-          <Text
+          <Text style={[styles.badgeText, { color: theme.badge.board.text }]}>
+            {user.expense_boards.name}
+          </Text>
+          {user.total_expense > 0 && (
+            <Text style={[styles.badgeText, { color: theme.badge.board.text, opacity: 0.7 }]}>
+              • {user.total_expense}
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    // Handle array of boards
+    return user.expense_boards.map((board, index) => (
+      <View
+        key={`${board.name}-${index}`}
+        style={[
+          styles.badge,
+          { 
+            backgroundColor: theme.badge.board.background,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4
+          },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="clipboard-list-outline"
+          size={14}
+          color={theme.badge.board.text}
+        />
+        <Text style={[styles.badgeText, { color: theme.badge.board.text }]}>
+          {board.name}
+        </Text>
+      </View>
+    ));
+  }
+
+  const renderUserCard = (user) => (
+    <View
+      key={user.id}
+      style={[
+        styles.inviteCard,
+        {
+          backgroundColor: theme.inviteCard.background,
+          borderColor: theme.inviteCard.border,
+          shadowColor: theme.inviteCard.shadow,
+        },
+      ]}
+    >
+      {user?.is_accepted && (
+        <View
+          style={[
+            styles.checkmarkContainer,
+            {
+              backgroundColor: theme.checkmark.background,
+              shadowColor: theme.checkmark.shadow,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="check-decagram"
+            size={24}
+            color={theme.checkmark.icon}
+          />
+        </View>
+      )}
+      <View style={styles.inviteCardContent}>
+        <View style={styles.avatarAndInfo}>
+          <View
             style={[
-              styles.statusText,
+              styles.avatarCircle,
               {
-                color: user.is_accepted ? theme.success : theme.warning,
+                backgroundColor: getAvatarColor(
+                  user?.profiles?.email_address || ""
+                ),
+                shadowColor: theme.avatar.shadow,
               },
             ]}
           >
-            {user.is_accepted ? "Accepted" : "Pending"}
-          </Text>
+            <Text style={[styles.avatarInitials, { color: theme.avatar.text }]}>
+              {getInitials(user?.profiles?.full_name)}
+            </Text>
+          </View>
+          <View style={styles.userInfoContainer}>
+            <View style={styles.nameContainer}>
+              <Text style={[styles.inviteName, { color: theme.text }]}>
+                {user?.profiles?.full_name || "No name"}
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.inviteEmail,
+                {
+                  color: user?.is_accepted ? theme.success : theme.error,
+                  marginBottom: 0,
+                  fontSize: 12,
+                  fontWeight: "800",
+                },
+              ]}
+            >
+              {user?.status.charAt(0).toUpperCase() + user?.status.slice(1) ||
+                "Pending"}
+            </Text>
+            <Text style={[styles.inviteEmail, { color: theme.textSecondary }]}>
+              {user?.profiles?.email_address || "No email"}
+            </Text>
+          </View>
         </View>
+        <View style={styles.badgeContainer}>
+          {getStatusBadge(user)}
+        
+          {getBoardBadge(user)}
+        </View>
+        {!user?.is_accepted && (
+          <View style={[styles.actionContainer]}>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: theme.button.reject.background,
+                    shadowColor: theme.inviteCard.shadow,
+                  },
+                ]}
+                onPress={() => handleRejectInvitation(user.id)}
+                disabled={isUpdating}
+              >
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    { color: theme.button.reject.text },
+                  ]}
+                >
+                  Reject
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    backgroundColor: theme.button.accept.background,
+                    shadowColor: theme.inviteCard.shadow,
+                  },
+                ]}
+                onPress={() => handleAcceptInvitation(user.id)}
+                disabled={isUpdating}
+              >
+                <Text
+                  style={[
+                    styles.actionButtonText,
+                    { color: theme.button.accept.text },
+                  ]}
+                >
+                  Accept
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -246,6 +484,7 @@ export const InvitationsScreen = ({ navigation }) => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
+        <Header title="Invitees" onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
@@ -260,19 +499,23 @@ export const InvitationsScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Shared Users" onBack={() => navigation.goBack()} />
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <Header title="Invitees" onBack={() => navigation.goBack()} />
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {sharedUsers.length > 0 ? (
           sharedUsers.map((user) => renderUserCard(user))
         ) : (
           <View style={styles.emptyStateContainer}>
             <MaterialCommunityIcons
               name="account-group"
-              size={48}
+              size={64}
               color={theme.textSecondary}
             />
             <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
-              No Shared Users
+              No Invitations
             </Text>
             <Text
               style={[styles.emptyStateText, { color: theme.textSecondary }]}
@@ -287,530 +530,151 @@ export const InvitationsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  content: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  sectionHeader: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 18,
+    marginLeft: 2,
   },
-  content: {
+  inviteCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+    overflow: "hidden",
+  },
+  inviteCardContent: {
+    padding: 20,
+  },
+  avatarAndInfo: {
+    flexDirection: "row",
+  },
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  avatarInitials: {
+    fontWeight: "600",
+    fontSize: 20,
+  },
+  userInfoContainer: {
     flex: 1,
-    padding: 16,
+    justifyContent: "center",
+  },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  inviteName: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginRight: 8,
+    letterSpacing: 0.2,
+  },
+  verifiedBadge: {
+    marginLeft: 4,
+  },
+  inviteEmail: {
+    fontSize: 15,
+    marginBottom: 12,
+    letterSpacing: 0.1,
+  },
+  badgeContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+  actionContainer: {
+    paddingVertical: 10,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  checkmarkContainer: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 1,
+    borderRadius: 16,
+    padding: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: 16,
   },
   loadingText: {
     fontSize: 16,
     fontWeight: "500",
+    letterSpacing: 0.3,
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
-    gap: 12,
+    padding: 32,
+    gap: 16,
+    minHeight: 400,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "600",
     textAlign: "center",
+    letterSpacing: 0.3,
   },
   emptyStateText: {
     fontSize: 16,
     textAlign: "center",
-    lineHeight: 22,
-  },
-  userCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  userInfo: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  avatarContainer: {
-    width: 48,
-    height: 48,
-  },
-  avatarFallback: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  userDetails: {
-    flex: 1,
-    gap: 4,
-  },
-  userHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 4,
-  },
-  userInfoText: {
-    flex: 1,
-    marginRight: 8,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  userEmail: {
-    fontSize: 14,
-  },
-  boardInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  boardName: {
-    fontSize: 13,
-  },
-  userMeta: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#00000010",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sharedDate: {
-    fontSize: 12,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  profileImageSection: {
-    marginBottom: 24,
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-  },
-  profileImageContainer: {
-    position: "relative",
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  editImageButton: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  profileDetails: {
-    flex: 1,
-    gap: 6,
-  },
-  profileName: {
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  profileEmail: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  profilePhone: {
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  profileBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  profileBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  section: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  sectionTitleContainer: {
-    flex: 1,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  socialIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  subscriptionInfo: {
-    marginTop: 12,
-  },
-  premiumHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 16,
-    marginBottom: 24,
-  },
-  premiumBadgeContainer: {
-    flex: 1,
-  },
-  premiumPriceContainer: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    marginTop: 4,
-  },
-  premiumPrice: {
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  premiumPeriod: {
-    fontSize: 14,
-    marginLeft: 4,
-  },
-  premiumFeatures: {
-    marginTop: 16,
-  },
-  featuresTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  featuresList: {
-    gap: 12,
-    marginTop: 16,
-  },
-  featureCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  featureCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 12,
-  },
-  featureCardContent: {
-    flex: 1,
-    gap: 4,
-  },
-  featureCardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  featureCardDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  featureDetails: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  featureDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  featureDetailText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  premiumFooter: {
-    marginTop: 24,
-    gap: 16,
-  },
-  premiumGuarantee: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  guaranteeText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  learnMoreButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  learnMoreText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  connectionsList: {
-    gap: 16,
-  },
-  connectionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  connectionLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  connectionRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-  },
-  connectionText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  connectionStatus: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  connectButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  connectButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  statsContainer: {
-    gap: 16,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  statsCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  statsCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statsCardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  statsCardValue: {
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  statsCardSubtext: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  statsDetails: {
-    marginTop: 8,
-    gap: 12,
-  },
-  statsDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-  },
-  statsDetailLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statsDetailText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  statsDetailValue: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  settingsList: {
-    gap: 12,
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-  },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  settingSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  upgradeIcon: {
-    marginRight: 8,
-  },
-  upgradePremiumButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  upgradePremiumText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  actionsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  removeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginTop: 2,
-  },
-  removeText: {
-    fontSize: 12,
-    fontWeight: "600",
+    lineHeight: 24,
+    opacity: 0.8,
+    letterSpacing: 0.2,
   },
 });

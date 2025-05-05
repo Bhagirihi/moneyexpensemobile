@@ -20,7 +20,9 @@ import { ExpenseBoardList } from "../components/ExpenseBoardList";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
+import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
+import { sendCreateExpenseNotification } from "../services/pushNotificationService";
 
 const paymentMethods = [
   { value: "cash", name: "Cash", icon: "cash", color: "#4CAF50" },
@@ -81,7 +83,27 @@ export const AddExpenseScreen = ({ navigation }) => {
         board_id: formData.board,
       };
 
-      await expenseService.createExpense(expenseData);
+      // Create the expense first
+      const { data: createdExpense, error } =
+        await expenseService.createExpense(expenseData);
+
+      if (error) throw error;
+
+      // Get board details for notification
+      const { data: boardData } =
+        await expenseBoardService.getExpenseBoardsByID(formData.board);
+
+      if (boardData && boardData.length > 0) {
+        // Send notification after successful expense creation
+        await sendCreateExpenseNotification({
+          boardName: boardData[0].name,
+          icon: boardData[0].icon || "cash",
+          iconColor: boardData[0].color || theme.primary,
+          expenseName: formData.description.trim(),
+          expenseAmount: parseFloat(formData.amount),
+        });
+      }
+
       showToast.success("Expense added successfully");
       navigation.goBack();
     } catch (error) {

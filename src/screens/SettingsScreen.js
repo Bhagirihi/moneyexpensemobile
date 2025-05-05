@@ -914,7 +914,7 @@ export const SettingsScreen = ({ navigation }) => {
         data: { session },
         error: sessionError,
       } = await supabase.auth.getSession();
-      // Get all shared users with their profile information
+      // Get all Invitees with their profile information
       const { count, error } = await supabase
         .from("shared_users")
         .select("*", { count: "exact", head: true })
@@ -1466,7 +1466,7 @@ export const SettingsScreen = ({ navigation }) => {
 
             renderSettingItem({
               icon: "account-group",
-              title: "Shared Users ",
+              title: "Invitees",
               subtitle: `${invitees} Invited`,
               onPress: () => navigation.navigate("Profile2"),
               editable: false,

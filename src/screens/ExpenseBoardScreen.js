@@ -20,6 +20,7 @@ import AddBoardModal from "../components/AddBoardModal";
 import JoinBoardModal from "../components/JoinBoardModal";
 import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
+import { sendExpenseBoardDeletedNotification } from "../services/pushNotificationService";
 
 const { width } = Dimensions.get("window");
 
@@ -69,7 +70,38 @@ export const ExpenseBoardScreen = ({ navigation }) => {
 
   const handleDeleteBoard = async (board) => {
     try {
-      await expenseBoardService.deleteExpenseBoard(board.id);
+      // Show confirmation dialog
+      Alert.alert(
+        "Delete Board",
+        `Are you sure you want to delete "${board.name}"?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await expenseBoardService.deleteExpenseBoard(board.id);
+
+                // Send notification after successful deletion
+                await sendExpenseBoardDeletedNotification({
+                  boardName: board.name,
+                  icon: board.icon || "view-grid",
+                  iconColor: board.color || theme.primary,
+                });
+
+                showToast.success("Board deleted successfully");
+              } catch (error) {
+                console.error("Error in deleteBoard:", error);
+                showToast.error("Failed to delete board", error.message);
+              }
+            },
+          },
+        ]
+      );
     } catch (error) {
       console.error("Error in deleteBoard:", error);
       showToast.error("Failed to delete board", error.message);

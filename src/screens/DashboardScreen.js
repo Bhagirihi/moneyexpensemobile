@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -31,7 +31,19 @@ import { capitalizeFirstLetter, formatCurrency } from "../utils/formatters";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
 import { realTimeSync } from "../services/realTimeSync";
-import { sendPushNotification } from "../services/pushNotificationService";
+import {
+  sendCreateCategoryNotification,
+  sendCreateExpenseBoardNotification,
+  sendCreateExpenseNotification,
+  sendDeleteCategoryNotification,
+  sendExpenseBoardDeletedNotification,
+  sendExpenseBoardInviteNotification,
+  sendExpenseBoardUpdatedNotification,
+  sendExpenseDeletedNotification,
+  sendExpenseOverBudgetNotification,
+  sendPushNotification,
+  sendUpdateCategoryNotification,
+} from "../services/pushNotificationService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -55,6 +67,58 @@ export const DashboardScreen = ({ navigation }) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pushToken = userProfile?.expo_push_token; // Replace with actual token
   const message = "Hello, you have a new notification!";
+
+  const memoizedCalculateMonthlyStats = useCallback(
+    (expensesData) => {
+      const totalExpenses = expensesData.reduce(
+        (sum, expense) => sum + expense.amount,
+        0
+      );
+      const budgetUsage = (totalExpenses / (stats.totalBudget || 1)) * 100;
+
+      // Check budget usage thresholds and send notifications
+      if (budgetUsage >= 100) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Dashboard",
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: stats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 90) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Dashboard",
+          icon: "alert",
+          iconColor: "#F44336",
+          budgetAmount: stats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 70) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Dashboard",
+          icon: "alert",
+          iconColor: "#FF9800",
+          budgetAmount: stats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      } else if (budgetUsage >= 50) {
+        sendExpenseOverBudgetNotification({
+          boardName: "Dashboard",
+          icon: "alert",
+          iconColor: "#FFC107",
+          budgetAmount: stats.totalBudget,
+          expenseAmount: totalExpenses,
+        });
+      }
+
+      setStats((prevStats) => ({
+        ...prevStats,
+        totalExpenses,
+        remainingBudget: prevStats.totalBudget - totalExpenses,
+      }));
+    },
+    [stats.totalBudget]
+  );
 
   // Set up real-time subscriptions
   useEffect(() => {
@@ -395,15 +459,180 @@ export const DashboardScreen = ({ navigation }) => {
           Categories
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: theme.card }]}
-        onPress={() => sendPushNotification(pushToken, message)}
+    </View>
+  );
+
+  const renderNotificationTestButtons = () => (
+    <View style={styles.notificationTestContainer}>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        Test Notifications
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.notificationButtonsScroll}
       >
-        <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
-        <Text style={[styles.actionText, { color: theme.text }]}>
-          Notifications
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendPushNotification(
+              "Test Notification",
+              "This is a test notification"
+            )
+          }
+        >
+          <MaterialCommunityIcons name="bell" size={20} color={theme.primary} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Basic
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendCreateExpenseBoardNotification({
+              boardName: "Test Board",
+              icon: "view-grid",
+              iconColor: "#4CAF50",
+            })
+          }
+        >
+          <MaterialCommunityIcons
+            name="view-grid"
+            size={20}
+            color={theme.success}
+          />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Board Created
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendExpenseBoardInviteNotification({
+              boardName: "Test Board",
+              inviteeName: "John Doe",
+              icon: "account-plus",
+              iconColor: "#2196F3",
+            })
+          }
+        >
+          <MaterialCommunityIcons
+            name="account-plus"
+            size={20}
+            color={theme.primary}
+          />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Board Invite
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendCreateExpenseNotification({
+              boardName: "Test Board",
+              icon: "cash",
+              iconColor: "#FF9800",
+              expenseName: "Test Expense",
+              expenseAmount: 100,
+            })
+          }
+        >
+          <MaterialCommunityIcons name="cash" size={20} color={theme.warning} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Expense Created
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendCreateCategoryNotification({
+              boardName: "Test Board",
+              icon: "tag",
+              iconColor: "#9C27B0",
+              categoryName: "Test Category",
+            })
+          }
+        >
+          <MaterialCommunityIcons name="tag" size={20} color={theme.primary} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Category Created
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendDeleteCategoryNotification({
+              boardName: "Test Board",
+              icon: "delete",
+              iconColor: "#F44336",
+              categoryName: "Test Category",
+            })
+          }
+        >
+          <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Delete Category
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendUpdateCategoryNotification({
+              boardName: "Test Board",
+              icon: "pencil",
+              iconColor: "#2196F3",
+              categoryName: "Test Category",
+            })
+          }
+        >
+          <MaterialCommunityIcons name="pencil" size={20} color={theme.primary} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Update Category
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendExpenseOverBudgetNotification({
+              boardName: "Test Board",
+              icon: "alert",
+              iconColor: "#F44336",
+              budgetAmount: 1000,
+              expenseAmount: 1200,
+            })
+          }
+        >
+          <MaterialCommunityIcons name="alert" size={20} color={theme.error} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Over Budget
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          onPress={() =>
+            sendExpenseDeletedNotification({
+              boardName: "Test Board",
+              icon: "delete",
+              iconColor: "#F44336",
+              expenseName: "Test Expense",
+              expenseAmount: 100,
+            })
+          }
+        >
+          <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
+          <Text style={[styles.notificationButtonText, { color: theme.text }]}>
+            Expense Deleted
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -533,6 +762,7 @@ export const DashboardScreen = ({ navigation }) => {
       {renderHeader()}
       {renderBalanceCard()}
       {renderQuickActions()}
+      {renderNotificationTestButtons()}
 
       <ScrollView
         bounces={false}
@@ -802,5 +1032,32 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: height * 0.8,
     resizeMode: "contain",
+  },
+  notificationTestContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  notificationButtonsScroll: {
+    marginTop: 10,
+  },
+  notificationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    marginRight: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+  },
+  notificationButtonText: {
+    marginLeft: 8,
+    fontSize: 12,
+    fontWeight: "500",
   },
 });
