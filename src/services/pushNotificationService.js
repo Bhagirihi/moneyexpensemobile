@@ -31,10 +31,37 @@ export async function registerForPushNotificationsAsync() {
   let finalStatus = existingStatus;
 
   if (existingStatus === "denied") {
-    Alert.alert(
-      "Push notifications are currently denied. Please go to your device settings to enable them."
-    );
-    return null;
+    return new Promise((resolve) => {
+      Alert.alert(
+        "Notifications Blocked",
+        "Push notifications are currently denied. Would you like to allow them?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => resolve(null),
+          },
+          {
+            text: "Allow",
+            onPress: async () => {
+              const { status } = await Notifications.requestPermissionsAsync();
+              if (status === "granted") {
+                const token = (await Notifications.getExpoPushTokenAsync())
+                  .data;
+                console.log("✅ Expo Push Token:", token);
+                resolve(token);
+              } else {
+                Alert.alert(
+                  "Permission Denied",
+                  "You did not enable notifications."
+                );
+                resolve(null);
+              }
+            },
+          },
+        ]
+      );
+    });
   }
 
   if (existingStatus !== "granted") {
@@ -77,10 +104,7 @@ export async function registerForPushNotificationsAsync() {
 }
 
 // Function to send a push notification
-export async function sendPushNotification(
-  title,
-  message
-) {
+export async function sendPushNotification(title, message) {
   const {
     data: { session },
     error: sessionError,
@@ -350,13 +374,17 @@ export async function sendExpenseDeletedNotification({
   await sendNotification(
     "info",
     "Expense deleted",
-    `You have deleted ${expenseName} expense of ${formatCurrency(expenseAmount)}`,
+    `You have deleted ${expenseName} expense of ${formatCurrency(
+      expenseAmount
+    )}`,
     boardName,
     icon,
     iconColor
   );
   await sendPushNotification(
-    `You have deleted ${expenseName} expense of ${formatCurrency(expenseAmount)} from ${boardName}`,
+    `You have deleted ${expenseName} expense of ${formatCurrency(
+      expenseAmount
+    )} from ${boardName}`,
     "Expense deleted"
   );
 }
