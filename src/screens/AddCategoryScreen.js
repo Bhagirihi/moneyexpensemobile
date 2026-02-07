@@ -19,6 +19,7 @@ import {
   sendCreateCategoryNotification,
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 // Constants
 const CATEGORY_COLORS = [
@@ -52,6 +53,7 @@ const MAX_DESCRIPTION_LENGTH = 200;
 
 export const AddCategoryScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -168,7 +170,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
 
   const renderColorPicker = () => (
     <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Choose Color</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t("chooseColor")}</Text>
       <View style={styles.colorList}>
         {CATEGORY_COLORS.map((color) => (
           <TouchableOpacity
@@ -199,7 +201,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
 
   const renderIconPicker = () => (
     <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Choose Icon</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t("chooseIcon")}</Text>
       <View style={styles.iconList}>
         {sortedIcons.map((icon) => (
           <TouchableOpacity
@@ -226,13 +228,13 @@ export const AddCategoryScreen = ({ navigation, route }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title={route.params?.category ? "Edit Category" : "Add Category"}
+        title={route.params?.category ? t("editCategory") : t("addCategory")}
         onBack={() => navigation.goBack()}
       />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.text }]}>
-            Category Name
+            {t("name")}
           </Text>
           <TextInput
             style={[
@@ -243,7 +245,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
                 borderColor: errors.name ? theme.error : theme.border,
               },
             ]}
-            placeholder="Enter category name"
+            placeholder={t("enterCategoryName")}
             placeholderTextColor={theme.textSecondary}
             value={formData.name}
             onChangeText={(text) => {
@@ -262,7 +264,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.text }]}>Description</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t("description")}</Text>
           <TextInput
             style={[
               styles.input,
@@ -273,7 +275,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
                 height: 100,
               },
             ]}
-            placeholder="Enter category description (optional)"
+            placeholder={t("boardDescription")}
             placeholderTextColor={theme.textSecondary}
             value={formData.description}
             onChangeText={(text) => {
@@ -312,7 +314,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
           <ActivityIndicator color={theme.white} />
         ) : (
           <Text style={[styles.saveButtonText, { color: theme.white }]}>
-            {route.params?.category ? "Update Category" : "Create Category"}
+            {t("save")}
           </Text>
         )}
       </TouchableOpacity>

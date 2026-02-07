@@ -21,11 +21,13 @@ import JoinBoardModal from "../components/JoinBoardModal";
 import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
 import { sendExpenseBoardDeletedNotification } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 const { width } = Dimensions.get("window");
 
 export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -72,15 +74,15 @@ export const ExpenseBoardScreen = ({ navigation }) => {
     try {
       // Show confirmation dialog
       Alert.alert(
-        "Delete Board",
-        `Are you sure you want to delete "${board.name}"?`,
+        t("deleteBoard"),
+        `${t("deleteBoardConfirm")} "${board.name}"?`,
         [
           {
-            text: "Cancel",
+            text: t("cancel"),
             style: "cancel",
           },
           {
-            text: "Delete",
+            text: t("delete"),
             style: "destructive",
             onPress: async () => {
               try {
@@ -93,10 +95,10 @@ export const ExpenseBoardScreen = ({ navigation }) => {
                   iconColor: board.color || theme.primary,
                 });
 
-                showToast.success("Board deleted successfully");
+                showToast.success(t("boardDeletedSuccess"));
               } catch (error) {
                 console.error("Error in deleteBoard:", error);
-                showToast.error("Failed to delete board", error.message);
+                showToast.error(t("failedToDeleteBoard"), error.message);
               }
             },
           },
@@ -104,7 +106,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error in deleteBoard:", error);
-      showToast.error("Failed to delete board", error.message);
+      showToast.error(t("failedToDeleteBoard"), error.message);
     }
   };
 
@@ -148,7 +150,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             {board.name}
           </Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {`by ${board.created_by}`}
+            {`${t("byCreator")} ${board.created_by}`}
           </Text>
         </View>
 
@@ -179,7 +181,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       <View style={styles.boardStats}>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Total Expenses
+            {t("totalExpenses")}
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
             ₹{board?.totalExpenses?.toFixed(2)}
@@ -187,7 +189,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Budget
+            {t("budget")}
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
             ₹{board?.total_budget?.toFixed(2)}
@@ -197,7 +199,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       <View style={styles.boardStats}>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Transactions
+            {t("transactions")}
           </Text>
           <Text style={[styles.statValue, { color: theme.text }]}>
             {board?.totalTransactions || 0}
@@ -205,7 +207,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         </View>
         <View style={styles.statItem}>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            status
+            {t("status")}
           </Text>
           <Text
             style={[
@@ -213,7 +215,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
               { color: board?.is_default ? theme.success : theme.text },
             ]}
           >
-            {board?.is_default ? "Default" : "Custom"}
+            {board?.is_default ? t("default") : t("custom")}
           </Text>
         </View>
       </View>
@@ -246,7 +248,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         style={[styles.container, { backgroundColor: theme.background }]}
       >
         <Header
-          title="Expense Board"
+          title={t("expenseBoard")}
           onBack={() => navigation.goBack()}
           rightComponent={
             <TouchableOpacity
@@ -273,7 +275,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title="Expense Board"
+        title={t("expenseBoard")}
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity
@@ -302,7 +304,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
               color={theme.textSecondary}
             />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No expense boards found
+              {t("noExpenseBoardsFound")}
             </Text>
           </View>
         )}

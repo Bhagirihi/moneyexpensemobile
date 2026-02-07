@@ -26,10 +26,12 @@ import {
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../hooks/useTranslation";
 import * as FileSystem from "expo-file-system";
 
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +69,7 @@ export const ProfileScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error.message);
-      Alert.alert("Error", "Failed to load profile data");
+      Alert.alert(t("error"), t("failedToLoadProfile"));
     } finally {
       setLoading(false);
     }
@@ -994,7 +996,7 @@ export const ProfileScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title="Profile"
+        title={t("profile")}
         onBack={() => navigation.goBack()}
         // rightComponent={
         //   <TouchableOpacity

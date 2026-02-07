@@ -45,11 +45,13 @@ import {
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
 import { fetchDashboardData } from "../fetcher";
+import { useTranslation } from "../hooks/useTranslation";
 
 const { width, height } = Dimensions.get("window");
 
 export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { currency } = useAppSettings();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -241,12 +243,12 @@ export const DashboardScreen = ({ navigation }) => {
       setExpenses(updatedExpenses);
       memoizedCalculateMonthlyStats(updatedExpenses);
       showToast.success(
-        "Expense deleted",
-        "The expense has been successfully deleted"
+        t("expenseDeletedSuccess"),
+        t("expenseDeletedMessage")
       );
     } catch (error) {
       console.error("Error deleting expense:", error);
-      showToast.error("Failed to delete expense", "Please try again later");
+      showToast.error(t("failedToDeleteExpense"), t("tryAgainLater"));
     }
   };
   let remainingBudget;
@@ -317,7 +319,7 @@ export const DashboardScreen = ({ navigation }) => {
               style={styles.balanceIcon}
             />
             <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              Total Budget
+              {t("totalBudget")}
             </Text>
           </View>
           <Text style={[styles.balanceValue, { color: theme.white }]}>
@@ -334,7 +336,7 @@ export const DashboardScreen = ({ navigation }) => {
               style={styles.balanceIcon}
             />
             <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              Spent
+              {t("spent")}
             </Text>
           </View>
           <Text style={[styles.balanceValue, { color: theme.white }]}>
@@ -363,7 +365,7 @@ export const DashboardScreen = ({ navigation }) => {
       <View style={styles.combinedProgressContainer}>
         <View style={styles.progressLabels}>
           <Text style={[styles.progressLabel, { color: theme.white }]}>
-            Budget Usage
+            {t("budgetUsage")}
           </Text>
 
           <View style={styles.progressLegend}>
@@ -372,7 +374,7 @@ export const DashboardScreen = ({ navigation }) => {
                 style={[styles.legendColor, { backgroundColor: theme.error }]}
               />
               <Text style={[styles.legendText, { color: theme.white }]}>
-                Used
+                {t("used")}
               </Text>
             </View>
             <View style={styles.legendItem}>
@@ -380,7 +382,7 @@ export const DashboardScreen = ({ navigation }) => {
                 style={[styles.legendColor, { backgroundColor: theme.success }]}
               />
               <Text style={[styles.legendText, { color: theme.white }]}>
-                Remaining
+                {t("remaining")}
               </Text>
             </View>
             <View style={styles.legendItem}>
@@ -443,7 +445,7 @@ export const DashboardScreen = ({ navigation }) => {
           size={24}
           color={theme.success}
         />
-        <Text style={[styles.actionText, { color: theme.text }]}>Boards</Text>
+        <Text style={[styles.actionText, { color: theme.text }]}>{t("boards")}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, { backgroundColor: theme.card }]}
@@ -455,7 +457,7 @@ export const DashboardScreen = ({ navigation }) => {
           color={theme.primary}
         />
         <Text style={[styles.actionText, { color: theme.text }]}>
-          Add Expense
+          {t("addExpense")}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -464,7 +466,7 @@ export const DashboardScreen = ({ navigation }) => {
       >
         <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
         <Text style={[styles.actionText, { color: theme.text }]}>
-          Categories
+          {t("categories")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -473,7 +475,7 @@ export const DashboardScreen = ({ navigation }) => {
   const renderNotificationTestButtons = () => (
     <View style={styles.notificationTestContainer}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Test Notifications
+        {t("testNotifications")}
       </Text>
       <ScrollView
         horizontal
@@ -491,7 +493,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="bell" size={20} color={theme.primary} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Basic
+            {t("basic")}
           </Text>
         </TouchableOpacity>
 
@@ -511,7 +513,7 @@ export const DashboardScreen = ({ navigation }) => {
             color={theme.success}
           />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Board Created
+            {t("boardCreated")}
           </Text>
         </TouchableOpacity>
 
@@ -532,7 +534,7 @@ export const DashboardScreen = ({ navigation }) => {
             color={theme.primary}
           />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Board Invite
+            {t("boardInvite")}
           </Text>
         </TouchableOpacity>
 
@@ -550,7 +552,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="cash" size={20} color={theme.warning} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Expense Created
+            {t("expenseCreated")}
           </Text>
         </TouchableOpacity>
 
@@ -567,7 +569,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="tag" size={20} color={theme.primary} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Category Created
+            {t("categoryCreated")}
           </Text>
         </TouchableOpacity>
 
@@ -584,7 +586,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Delete Category
+            {t("deleteCategory")}
           </Text>
         </TouchableOpacity>
 
@@ -605,7 +607,7 @@ export const DashboardScreen = ({ navigation }) => {
             color={theme.primary}
           />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Update Category
+            {t("updateCategory")}
           </Text>
         </TouchableOpacity>
 
@@ -623,7 +625,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="alert" size={20} color={theme.error} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Over Budget
+            {t("overBudget")}
           </Text>
         </TouchableOpacity>
 
@@ -641,7 +643,7 @@ export const DashboardScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
-            Expense Deleted
+            {t("expenseDeleted")}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -652,7 +654,7 @@ export const DashboardScreen = ({ navigation }) => {
     <View style={styles.transactionsSection}>
       <ExpenseList
         expenses={expenses.slice(0, 3)}
-        title="Recent Transactions"
+        title={t("recentTransactions")}
         onSeeAllPress={() => navigation.navigate("Expense")}
         onDeletePress={handleDeletePress}
         onExpensePress={(expense) => {}}
@@ -731,10 +733,10 @@ export const DashboardScreen = ({ navigation }) => {
           </View>
           <View>
             <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-              Welcome back,
+              {t("welcomeBack")}
             </Text>
             <Text style={[styles.nameText, { color: theme.text }]}>
-              {capitalizeFirstLetter(userProfile?.full_name) || "Guest"}
+              {capitalizeFirstLetter(userProfile?.full_name) || t("guest")}
             </Text>
           </View>
         </TouchableOpacity>

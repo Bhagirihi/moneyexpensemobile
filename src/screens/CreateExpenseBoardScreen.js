@@ -26,6 +26,7 @@ import ShareModal from "../components/ShareModal";
 import { showToast } from "../utils/toast";
 import { formatNumber } from "../utils/formatters";
 import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -268,6 +269,7 @@ const styles = StyleSheet.create({
 
 export const CreateExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [boardName, setBoardName] = useState("");
   const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0]);
@@ -583,7 +585,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Expense Board" onBack={() => navigation.goBack()} />
+      <Header title={t("createExpenseBoard")} onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}
@@ -610,7 +612,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
       <FormButton
-        title="Create Board"
+        title={t("createBoard")}
         onPress={handleCreateBoard}
         loading={loading}
         style={styles.createButton}

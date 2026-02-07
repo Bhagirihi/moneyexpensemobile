@@ -17,35 +17,36 @@ import {
   ConnectIllustration,
 } from "../components/OnboardingIllustrations";
 import ThemeToggle from "../components/ThemeToggle";
+import { useTranslation } from "../hooks/useTranslation";
 
 const { width, height } = Dimensions.get("window");
 
-// Create animated FlatList component
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
-const slides = [
+const slideKeys = [
   {
     id: "1",
-    title: "Track Your\nTravel Expenses",
-    subtitle: "Keep all your travel costs in one place",
+    titleKey: "trackTravelExpenses",
+    subtitleKey: "keepCostsInOnePlace",
     Illustration: ExploreWorldIllustration,
   },
   {
     id: "2",
-    title: "Split Bills\nEasily",
-    subtitle: "Share expenses with travel companions",
+    titleKey: "splitBillsEasily",
+    subtitleKey: "shareWithCompanions",
     Illustration: ReachSpotIllustration,
   },
   {
     id: "3",
-    title: "Plan Your\nBudget",
-    subtitle: "Set budgets and track your spending",
+    titleKey: "planYourBudget",
+    subtitleKey: "setBudgetsAndTrack",
     Illustration: ConnectIllustration,
   },
 ];
 
 const OnboardingScreen = ({ navigation }) => {
   const { theme, isDarkMode } = useTheme();
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const slidesRef = useRef(null);
@@ -66,7 +67,7 @@ const OnboardingScreen = ({ navigation }) => {
   const viewConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
   const scrollTo = () => {
-    if (currentIndex < slides.length - 1) {
+    if (currentIndex < slideKeys.length - 1) {
       slidesRef.current.scrollToIndex({ index: currentIndex + 1 });
     } else {
       navigation.replace("Login");
@@ -111,10 +112,10 @@ const OnboardingScreen = ({ navigation }) => {
         </View>
         <View style={styles.textContainer}>
           <Text style={[styles.title, { color: theme.text }]}>
-            {item.title}
+            {t(item.titleKey)}
           </Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {item.subtitle}
+            {t(item.subtitleKey)}
           </Text>
         </View>
       </Animated.View>
@@ -139,7 +140,7 @@ const OnboardingScreen = ({ navigation }) => {
         ]}
       >
         <AnimatedFlatList
-          data={slides}
+          data={slideKeys}
           renderItem={renderItem}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -159,7 +160,7 @@ const OnboardingScreen = ({ navigation }) => {
 
         <View style={styles.footer}>
           <View style={styles.indicatorContainer}>
-            {slides.map((_, index) => (
+            {slideKeys.map((_, index) => (
               <Animated.View
                 key={index.toString()}
                 style={[
@@ -183,7 +184,7 @@ const OnboardingScreen = ({ navigation }) => {
               style={[styles.nextButtonInner, { backgroundColor: theme.white }]}
             >
               <Text style={[styles.nextButtonText, { color: theme.primary }]}>
-                {currentIndex === slides.length - 1 ? "Get Started" : "→"}
+                {currentIndex === slideKeys.length - 1 ? t("getStarted") : "→"}
               </Text>
             </View>
           </TouchableOpacity>

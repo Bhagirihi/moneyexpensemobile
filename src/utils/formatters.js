@@ -84,9 +84,15 @@ export const parseCurrency = (currencyString, currency = null) => {
  * @param {string} format - The format to use (default: 'medium')
  * @returns {string} Formatted date string
  */
+const getLocaleFromLanguage = (language) => {
+  if (language === "hi") return "hi-IN";
+  if (language === "en") return "en-US";
+  return "en-IN";
+};
+
 export const formatDate = (date = new Date(), format = "medium") => {
   const { language } = useAppSettings();
-  const locale = language === "en" ? "en-US" : "en-IN";
+  const locale = getLocaleFromLanguage(language);
 
   const options = {
     short: {
@@ -119,7 +125,7 @@ export const formatDate = (date = new Date(), format = "medium") => {
  */
 export const formatPercentage = (value) => {
   const { language } = useAppSettings();
-  const locale = language === "en" ? "en-US" : "en-IN";
+  const locale = getLocaleFromLanguage(language);
 
   return new Intl.NumberFormat(locale, {
     style: "percent",
@@ -135,7 +141,7 @@ export const formatPercentage = (value) => {
  */
 export const formatNumber = (number) => {
   const { language } = useAppSettings();
-  const locale = language === "en" ? "en-US" : "en-IN";
+  const locale = getLocaleFromLanguage(language);
 
   return new Intl.NumberFormat(locale).format(number);
 };

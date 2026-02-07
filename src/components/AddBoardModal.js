@@ -9,9 +9,11 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { useTranslation } from "../hooks/useTranslation";
 
 const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Modal
@@ -25,7 +27,7 @@ const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
       >
         <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Add</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{t("add")}</Text>
             <TouchableOpacity onPress={onClose}>
               <MaterialCommunityIcons
                 name="close"
@@ -53,7 +55,7 @@ const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
             </View>
             <View style={styles.optionContent}>
               <Text style={[styles.optionTitle, { color: theme.text }]}>
-                Start a new expense board
+                {t("startNewBoard")}
               </Text>
               <Text
                 style={[
@@ -61,7 +63,7 @@ const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
                   { color: theme.textSecondary },
                 ]}
               >
-                Start a new expense board from scratch.
+                {t("startNewBoardDesc")}
               </Text>
             </View>
             <MaterialCommunityIcons
@@ -89,7 +91,7 @@ const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
             </View>
             <View style={styles.optionContent}>
               <Text style={[styles.optionTitle, { color: theme.text }]}>
-                Join an existing expense board
+                {t("joinExistingBoard")}
               </Text>
               <Text
                 style={[
@@ -97,7 +99,7 @@ const AddBoardModal = ({ visible, onClose, onCreateNew, onJoinExisting }) => {
                   { color: theme.textSecondary },
                 ]}
               >
-                Use an invite link to join an existing expense board.
+                {t("joinExistingBoardDesc")}
               </Text>
             </View>
             <MaterialCommunityIcons

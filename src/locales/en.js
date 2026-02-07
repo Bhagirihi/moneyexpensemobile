@@ -1,0 +1,182 @@
+export default {
+  // Settings (existing)
+  settings: "Settings",
+  selectLanguage: "Select Language",
+  cancel: "Cancel",
+  language: "Language",
+  appearance: "Appearance",
+  darkMode: "Dark Mode",
+  darkModeSubtitle: "Switch between light and dark themes",
+  expenseSettings: "Expense Settings",
+  currency: "Currency",
+  defaultBoard: "Default Board",
+  monthlyBudget: "Monthly Budget",
+  expenseBoard: "Expense Board",
+  boards: "Boards",
+  members: "Members",
+  account: "Account",
+  editProfile: "Edit Profile",
+  invitees: "Invitees",
+  invited: "Invited",
+  premiumAccess: "Premium Access",
+  premiumAccessSubtitle: "Upgrade premium to unlock all features",
+  security: "Security",
+  resetPassword: "Reset Password",
+  dataManagement: "Data Management",
+  backupToGoogleDrive: "Backup to Google Drive",
+  backupSubtitle: "Sync and backup your expense data",
+  exportToLocal: "Export to Local Storage",
+  exportSubtitle: "Download your expense data",
+  shareWith: "Share With",
+  shareSubtitle: "Share Trivense with friends",
+  support: "Support",
+  about: "About",
+  version: "Version 1.0.0",
+
+  // Tabs
+  home: "Home",
+  analytics: "Analytics",
+
+  // Home
+  welcome: "Welcome",
+  signOut: "Sign Out",
+
+  // Dashboard
+  totalBudget: "Total Budget",
+  spent: "Spent",
+  remaining: "Remaining",
+  budgetUsage: "Budget Usage",
+  used: "Used",
+  addExpense: "Add Expense",
+  categories: "Categories",
+  recentTransactions: "Recent Transactions",
+  welcomeBack: "Welcome back,",
+  guest: "Guest",
+  testNotifications: "Test Notifications",
+  basic: "Basic",
+  boardCreated: "Board Created",
+  boardInvite: "Board Invite",
+  expenseCreated: "Expense Created",
+  categoryCreated: "Category Created",
+  deleteCategory: "Delete Category",
+  updateCategory: "Update Category",
+  overBudget: "Over Budget",
+  expenseDeleted: "Expense Deleted",
+
+  // Expense screen
+  expenses: "Expenses",
+  totalExpenses: "Total Expenses",
+  seeAll: "See All",
+  noExpenses: "No expenses yet",
+  retry: "Retry",
+  transactions: "Transactions",
+  noTransactionsFound: "No transactions found",
+  addTransaction: "Add Transaction",
+
+  // Expense Board
+  deleteBoard: "Delete Board",
+  deleteBoardConfirm: "Are you sure you want to delete",
+  delete: "Delete",
+  noExpenseBoardsFound: "No expense boards found",
+  budget: "Budget",
+  status: "Status",
+  default: "Default",
+  custom: "Custom",
+  byCreator: "by",
+  add: "Add",
+  startNewBoard: "Start a new expense board",
+  startNewBoardDesc: "Start a new expense board from scratch.",
+  joinExistingBoard: "Join an existing expense board",
+  joinExistingBoardDesc: "Use an invite link to join an existing expense board.",
+
+  // Add Expense
+  amount: "Amount",
+  description: "Description",
+  paymentMethod: "Payment Method",
+  selectBoard: "Select Board",
+  saveExpense: "Save Expense",
+  enterAmount: "Enter amount",
+  enterDescription: "Enter description",
+  expenseDate: "Expense Date",
+  cash: "Cash",
+  card: "Card",
+  upi: "UPI",
+  netBanking: "Net Banking",
+  date: "Date",
+  pleaseEnterValidAmount: "Please enter a valid amount",
+  pleaseEnterDescription: "Please enter a description",
+  pleaseSelectCategory: "Please select a category",
+  pleaseSelectPaymentMethod: "Please select a payment method",
+  pleaseSelectExpenseBoard: "Please select an expense board",
+
+  // Categories
+  addCategory: "Add Category",
+  noCategories: "No categories yet",
+  categoriesCount: "categories",
+  deleteCategoryConfirm: "Are you sure you want to delete this category?",
+
+  // Add/Edit Category
+  editCategory: "Edit Category",
+  name: "Name",
+  color: "Color",
+  icon: "Icon",
+  save: "Save",
+  chooseColor: "Choose Color",
+  chooseIcon: "Choose Icon",
+  enterCategoryName: "Enter category name",
+
+  // Profile
+  profile: "Profile",
+  sharedMembers: "Shared Members",
+  error: "Error",
+  failedToLoadProfile: "Failed to load profile data",
+
+  // Analytics
+  thisWeek: "This Week",
+  thisMonth: "This Month",
+  thisYear: "This Year",
+  allTime: "All Time",
+  totalSpending: "Total Spending",
+  byCategory: "By Category",
+  noData: "No data available",
+
+  // Notifications
+  notifications: "Notifications",
+  markAllAsRead: "Mark all as read",
+  noNotifications: "No notifications yet",
+  noNotificationsMessage: "You're all caught up! New notifications will appear here.",
+  today: "Today",
+  yesterday: "Yesterday",
+
+  // Onboarding
+  trackTravelExpenses: "Track Your\nTravel Expenses",
+  keepCostsInOnePlace: "Keep all your travel costs in one place",
+  splitBillsEasily: "Split Bills\nEasily",
+  shareWithCompanions: "Share expenses with travel companions",
+  planYourBudget: "Plan Your\nBudget",
+  setBudgetsAndTrack: "Set budgets and track your spending",
+  next: "Next",
+  getStarted: "Get Started",
+
+  // Create Expense Board
+  createExpenseBoard: "Create Expense Board",
+  boardName: "Board Name",
+  boardDescription: "Description (optional)",
+  createBoard: "Create Board",
+  joinWithCode: "Join with code",
+
+  // Expense Board Details
+  expenseBoardDetails: "Expense Board Details",
+
+  // Invitations
+  invitations: "Invitations",
+  noInvitations: "No invitations",
+
+  // Toasts / messages
+  expenseDeletedSuccess: "Expense deleted",
+  expenseDeletedMessage: "The expense has been successfully deleted",
+  boardDeletedSuccess: "Board deleted successfully",
+  failedToDeleteExpense: "Failed to delete expense",
+  failedToDeleteBoard: "Failed to delete board",
+  tryAgainLater: "Please try again later",
+};

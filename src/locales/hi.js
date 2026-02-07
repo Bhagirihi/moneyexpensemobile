@@ -1,0 +1,182 @@
+export default {
+  // Settings (existing)
+  settings: "सेटिंग्स",
+  selectLanguage: "भाषा चुनें",
+  cancel: "रद्द करें",
+  language: "भाषा",
+  appearance: "दिखावट",
+  darkMode: "डार्क मोड",
+  darkModeSubtitle: "लाइट और डार्क थीम के बीच स्विच करें",
+  expenseSettings: "खर्च सेटिंग्स",
+  currency: "मुद्रा",
+  defaultBoard: "डिफ़ॉल्ट बोर्ड",
+  monthlyBudget: "मासिक बजट",
+  expenseBoard: "खर्च बोर्ड",
+  boards: "बोर्ड",
+  members: "सदस्य",
+  account: "खाता",
+  editProfile: "प्रोफ़ाइल संपादित करें",
+  invitees: "आमंत्रित",
+  invited: "आमंत्रित",
+  premiumAccess: "प्रीमियम एक्सेस",
+  premiumAccessSubtitle: "सभी फ़ीचर्स अनलॉक करने के लिए प्रीमियम अपग्रेड करें",
+  security: "सुरक्षा",
+  resetPassword: "पासवर्ड रीसेट करें",
+  dataManagement: "डेटा प्रबंधन",
+  backupToGoogleDrive: "Google Drive में बैकअप करें",
+  backupSubtitle: "अपने खर्च डेटा को सिंक और बैकअप करें",
+  exportToLocal: "लोकल स्टोरेज में एक्सपोर्ट करें",
+  exportSubtitle: "अपना खर्च डेटा डाउनलोड करें",
+  shareWith: "शेयर करें",
+  shareSubtitle: "दोस्तों के साथ Trivense शेयर करें",
+  support: "सहायता",
+  about: "के बारे में",
+  version: "संस्करण 1.0.0",
+
+  // Tabs
+  home: "होम",
+  analytics: "विश्लेषण",
+
+  // Home
+  welcome: "स्वागत है",
+  signOut: "साइन आउट",
+
+  // Dashboard
+  totalBudget: "कुल बजट",
+  spent: "खर्च",
+  remaining: "शेष",
+  budgetUsage: "बजट उपयोग",
+  used: "उपयोग",
+  addExpense: "खर्च जोड़ें",
+  categories: "श्रेणियाँ",
+  recentTransactions: "हाल के लेनदेन",
+  welcomeBack: "वापस स्वागत है,",
+  guest: "अतिथि",
+  testNotifications: "सूचना परीक्षण",
+  basic: "बेसिक",
+  boardCreated: "बोर्ड बनाया",
+  boardInvite: "बोर्ड निमंत्रण",
+  expenseCreated: "खर्च बनाया",
+  categoryCreated: "श्रेणी बनाई",
+  deleteCategory: "श्रेणी हटाएं",
+  updateCategory: "श्रेणी अपडेट करें",
+  overBudget: "बजट से अधिक",
+  expenseDeleted: "खर्च हटाया",
+
+  // Expense screen
+  expenses: "खर्च",
+  totalExpenses: "कुल खर्च",
+  seeAll: "सभी देखें",
+  noExpenses: "अभी तक कोई खर्च नहीं",
+  retry: "पुनः प्रयास करें",
+  transactions: "लेनदेन",
+  noTransactionsFound: "कोई लेनदेन नहीं मिला",
+  addTransaction: "लेनदेन जोड़ें",
+
+  // Expense Board
+  deleteBoard: "बोर्ड हटाएं",
+  deleteBoardConfirm: "क्या आप वाकई हटाना चाहते हैं",
+  delete: "हटाएं",
+  noExpenseBoardsFound: "कोई खर्च बोर्ड नहीं मिला",
+  budget: "बजट",
+  status: "स्थिति",
+  default: "डिफ़ॉल्ट",
+  custom: "कस्टम",
+  byCreator: "द्वारा",
+  add: "जोड़ें",
+  startNewBoard: "नया खर्च बोर्ड शुरू करें",
+  startNewBoardDesc: "शुरू से नया खर्च बोर्ड बनाएं।",
+  joinExistingBoard: "मौजूदा खर्च बोर्ड में शामिल हों",
+  joinExistingBoardDesc: "मौजूदा बोर्ड में शामिल होने के लिए निमंत्रण लिंक का उपयोग करें।",
+
+  // Add Expense
+  amount: "राशि",
+  description: "विवरण",
+  paymentMethod: "भुगतान विधि",
+  selectBoard: "बोर्ड चुनें",
+  saveExpense: "खर्च सहेजें",
+  enterAmount: "राशि दर्ज करें",
+  enterDescription: "विवरण दर्ज करें",
+  expenseDate: "खर्च की तारीख",
+  cash: "नकद",
+  card: "कार्ड",
+  upi: "UPI",
+  netBanking: "नेट बैंकिंग",
+  date: "तारीख",
+  pleaseEnterValidAmount: "कृपया वैध राशि दर्ज करें",
+  pleaseEnterDescription: "कृपया विवरण दर्ज करें",
+  pleaseSelectCategory: "कृपया श्रेणी चुनें",
+  pleaseSelectPaymentMethod: "कृपया भुगतान विधि चुनें",
+  pleaseSelectExpenseBoard: "कृपया खर्च बोर्ड चुनें",
+
+  // Categories
+  addCategory: "श्रेणी जोड़ें",
+  noCategories: "अभी तक कोई श्रेणी नहीं",
+  categoriesCount: "श्रेणियाँ",
+  deleteCategoryConfirm: "क्या आप इस श्रेणी को हटाना चाहते हैं?",
+
+  // Add/Edit Category
+  editCategory: "श्रेणी संपादित करें",
+  name: "नाम",
+  color: "रंग",
+  icon: "आइकन",
+  save: "सहेजें",
+  chooseColor: "रंग चुनें",
+  chooseIcon: "आइकन चुनें",
+  enterCategoryName: "श्रेणी का नाम दर्ज करें",
+
+  // Profile
+  profile: "प्रोफ़ाइल",
+  sharedMembers: "साझा सदस्य",
+  error: "त्रुटि",
+  failedToLoadProfile: "प्रोफ़ाइल डेटा लोड करने में विफल",
+
+  // Analytics
+  thisWeek: "इस सप्ताह",
+  thisMonth: "इस महीने",
+  thisYear: "इस साल",
+  allTime: "सभी समय",
+  totalSpending: "कुल खर्च",
+  byCategory: "श्रेणी के अनुसार",
+  noData: "कोई डेटा उपलब्ध नहीं",
+
+  // Notifications
+  notifications: "सूचनाएं",
+  markAllAsRead: "सभी पढ़ा हुआ मार्क करें",
+  noNotifications: "अभी तक कोई सूचना नहीं",
+  noNotificationsMessage: "आप सभी अपडेट हैं! नई सूचनाएं यहां दिखेंगी।",
+  today: "आज",
+  yesterday: "कल",
+
+  // Onboarding
+  trackTravelExpenses: "अपने यात्रा\nखर्च ट्रैक करें",
+  keepCostsInOnePlace: "सभी यात्रा लागत एक जगह रखें",
+  splitBillsEasily: "बिल आसानी से\nबांटें",
+  shareWithCompanions: "यात्रा साथियों के साथ खर्च साझा करें",
+  planYourBudget: "अपना\nबजट प्लान करें",
+  setBudgetsAndTrack: "बजट सेट करें और खर्च ट्रैक करें",
+  next: "आगे",
+  getStarted: "शुरू करें",
+
+  // Create Expense Board
+  createExpenseBoard: "खर्च बोर्ड बनाएं",
+  boardName: "बोर्ड का नाम",
+  boardDescription: "विवरण (वैकल्पिक)",
+  createBoard: "बोर्ड बनाएं",
+  joinWithCode: "कोड से जोड़ें",
+
+  // Expense Board Details
+  expenseBoardDetails: "खर्च बोर्ड विवरण",
+
+  // Invitations
+  invitations: "निमंत्रण",
+  noInvitations: "कोई निमंत्रण नहीं",
+
+  // Toasts / messages
+  expenseDeletedSuccess: "खर्च हटाया गया",
+  expenseDeletedMessage: "खर्च सफलतापूर्वक हटा दिया गया",
+  boardDeletedSuccess: "बोर्ड सफलतापूर्वक हटाया गया",
+  failedToDeleteExpense: "खर्च हटाने में विफल",
+  failedToDeleteBoard: "बोर्ड हटाने में विफल",
+  tryAgainLater: "कृपया बाद में पुनः प्रयास करें",
+};

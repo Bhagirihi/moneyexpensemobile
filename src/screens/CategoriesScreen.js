@@ -21,6 +21,7 @@ import { showToast } from "../utils/toast";
 import { AddCategoryScreen } from "./AddCategoryScreen";
 import { realTimeSync } from "../services/realTimeSync";
 import { sendDeleteCategoryNotification } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -314,6 +315,7 @@ const styles = StyleSheet.create({
 
 export const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -426,7 +428,7 @@ export const CategoriesScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Categories" onBack={() => navigation.goBack()} />
+      <Header title={t("categories")} onBack={() => navigation.goBack()} />
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -450,8 +452,8 @@ export const CategoriesScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <ListHeader
-              title="Categories"
-              subtitle={`${categories.length} categories`}
+              title={t("categories")}
+              subtitle={`${categories.length} ${t("categoriesCount")}`}
             />
           }
           contentContainerStyle={styles.listContent}

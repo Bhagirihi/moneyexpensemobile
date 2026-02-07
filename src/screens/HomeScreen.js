@@ -2,10 +2,12 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../hooks/useTranslation";
 import { signOut } from "../config/supabase";
 
 const HomeScreen = () => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const handleSignOut = async () => {
@@ -19,7 +21,7 @@ const HomeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.text }]}>Welcome</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{t("welcome")}</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
         {user?.email}
       </Text>
@@ -29,7 +31,7 @@ const HomeScreen = () => {
         onPress={handleSignOut}
       >
         <Text style={[styles.signOutText, { color: theme.background }]}>
-          Sign Out
+          {t("signOut")}
         </Text>
       </TouchableOpacity>
     </View>

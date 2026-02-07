@@ -17,22 +17,22 @@ import { notificationService } from "../services/notificationService";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
+import { useTranslation } from "../hooks/useTranslation";
 
-const formatNotificationDate = (dateString) => {
+const formatNotificationDate = (dateString, t) => {
   const date = new Date(dateString);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  // Reset hours to midnight for date comparison
   today.setHours(0, 0, 0, 0);
   yesterday.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
 
   if (date.getTime() === today.getTime()) {
-    return "Today";
+    return t ? t("today") : "Today";
   } else if (date.getTime() === yesterday.getTime()) {
-    return "Yesterday";
+    return t ? t("yesterday") : "Yesterday";
   } else {
     return date.toLocaleDateString("en-GB", {
       day: "numeric",
@@ -43,6 +43,7 @@ const formatNotificationDate = (dateString) => {
 
 export const NotificationScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -173,7 +174,7 @@ export const NotificationScreen = ({ navigation }) => {
                 {notification.title}
               </Text>
               <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
-                {formatNotificationDate(notification.created_at)}
+                {formatNotificationDate(notification.created_at, t)}
               </Text>
             </View>
             <Text style={[styles.notificationMessage, { color: theme.text }]}>
@@ -212,10 +213,10 @@ export const NotificationScreen = ({ navigation }) => {
         style={styles.emptyIcon}
       />
       <Text style={[styles.emptyTitle, { color: theme.text }]}>
-        No Notifications
+        {t("noNotifications")}
       </Text>
       <Text style={[styles.emptyMessage, { color: theme.textSecondary }]}>
-        You're all caught up! New notifications will appear here.
+        {t("noNotificationsMessage")}
       </Text>
     </View>
   );
@@ -225,7 +226,7 @@ export const NotificationScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title="Notifications"
+        title={t("notifications")}
         onBack={() => navigation.goBack()}
         rightComponent={
           <TouchableOpacity

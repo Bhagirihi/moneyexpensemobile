@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { useTranslation } from "../hooks/useTranslation";
 
 const FooterTab = ({ navigation, activeRoute = "Home" }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   const getTabColor = (tabName) => {
     return activeRoute === tabName ? theme.white : theme.white;
@@ -44,7 +46,7 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
               color={getTabColor("Home")}
             />
             <Text style={[styles.tabText, { color: getTextColor("Home") }]}>
-              Home
+              {t("home")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -62,7 +64,7 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
             <Text
               style={[styles.tabText, { color: getTextColor("Analytics") }]}
             >
-              Analytics
+              {t("analytics")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -78,7 +80,7 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
               color={getTabColor("Settings")}
             />
             <Text style={[styles.tabText, { color: getTextColor("Settings") }]}>
-              Settings
+              {t("settings")}
             </Text>
           </View>
         </TouchableOpacity>

@@ -71,7 +71,7 @@ export const dashboardService = {
 
       if (boardIds.length === 0) return { data: [], error: null };
 
-      // Step 4: Fetch recent expenses
+      // Step 4: Fetch recent expenses only from the user's boards
       const { data: expenses, error: expensesError } = await supabase
         .from("expenses")
         .select(
@@ -81,6 +81,7 @@ export const dashboardService = {
         expense_boards (name)
       `
         )
+        .in("board_id", boardIds)
         .order("created_at", { ascending: false })
         .limit(limit);
 

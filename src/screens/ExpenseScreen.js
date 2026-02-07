@@ -25,6 +25,7 @@ import {
   sendExpenseDeletedNotification,
   sendExpenseOverBudgetNotification,
 } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 const calculateMonthlyStats = (expensesData, setMonthlyStats) => {
   const totalExpenses = expensesData.reduce(
@@ -40,6 +41,7 @@ const calculateMonthlyStats = (expensesData, setMonthlyStats) => {
 
 export const ExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -195,12 +197,12 @@ export const ExpenseScreen = ({ navigation }) => {
       setExpenses(updatedExpenses);
       memoizedCalculateMonthlyStats(updatedExpenses);
       showToast.success(
-        "Expense deleted",
-        "The expense has been successfully deleted"
+        t("expenseDeletedSuccess"),
+        t("expenseDeletedMessage")
       );
     } catch (error) {
       console.error("Error deleting expense:", error);
-      showToast.error("Failed to delete expense", "Please try again later");
+      showToast.error(t("failedToDeleteExpense"), t("tryAgainLater"));
     }
   };
 
@@ -219,7 +221,7 @@ export const ExpenseScreen = ({ navigation }) => {
       <View style={styles.statsRow}>
         <View style={styles.statsItem}>
           <Text style={[styles.statsLabel, { color: theme.textSecondary }]}>
-            Total Expenses
+            {t("totalExpenses")}
           </Text>
           <Text style={[styles.statsValue, { color: theme.text }]}>
             {formatCurrency(monthlyStats.totalExpenses)}
@@ -227,7 +229,7 @@ export const ExpenseScreen = ({ navigation }) => {
         </View>
         <View style={[styles.statsItem]}>
           <Text style={[styles.statsLabel, { color: theme.textSecondary }]}>
-            Remaining
+            {t("remaining")}
           </Text>
           <Text
             style={[
@@ -249,7 +251,7 @@ export const ExpenseScreen = ({ navigation }) => {
       <View style={styles.combinedProgressContainer}>
         <View style={styles.progressLabels}>
           <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
-            Budget Usage
+            {t("budgetUsage")}
           </Text>
 
           <View style={styles.progressLegend}>
@@ -258,7 +260,7 @@ export const ExpenseScreen = ({ navigation }) => {
                 style={[styles.legendColor, { backgroundColor: theme.primary }]}
               />
               <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-                Used
+                {t("used")}
               </Text>
             </View>
             <View style={styles.legendItem}>
@@ -266,7 +268,7 @@ export const ExpenseScreen = ({ navigation }) => {
                 style={[styles.legendColor, { backgroundColor: theme.success }]}
               />
               <Text style={[styles.legendText, { color: theme.textSecondary }]}>
-                Remaining
+                {t("remaining")}
               </Text>
             </View>
             <View style={styles.legendItem}>
@@ -327,7 +329,7 @@ export const ExpenseScreen = ({ navigation }) => {
         onPress={() => fetchExpenses(1)}
       >
         <Text style={[styles.retryButtonText, { color: theme.white }]}>
-          Retry
+          {t("retry")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -339,7 +341,7 @@ export const ExpenseScreen = ({ navigation }) => {
         style={[styles.container, { backgroundColor: theme.background }]}
       >
         <Header
-          title="Expenses"
+          title={t("expenses")}
           onBack={() => navigation.goBack()}
           rightComponent={renderAddButton()}
           showBack={false}
@@ -356,7 +358,7 @@ export const ExpenseScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header
-        title="Expenses"
+        title={t("expenses")}
         onBack={() => navigation.goBack()}
         rightComponent={renderAddButton()}
       />
@@ -389,7 +391,7 @@ export const ExpenseScreen = ({ navigation }) => {
             showEmptyState={true}
             showAllButton={false}
             navigation={navigation}
-            title="Transactions"
+            title={t("transactions")}
           />
         )}
       </ScrollView>

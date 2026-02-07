@@ -12,6 +12,7 @@ import { useTheme } from "../context/ThemeContext";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "../hooks/useTranslation";
 
 export const ExpenseBoardList = ({
   selectedBoard,
@@ -19,6 +20,7 @@ export const ExpenseBoardList = ({
   onCreateBoard,
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [boards, setBoards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export const ExpenseBoardList = ({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: theme.text }]}>Expense Board</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t("expenseBoard")}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

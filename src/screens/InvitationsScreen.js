@@ -26,6 +26,7 @@ import {
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../hooks/useTranslation";
 import * as FileSystem from "expo-file-system";
 
 function getInitials(name) {
@@ -53,7 +54,7 @@ function getAvatarColor(email) {
 
 export const InvitationsScreen = ({ navigation }) => {
   const { theme } = useTheme();
-
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
 
   const { session } = useAuth();
@@ -484,7 +485,7 @@ export const InvitationsScreen = ({ navigation }) => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
-        <Header title="Invitees" onBack={() => navigation.goBack()} />
+        <Header title={t("invitees")} onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
@@ -499,7 +500,7 @@ export const InvitationsScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Invitees" onBack={() => navigation.goBack()} />
+      <Header title={t("invitees")} onBack={() => navigation.goBack()} />
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}

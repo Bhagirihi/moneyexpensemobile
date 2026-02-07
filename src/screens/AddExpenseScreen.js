@@ -23,16 +23,25 @@ import { expenseService } from "../services/expenseService";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
 import { sendCreateExpenseNotification } from "../services/pushNotificationService";
+import { useTranslation } from "../hooks/useTranslation";
 
 const paymentMethods = [
-  { value: "cash", name: "Cash", icon: "cash", color: "#4CAF50" },
-  { value: "card", name: "Card", icon: "credit-card", color: "#2196F3" },
-  { value: "upi", name: "UPI", icon: "cellphone-banking", color: "#9C27B0" },
-  { value: "net_banking", name: "Net Banking", icon: "bank", color: "#FF9800" },
+  { value: "cash", icon: "cash", color: "#4CAF50" },
+  { value: "card", icon: "credit-card", color: "#2196F3" },
+  { value: "upi", icon: "cellphone-banking", color: "#9C27B0" },
+  { value: "net_banking", icon: "bank", color: "#FF9800" },
 ];
+
+const paymentMethodKeys = {
+  cash: "cash",
+  card: "card",
+  upi: "upi",
+  net_banking: "netBanking",
+};
 
 export const AddExpenseScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const defaultStyles = useDefaultStyles();
@@ -47,23 +56,23 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const validateForm = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      showToast.error("Please enter a valid amount");
+      showToast.error(t("pleaseEnterValidAmount"));
       return false;
     }
     if (!formData.description.trim()) {
-      showToast.error("Please enter a description");
+      showToast.error(t("pleaseEnterDescription"));
       return false;
     }
     if (!formData.category) {
-      showToast.error("Please select a category");
+      showToast.error(t("pleaseSelectCategory"));
       return false;
     }
     if (!formData.paymentMethod) {
-      showToast.error("Please select a payment method");
+      showToast.error(t("pleaseSelectPaymentMethod"));
       return false;
     }
     if (!formData.board) {
-      showToast.error("Please select an expense board");
+      showToast.error(t("pleaseSelectExpenseBoard"));
       return false;
     }
     return true;
@@ -133,7 +142,7 @@ export const AddExpenseScreen = ({ navigation }) => {
   const renderAmountInput = () => (
     <View style={styles.inputContainer}>
       <FormInput
-        label="Amount"
+        label={t("amount")}
         value={formData.amount}
         onChangeText={(text) => {
           // Only allow numbers and decimal point
@@ -143,7 +152,7 @@ export const AddExpenseScreen = ({ navigation }) => {
           if (parts.length > 2) return;
           setFormData({ ...formData, amount: numericValue });
         }}
-        placeholder="Enter amount"
+        placeholder={t("enterAmount")}
         keyboardType="numeric"
         prefix="$"
       />
@@ -153,10 +162,10 @@ export const AddExpenseScreen = ({ navigation }) => {
   const renderDescriptionInput = () => (
     <View style={styles.inputContainer}>
       <FormInput
-        label="Description"
+        label={t("description")}
         value={formData.description}
         onChangeText={(text) => setFormData({ ...formData, description: text })}
-        placeholder="Enter description"
+        placeholder={t("enterDescription")}
         multiline
         inputStyle={styles.descriptionInput}
       />
@@ -165,7 +174,7 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const renderPaymentMethodSelector = () => (
     <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Payment Method</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t("paymentMethod")}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -217,7 +226,7 @@ export const AddExpenseScreen = ({ navigation }) => {
                 },
               ]}
             >
-              {method.name}
+              {t(paymentMethodKeys[method.value] || method.value)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -227,7 +236,7 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const renderDateSelector = () => (
     <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Date</Text>
+      <Text style={[styles.label, { color: theme.text }]}>{t("date")}</Text>
       <TouchableOpacity
         style={[
           styles.dateButton,
@@ -259,7 +268,7 @@ export const AddExpenseScreen = ({ navigation }) => {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Expense Date
+                {t("expenseDate")}
               </Text>
               <TouchableOpacity
                 onPress={() => setShowDatePicker(false)}
@@ -299,7 +308,7 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const renderSaveButton = () => (
     <FormButton
-      title="Save Expense"
+      title={t("saveExpense")}
       onPress={handleSave}
       loading={loading}
       style={styles.saveButton}
@@ -310,7 +319,7 @@ export const AddExpenseScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Add Expense" onBack={() => navigation.goBack()} />
+      <Header title={t("addExpense")} onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}

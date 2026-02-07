@@ -20,13 +20,20 @@ import {
   fetchAnalytics,
   fetchExpenseTrends,
 } from "../services/analyticsService";
+import { useTranslation } from "../hooks/useTranslation";
 const { width } = Dimensions.get("window");
 
+const TIME_PERIOD_KEYS = {
+  week: "thisWeek",
+  month: "thisMonth",
+  year: "thisYear",
+  all: "allTime",
+};
 const TIME_PERIODS = [
-  { id: "week", label: "This Week", icon: "calendar-week", days: 7 },
-  { id: "month", label: "This Month", icon: "calendar-month", days: 30 },
-  { id: "year", label: "This Year", icon: "calendar-range", days: 365 },
-  { id: "all", label: "All Time", icon: "calendar-clock", days: null },
+  { id: "week", icon: "calendar-week", days: 7 },
+  { id: "month", icon: "calendar-month", days: 30 },
+  { id: "year", icon: "calendar-range", days: 365 },
+  { id: "all", icon: "calendar-clock", days: null },
 ];
 
 const styles = StyleSheet.create({
@@ -252,6 +259,7 @@ const styles = StyleSheet.create({
 
 export const AnalyticsScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
@@ -372,7 +380,7 @@ export const AnalyticsScreen = ({ navigation }) => {
           color={theme.primary}
         />
         <Text style={[styles.periodDropdownText, { color: theme.text }]}>
-          {TIME_PERIODS.find((p) => p.id === selectedPeriod)?.label}
+          {t(TIME_PERIOD_KEYS[selectedPeriod] || "thisWeek")}
         </Text>
       </View>
       <MaterialCommunityIcons
@@ -439,7 +447,7 @@ export const AnalyticsScreen = ({ navigation }) => {
                   },
                 ]}
               >
-                {period.label}
+                {t(TIME_PERIOD_KEYS[period.id] || period.id)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -639,7 +647,7 @@ export const AnalyticsScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Analytics" onBack={() => navigation.goBack()} />
+      <Header title={t("analytics")} onBack={() => navigation.goBack()} />
       <ScrollView style={styles.content}>
         {renderPeriodDropdown()}
         {loading ? (

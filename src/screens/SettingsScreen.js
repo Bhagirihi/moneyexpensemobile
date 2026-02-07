@@ -29,9 +29,11 @@ import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../hooks/useTranslation";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { language, currency, updateLanguage, updateCurrency } =
     useAppSettings();
   const { session } = useAuth();
@@ -62,6 +64,7 @@ export const SettingsScreen = ({ navigation }) => {
 
   const languages = [
     { code: "en", name: "English" },
+    { code: "hi", name: "हिन्दी" },
     { code: "es", name: "Spanish" },
     { code: "fr", name: "French" },
     { code: "de", name: "German" },
@@ -330,7 +333,7 @@ export const SettingsScreen = ({ navigation }) => {
       ]}
     >
       <Text style={[styles.modalTitle, { color: theme.text }]}>
-        Select Language
+        {t("selectLanguage")}
       </Text>
       {languages.map((lang) => (
         <TouchableOpacity
@@ -369,7 +372,7 @@ export const SettingsScreen = ({ navigation }) => {
         activeOpacity={0.8}
       >
         <Text style={[styles.modalButtonText, { color: theme.error }]}>
-          Cancel
+          {t("cancel")}
         </Text>
       </TouchableOpacity>
     </View>
@@ -1147,7 +1150,8 @@ export const SettingsScreen = ({ navigation }) => {
     if (!editModalVisible) return null;
 
     let modalContent;
-    switch (editingItem?.title) {
+    const modalKey = editingItem?.modalKey ?? editingItem?.title;
+    switch (modalKey) {
       case "Language":
         modalContent = renderLanguageSelector();
         break;
@@ -1412,60 +1416,60 @@ export const SettingsScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Settings" onBack={() => navigation.goBack()} />
+      <Header title={t("settings")} onBack={() => navigation.goBack()} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderSection({
-          title: "Appearance",
+          title: t("appearance"),
           children: [
             renderSettingItem({
               icon: "theme-light-dark",
-              title: "Dark Mode",
-              subtitle: "Switch between light and dark themes",
+              title: t("darkMode"),
+              subtitle: t("darkModeSubtitle"),
               rightComponent: <ThemeToggle />,
               editable: false,
             }),
             renderSettingItem({
               icon: "translate",
-              title: "Language",
+              title: t("language"),
               subtitle:
                 languages.find((lang) => lang.code === language)?.name ||
                 "English",
-              onPress: () => handleEdit({ title: "Language" }),
+              onPress: () => handleEdit({ modalKey: "Language", title: t("language") }),
               showBorder: false,
             }),
           ],
         })}
 
         {renderSection({
-          title: "Expense Settings",
+          title: t("expenseSettings"),
           children: [
             renderSettingItem({
               icon: "currency-usd",
-              title: "Currency",
+              title: t("currency"),
               subtitle: `${
                 currencies.find((curr) => curr.code === currency)?.symbol
               } ${currencies.find((curr) => curr.code === currency)?.name}`,
-              onPress: () => handleEdit({ title: "Currency" }),
+              onPress: () => handleEdit({ modalKey: "Currency", title: t("currency") }),
             }),
             renderSettingItem({
               icon: "view-dashboard-outline",
-              title: "Default Board",
+              title: t("defaultBoard"),
               subtitle: `${boardName}`,
-              onPress: () => handleEdit({ title: "Default Board" }),
+              onPress: () => handleEdit({ modalKey: "Default Board", title: t("defaultBoard") }),
               editable: false,
             }),
             renderSettingItem({
               icon: "wallet-outline",
-              title: "Monthly Budget",
+              title: t("monthlyBudget"),
               subtitle: formatCurrency(monthlyBudget),
-              onPress: () => handleEdit({ title: "Monthly Budget" }),
+              onPress: () => handleEdit({ modalKey: "Monthly Budget", title: t("monthlyBudget") }),
             }),
 
             renderSettingItem({
               icon: "view-dashboard-outline",
-              title: "Expense Board",
-              subtitle: `${boardCount} Boards • ${sharedMembers?.length} Members`,
-              onPress: () => handleEdit({ title: "Expense Board" }),
+              title: t("expenseBoard"),
+              subtitle: `${boardCount} ${t("boards")} • ${sharedMembers?.length} ${t("members")}`,
+              onPress: () => handleEdit({ modalKey: "Expense Board", title: t("expenseBoard") }),
               editable: false,
               showBorder: false,
             }),
@@ -1473,27 +1477,27 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         {renderSection({
-          title: "Account",
+          title: t("account"),
           children: [
             renderSettingItem({
               icon: "account-outline",
-              title: "Edit Profile",
+              title: t("editProfile"),
               onPress: () => navigation.navigate("Profile"),
               editable: false,
             }),
 
             renderSettingItem({
               icon: "account-group",
-              title: "Invitees",
-              subtitle: `${inviteeCount} Invited`,
+              title: t("invitees"),
+              subtitle: `${inviteeCount} ${t("invited")}`,
               onPress: () => navigation.navigate("Profile2"),
               editable: false,
             }),
             renderSettingItem({
               icon: "crown",
-              title: "Premium Access",
-              subtitle: "Upgrade premium to unlock all features",
-              onPress: () => handleEdit({ title: "Premium Access" }),
+              title: t("premiumAccess"),
+              subtitle: t("premiumAccessSubtitle"),
+              onPress: () => handleEdit({ modalKey: "Premium Access", title: t("premiumAccess") }),
               showBorder: false,
               editable: false,
             }),
@@ -1501,12 +1505,12 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         {renderSection({
-          title: "Security",
+          title: t("security"),
           children: [
             renderSettingItem({
               icon: "lock-reset",
-              title: "Reset Password",
-              onPress: () => handleEdit({ title: "Reset Password" }),
+              title: t("resetPassword"),
+              onPress: () => handleEdit({ modalKey: "Reset Password", title: t("resetPassword") }),
               showBorder: false,
               editable: false,
             }),
@@ -1514,27 +1518,27 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         {renderSection({
-          title: "Data Management",
+          title: t("dataManagement"),
           children: [
             renderSettingItem({
               icon: "cloud-upload-outline",
-              title: "Backup to Google Drive",
-              subtitle: "Sync and backup your expense data",
+              title: t("backupToGoogleDrive"),
+              subtitle: t("backupSubtitle"),
               onPress: () => {},
               editable: false,
             }),
             renderSettingItem({
               icon: "download-outline",
-              title: "Export to Local Storage",
-              subtitle: "Download your expense data",
+              title: t("exportToLocal"),
+              subtitle: t("exportSubtitle"),
               onPress: () => {},
               editable: false,
             }),
             renderSettingItem({
               icon: "share-variant-outline",
-              title: "Share With",
-              subtitle: "Share Trivense with friends",
-              onPress: () => handleEdit({ title: "Share With" }),
+              title: t("shareWith"),
+              subtitle: t("shareSubtitle"),
+              onPress: () => handleEdit({ modalKey: "Share With", title: t("shareWith") }),
               showBorder: false,
               editable: false,
             }),
@@ -1542,12 +1546,12 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         {renderSection({
-          title: "Support",
+          title: t("support"),
           children: [
             renderSettingItem({
               icon: "information-outline",
-              title: "About",
-              subtitle: "Version 1.0.0",
+              title: t("about"),
+              subtitle: t("version"),
               showBorder: false,
               editable: false,
             }),

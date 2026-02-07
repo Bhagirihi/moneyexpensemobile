@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
+import { useTranslation } from "../hooks/useTranslation";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ExpenseItem from "./ExpenseItem";
 
@@ -23,6 +24,7 @@ const ExpenseList = memo(
     navigation,
   }) => {
     const { theme } = useTheme();
+    const { t } = useTranslation();
 
     // Memoize the renderItem callback
     const renderItem = useCallback(
@@ -119,14 +121,14 @@ const ExpenseList = memo(
       return (
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            {title ? title : "Transactions"}
+            {title ? title : t("transactions")}
           </Text>
           {showAllButton && expenses.length > 0 && (
             <TouchableOpacity
               style={styles.seeAllButton}
               onPress={onSeeAllPress}
             >
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>{t("seeAll")}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -143,13 +145,13 @@ const ExpenseList = memo(
             size={48}
             color={theme.textSecondary}
           />
-          <Text style={styles.emptyText}>No transactions found</Text>
+          <Text style={styles.emptyText}>{t("noTransactionsFound")}</Text>
           <TouchableOpacity
             style={styles.createButton}
             onPress={() => navigation.navigate("AddExpense")}
           >
             <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
-            <Text style={styles.createButtonText}>Add Transaction</Text>
+            <Text style={styles.createButtonText}>{t("addTransaction")}</Text>
           </TouchableOpacity>
         </View>
       );
