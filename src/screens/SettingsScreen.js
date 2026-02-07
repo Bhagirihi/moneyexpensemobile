@@ -30,6 +30,7 @@ import { realTimeSync } from "../services/realTimeSync";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { devLog } from "../utils/logger";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -107,15 +108,22 @@ export const SettingsScreen = ({ navigation }) => {
     generateReferralCode();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = realTimeSync(() => {
+      fetchData();
+    }, "realtime-settings");
+    return unsubscribe;
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
       var budgetData = await userService.getProfile();
-      console.log("budgetData", budgetData);
+      devLog("budgetData", budgetData);
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
       budgetData = budgetData.profile;
-      setUserID(budgetData.sub);
+      setUserID(budgetData.id);
       setBudget(budgetData);
 
       // setBoardName(budgetData.board_id);
@@ -136,14 +144,14 @@ export const SettingsScreen = ({ navigation }) => {
       if (board) {
         setBoardName(board.name);
       } else {
-        console.log("Board not found for the given ID");
+        devLog("Board not found for the given ID");
       }
       if (boardsError) throw boardsError;
       setBoardCount(boardsData.length);
       setExpenseBoards(boardsData || []);
     } catch (error) {
       console.error("Error fetching data: <-", error);
-      showToast.error("Error", "Failed to load settings data");
+      showToast.error(t("error"), t("failedToLoadSettings"));
     } finally {
       setLoading(false);
     }
@@ -178,18 +186,18 @@ export const SettingsScreen = ({ navigation }) => {
         });
 
         if (result.action === Share.sharedAction) {
-          showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
+          showToast.success(t("thanksForSharing"), t("inviteShared"));
         } else if (result.action === Share.dismissedAction) {
           // Optional: silently ignore or log
-          console.log("User dismissed the share dialog.");
+          devLog("User dismissed the share dialog.");
         }
       } else if (method === "copy") {
         Clipboard.setString(referralCode);
-        showToast.success("Copied!", "Referral code copied to clipboard 📋");
+        showToast.success(t("copied"), t("referralCodeCopied"));
       }
     } catch (error) {
       console.error("Error sharing:", error);
-      showToast.error("Error", "Failed to share. Please try again.");
+      showToast.error(t("error"), t("failedToShare"));
     }
   };
 
@@ -197,22 +205,32 @@ export const SettingsScreen = ({ navigation }) => {
     try {
       const newBudget = parseFloat(editValue);
       if (isNaN(newBudget) || newBudget < 0) {
-        showToast.error("Error", "Please enter a valid budget amount");
+        showToast.error(t("error"), t("pleaseEnterValidBudgetAmount"));
         return;
       }
 
-      const { error } = await supabase
-        .from("monthly_budgets")
-        .upsert({ amount: newBudget });
+      const defaultBoardId = budget?.board_id;
+      if (defaultBoardId) {
+        const { error: boardError } = await supabase
+          .from("expense_boards")
+          .update({ total_budget: newBudget })
+          .eq("id", defaultBoardId);
+        if (boardError) throw boardError;
+      }
 
-      if (error) throw error;
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ default_board_budget: newBudget })
+        .eq("id", userID);
+
+      if (profileError) throw profileError;
 
       setMonthlyBudget(newBudget);
       setEditModalVisible(false);
-      showToast.success("Success", "Monthly budget updated successfully");
+      showToast.success(t("success"), t("monthlyBudgetUpdated"));
     } catch (error) {
       console.error("Error updating budget:", error);
-      showToast.error("Error", "Failed to update monthly budget");
+      showToast.error(t("error"), t("failedToUpdateMonthlyBudget"));
     }
   };
 
@@ -231,14 +249,11 @@ export const SettingsScreen = ({ navigation }) => {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Logout error:", error);
-        showToast.error("Error", "Failed to log out. Please try again.");
+        showToast.error(t("error"), t("failedToLogOut"));
       }
     } catch (error) {
       console.error("Unexpected error:", error);
-      showToast.error(
-        "Error",
-        "An unexpected error occurred. Please try again."
-      );
+      showToast.error(t("error"), t("unexpectedErrorOccurred"));
     }
   };
 
@@ -251,11 +266,11 @@ export const SettingsScreen = ({ navigation }) => {
       if (error) throw error;
       updateBoard(boardID);
       setEditModalVisible(false);
-      showToast.success("Success", "Default board updated successfully");
+      showToast.success(t("success"), t("defaultBoardUpdated"));
       fetchData();
     } catch (error) {
       console.error("Error updating default board:", error);
-      showToast.error("Error", "Failed to update default board");
+      showToast.error(t("error"), t("failedToUpdateDefaultBoard"));
     }
   };
 
@@ -299,7 +314,7 @@ export const SettingsScreen = ({ navigation }) => {
 
       setSuccess(true);
       setEditModalVisible(false);
-      showToast.success("Password updated successfully");
+      showToast.success(t("passwordUpdated"));
 
       // Clear form
       setCurrentPassword("");
@@ -601,11 +616,11 @@ export const SettingsScreen = ({ navigation }) => {
 
   const handleApplyBudgets = async () => {
     if (!selectedBoard) {
-      showToast.error("Error", "Please select a board first");
+      showToast.error(t("error"), t("pleaseSelectBoardFirst"));
       return;
     }
 
-    console.log("Selected Board:", {
+    devLog("Selected Board:", {
       id: selectedBoard.id,
       name: selectedBoard.name,
       newBudget: selectedBoard.budget,
@@ -621,29 +636,30 @@ export const SettingsScreen = ({ navigation }) => {
 
       if (error) throw error;
 
-      showToast.success("Success", "Board budget updated successfully");
+      showToast.success(t("success"), t("boardBudgetUpdated"));
       setEditModalVisible(false);
     } catch (error) {
       console.error("Error updating board budget:", error);
-      showToast.error("Error", "Failed to update board budget");
+      showToast.error(t("error"), t("failedToUpdateBoardBudget"));
     }
   };
 
   const handleApplyAllBudgets = async () => {
+    const message = t("confirmApplyAllMessage").replace("{{amount}}", String(selectedBoard?.budget ?? ""));
     Alert.alert(
-      "Confirm Apply All",
-      `Are you sure you want to apply the ${selectedBoard.budget} budget to all boards?`,
+      t("confirmApplyAll"),
+      message,
       [
         {
-          text: "Cancel",
+          text: t("cancel"),
           style: "cancel",
         },
         {
-          text: "Apply All",
+          text: t("applyAll"),
           onPress: async () => {
             try {
               for (const newboard of expenseBoards) {
-                const { error, data } = await supabase
+                const { error } = await supabase
                   .from("expense_boards")
                   .update({ total_budget: selectedBoard.budget || 0 })
                   .eq("id", newboard.id);
@@ -651,14 +667,10 @@ export const SettingsScreen = ({ navigation }) => {
                 if (error) throw error;
               }
 
-              showToast.success(
-                "Success",
-                "All board budgets updated successfully"
-              );
+              showToast.success(t("success"), t("allBoardBudgetsUpdated"));
               setEditModalVisible(false);
             } catch (error) {
-              console.error("Error applying all budgets:", error);
-              showToast.error("Error", "Failed to apply all budgets");
+              showToast.error(t("error"), t("failedToApplyAllBudgets"));
             }
           },
         },
@@ -958,7 +970,7 @@ export const SettingsScreen = ({ navigation }) => {
       setInviteeCount(formattedInvitees.length);
     } catch (error) {
       console.error("Error fetching invitees:", error);
-      showToast.error("Error", "Failed to load invitees");
+      showToast.error(t("error"), t("failedToLoadInvitees"));
     } finally {
       setLoadingInvitees(false);
     }
@@ -1010,7 +1022,7 @@ export const SettingsScreen = ({ navigation }) => {
         <ScrollView style={{ flex: 1 }}>
           {inviteesList.map((invitee, index) => (
             <View
-              key={invitee.id}
+              key={invitee.id ?? `invitee-${index}`}
               style={{
                 padding: 16,
                 borderBottomWidth: index !== inviteesList.length - 1 ? 1 : 0,

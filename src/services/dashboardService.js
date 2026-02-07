@@ -1,4 +1,5 @@
 import { getSession, supabase } from "../config/supabase";
+import { devLog } from "../utils/logger";
 
 export const dashboardService = {
   // Fetch user profile
@@ -45,8 +46,8 @@ export const dashboardService = {
           .eq("is_accepted", true),
       ]);
 
-      console.log("ownedBoardsRes", ownedBoardsRes);
-      console.log("sharedBoardsRes", sharedBoardsRes);
+      devLog("ownedBoardsRes", ownedBoardsRes);
+      devLog("sharedBoardsRes", sharedBoardsRes);
 
       if (ownedBoardsRes.error || sharedBoardsRes.error) {
         console.error(
@@ -67,7 +68,7 @@ export const dashboardService = {
         ...sharedBoardsRes.data.map((s) => s.shared_by),
         ...sharedBoardsRes.data.map((s) => s.user_id),
       ];
-      console.log("userId", userIds);
+      devLog("userId", userIds);
 
       if (boardIds.length === 0) return { data: [], error: null };
 

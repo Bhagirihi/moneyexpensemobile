@@ -218,10 +218,23 @@ const AppContent = () => {
         <ThemeProvider>
           <AppSettingsProvider>
             <NavigationContainer>
-              <Stack.Navigator screenOptions={screenOptions}>
+              <Stack.Navigator
+                screenOptions={screenOptions}
+                initialRouteName={
+                  !session
+                    ? "Login"
+                    : session?.user?.email_confirmed_at
+                    ? "Dashboard"
+                    : "EmailVerification"
+                }
+              >
                 {session ? (
-                  // Protected routes
+                  // Protected routes (unverified users see EmailVerification first)
                   <>
+                    <Stack.Screen
+                      name="EmailVerification"
+                      component={EmailVerificationScreen}
+                    />
                     {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
                     <Stack.Screen
                       name="Dashboard"
@@ -283,6 +296,7 @@ const AppContent = () => {
                       name="EmailVerification"
                       component={EmailVerificationScreen}
                     />
+                    {/* EmailVerification in both stacks: public (e.g. after login "Email not confirmed") and protected (unverified session) */}
                     <Stack.Screen
                       name="ForgotPassword"
                       component={ForgotPasswordScreen}

@@ -136,72 +136,69 @@ export const NotificationScreen = ({ navigation }) => {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const renderNotification = (notification) => (
-    console.log("notification", notification),
-    (
-      <TouchableOpacity
-        key={notification.id}
+    <TouchableOpacity
+      key={notification.id}
+      style={[
+        styles.notificationItem,
+        {
+          backgroundColor: theme.cardBackground,
+          borderLeftColor: notification.read ? "transparent" : theme.primary,
+        },
+      ]}
+      onPress={() => handleNotificationPress(notification)}
+      activeOpacity={0.7}
+    >
+      <View
         style={[
-          styles.notificationItem,
-          {
-            backgroundColor: theme.cardBackground,
-            borderLeftColor: notification.read ? "transparent" : theme.primary,
-          },
+          styles.notificationContent,
+          { justifyContent: "center", alignItems: "center" },
         ]}
-        onPress={() => handleNotificationPress(notification)}
-        activeOpacity={0.7}
       >
         <View
           style={[
-            styles.notificationContent,
-            { justifyContent: "center", alignItems: "center" },
+            styles.notificationIcon,
+            { backgroundColor: `${notification.icon_color}70` },
           ]}
         >
-          <View
-            style={[
-              styles.notificationIcon,
-              { backgroundColor: `${notification.icon_color}70` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={notification.icon}
-              size={24}
-              color={notification.icon_color}
-            />
+          <MaterialCommunityIcons
+            name={notification.icon}
+            size={24}
+            color={notification.icon_color}
+          />
+        </View>
+        <View style={styles.notificationText}>
+          <View style={styles.notificationHeader}>
+            <Text style={[styles.notificationTitle, { color: theme.text }]}>
+              {notification.title}
+            </Text>
+            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
+              {formatNotificationDate(notification.created_at, t)}
+            </Text>
           </View>
-          <View style={styles.notificationText}>
-            <View style={styles.notificationHeader}>
-              <Text style={[styles.notificationTitle, { color: theme.text }]}>
-                {notification.title}
-              </Text>
-              <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
-                {formatNotificationDate(notification.created_at, t)}
+          <Text style={[styles.notificationMessage, { color: theme.text }]}>
+            {notification.message}
+          </Text>
+          {notification.trip_name && (
+            <View style={styles.tripNameContainer}>
+              <MaterialCommunityIcons
+                name="map-marker"
+                size={14}
+                color={theme.primary}
+                style={styles.tripIcon}
+              />
+              <Text style={[styles.tripName, { color: theme.primary }]}>
+                {notification.trip_name}
               </Text>
             </View>
-            <Text style={[styles.notificationMessage, { color: theme.text }]}>
-              {notification.message}
-            </Text>
-            {notification.trip_name && (
-              <View style={styles.tripNameContainer}>
-                <MaterialCommunityIcons
-                  name="map-marker"
-                  size={14}
-                  color={theme.primary}
-                  style={styles.tripIcon}
-                />
-                <Text style={[styles.tripName, { color: theme.primary }]}>
-                  {notification.trip_name}
-                </Text>
-              </View>
-            )}
-          </View>
+          )}
         </View>
-        {!notification.read && (
-          <View
-            style={[styles.unreadDot, { backgroundColor: theme.primary }]}
-          />
-        )}
-      </TouchableOpacity>
-    )
+      </View>
+      {!notification.read && (
+        <View
+          style={[styles.unreadDot, { backgroundColor: theme.primary }]}
+        />
+      )}
+    </TouchableOpacity>
   );
 
   const renderEmptyState = () => (

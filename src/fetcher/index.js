@@ -1,4 +1,5 @@
 import { dashboardService } from "../services/dashboardService";
+import { devLog } from "../utils/logger";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
 
@@ -35,7 +36,7 @@ const fetchDashboardData = async () => {
     const { data: transactionsData, error: transactionsError } =
       await dashboardService.getRecentTransactions();
     if (transactionsError) {
-      console.log("Error fetching transactions:", transactionsError);
+      devLog("Error fetching transactions:", transactionsError);
     }
     dashboard.recentTransactions = transactionsData;
     return dashboard;

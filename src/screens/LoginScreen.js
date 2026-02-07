@@ -53,8 +53,10 @@ export const LoginScreen = ({ navigation }) => {
       console.log("SUCCESS LOGIN", data);
 
       if (error) {
-        if (error.message === "Email not confirmed") {
-          // If email is not confirmed, navigate to verification screen
+        if (
+          error.message === "Email not confirmed" ||
+          error.message?.toLowerCase().includes("email not confirmed")
+        ) {
           navigation.reset({
             index: 0,
             routes: [
@@ -66,10 +68,13 @@ export const LoginScreen = ({ navigation }) => {
           });
           return;
         }
+        showToast.error(error.message || "Failed to login");
+        return;
       }
-      if (data) {
+      if (data?.user?.email_confirmed_at) {
         navigation.replace("Dashboard");
       }
+      // Session exists but email not verified: App will show EmailVerification (protected stack)
     } catch (error) {
       console.error("Login error:", error.message);
       showToast.error(error.message || "Failed to login");

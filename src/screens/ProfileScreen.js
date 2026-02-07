@@ -5,6 +5,7 @@ import {
   SafeAreaView,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   Animated,
   Platform,
@@ -25,8 +26,10 @@ import {
 } from "../utils/formatters";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
+import { userService } from "../services/supabaseService";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { devLog } from "../utils/logger";
 import * as FileSystem from "expo-file-system";
 
 export const ProfileScreen = ({ navigation }) => {
@@ -36,6 +39,9 @@ export const ProfileScreen = ({ navigation }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState("");
+  const [editMobile, setEditMobile] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [expandedFeature, setExpandedFeature] = useState(null);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalCategories, setTotalCategories] = useState(0);
@@ -95,8 +101,29 @@ export const ProfileScreen = ({ navigation }) => {
   };
 
   const handleEditProfile = () => {
+    if (!isEditing) {
+      setEditFullName(userProfile?.full_name ?? "");
+      setEditMobile(userProfile?.mobile ?? "");
+    }
     setIsEditing(!isEditing);
-    // TODO: Implement edit profile functionality
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setSavingProfile(true);
+      const { profile, error } = await userService.updateProfile({
+        full_name: editFullName.trim() || null,
+        mobile: editMobile.trim() || null,
+      });
+      if (error) throw error;
+      setUserProfile(profile);
+      setIsEditing(false);
+      Alert.alert(t("success") || "Success", t("profileUpdated") || "Profile updated successfully");
+    } catch (err) {
+      Alert.alert(t("error") || "Error", err?.message || "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const toggleFeature = (index) => {
@@ -153,7 +180,7 @@ export const ProfileScreen = ({ navigation }) => {
         .update({ avatar_url: publicUrl })
         .eq("id", session.user.id); // ✅ string, works
 
-      if (error) console.log("error", error);
+      if (error) devLog("error", error);
       setUserProfile((prev) => ({ ...prev, avatar_url: publicUrl }));
     } catch (error) {
       console.error("Image Upload Error:", error.message);
@@ -196,7 +223,7 @@ export const ProfileScreen = ({ navigation }) => {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(path);
 
-      console.log("Image uploaded successfully. Public URL:", publicUrl);
+      devLog("Image uploaded successfully. Public URL:", publicUrl);
       return publicUrl;
     } catch (error) {
       console.error("Error in uploadImageToSupabase:", error);
@@ -247,15 +274,57 @@ export const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.profileDetails}>
-          <Text style={[styles.profileName, { color: theme.text }]}>
-            {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
-          </Text>
-          <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-            {userProfile?.email_address || "No email Address"}
-          </Text>
-          <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-            {userProfile?.mobile || "No phone Number"}
-          </Text>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={[styles.profileName, styles.profileEditInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
+                value={editFullName}
+                onChangeText={setEditFullName}
+                placeholder="Full name"
+                placeholderTextColor={theme.textSecondary}
+              />
+              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+                {userProfile?.email_address || "No email"}
+              </Text>
+              <TextInput
+                style={[styles.profilePhone, styles.profileEditInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
+                value={editMobile}
+                onChangeText={setEditMobile}
+                placeholder="Mobile"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="phone-pad"
+              />
+              <View style={styles.profileEditActions}>
+                <TouchableOpacity
+                  style={[styles.profileEditBtn, { backgroundColor: theme.border }]}
+                  onPress={() => setIsEditing(false)}
+                  disabled={savingProfile}
+                >
+                  <Text style={[styles.profileEditBtnText, { color: theme.text }]}>{t("cancel")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.profileEditBtn, { backgroundColor: theme.primary }]}
+                  onPress={handleSaveProfile}
+                  disabled={savingProfile}
+                >
+                  <Text style={[styles.profileEditBtnText, { color: theme.white }]}>{savingProfile ? "..." : t("save")}</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.profileName, { color: theme.text }]}>
+                {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
+              </Text>
+              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+                {userProfile?.email_address || "No email Address"}
+              </Text>
+              <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
+                {userProfile?.mobile || "No phone Number"}
+              </Text>
+            </>
+          )}
+          {!isEditing && (
           <View style={styles.profileBadge}>
             <MaterialCommunityIcons
               name="check-circle"
@@ -266,6 +335,7 @@ export const ProfileScreen = ({ navigation }) => {
               Verified Account
             </Text>
           </View>
+          )}
         </View>
       </View>
     </View>
@@ -998,21 +1068,21 @@ export const ProfileScreen = ({ navigation }) => {
       <Header
         title={t("profile")}
         onBack={() => navigation.goBack()}
-        // rightComponent={
-        //   <TouchableOpacity
-        //     onPress={handleEditProfile}
-        //     style={[
-        //       styles.editButton,
-        //       { backgroundColor: `${theme.primary}15` },
-        //     ]}
-        //   >
-        //     <MaterialCommunityIcons
-        //       name={isEditing ? "check" : "pencil"}
-        //       size={18}
-        //       color={theme.primary}
-        //     />
-        //   </TouchableOpacity>
-        // }
+        rightComponent={
+          <TouchableOpacity
+            onPress={handleEditProfile}
+            style={[
+              styles.editButton,
+              { backgroundColor: `${theme.primary}15` },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={isEditing ? "close" : "pencil"}
+              size={18}
+              color={theme.primary}
+            />
+          </TouchableOpacity>
+        }
       />
       <Animated.ScrollView
         style={styles.content}
@@ -1130,6 +1200,28 @@ const styles = StyleSheet.create({
   profilePhone: {
     fontSize: 15,
     fontWeight: "500",
+  },
+  profileEditInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    fontSize: 16,
+  },
+  profileEditActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  profileEditBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  profileEditBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   profileBadge: {
     flexDirection: "row",

@@ -1,17 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Linking,
+  ScrollView,
+} from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase, updateUserProfile } from "../config/supabase";
 import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
+import { useAuth } from "../context/AuthContext";
 
 const EmailVerificationScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { session } = useAuth();
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("pending");
   const [recheckLoading, setRecheckLoading] = useState(false);
-  const email = route.params?.email;
+  const email = route.params?.email ?? session?.user?.email;
+  const hasSession = !!session?.user;
 
   useEffect(() => {
     checkVerificationStatus();
@@ -118,8 +129,25 @@ const EmailVerificationScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // App will switch to public stack (Login) via auth state change
+    } catch (error) {
+      showToast.error(error.message || "Failed to sign out");
+    }
+  };
+
+  const handleBackToLogin = () => {
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.content}>
         <MaterialCommunityIcons
           name="email-check"
@@ -188,8 +216,30 @@ const EmailVerificationScreen = ({ navigation, route }) => {
               </Text>
             )}
           </TouchableOpacity>
+
+          {hasSession ? (
+            <TouchableOpacity
+              style={[styles.button, styles.logoutButton, { borderColor: theme.error, borderWidth: 1 }]}
+              onPress={handleLogout}
+            >
+              <MaterialCommunityIcons name="logout" size={20} color={theme.error} />
+              <Text style={[styles.buttonText, { color: theme.error }]}>
+                Log out
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: theme.card }]}
+              onPress={handleBackToLogin}
+            >
+              <Text style={[styles.buttonText, { color: theme.primary }]}>
+                Back to Login
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+      </ScrollView>
     </View>
   );
 };
@@ -198,11 +248,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
+  },
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
+    minHeight: 400,
   },
   title: {
     fontSize: 24,
@@ -236,6 +291,11 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
   },
 });
 

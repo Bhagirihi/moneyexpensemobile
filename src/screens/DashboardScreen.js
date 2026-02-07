@@ -46,6 +46,7 @@ import {
 } from "../services/pushNotificationService";
 import { fetchDashboardData } from "../fetcher";
 import { useTranslation } from "../hooks/useTranslation";
+import { devLog } from "../utils/logger";
 
 const { width, height } = Dimensions.get("window");
 
@@ -165,7 +166,7 @@ export const DashboardScreen = ({ navigation }) => {
       setHasBoards(data.hasBoard);
       setStats(data.stats);
       memoizedCalculateMonthlyStats(data.recentTransactions);
-      console.log(data);
+      devLog(data);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     }
@@ -664,6 +665,7 @@ export const DashboardScreen = ({ navigation }) => {
         navigation={navigation}
         maxItems={4}
         containerStyle={styles.transactionsList}
+        embedded={true}
       />
     </View>
   );

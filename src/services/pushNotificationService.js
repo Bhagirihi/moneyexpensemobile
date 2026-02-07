@@ -118,16 +118,16 @@ async function savePushTokenToProfile(userId, expoPushToken) {
   }
 }
 
-// Function to send a push notification
+// Function to send a push notification (shows immediately)
 export async function sendPushNotification(title, message) {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: title,
       body: message,
       sound: "default",
-      data: { screen: "SomeScreen" }, // Optional data payloadr
+      data: { screen: "SomeScreen" },
     },
-    trigger: { seconds: 2 }, // Fires after 2 seconds
+    trigger: null, // null = show immediately (required by Expo SDK)
   });
 }
 
@@ -243,6 +243,25 @@ export async function sendExpenseBoardInviteNotification({
   await sendPushNotification(
     `You have been invited to an expense board ${boardName}`,
     "Expense board invited"
+  );
+}
+
+export async function sendExpenseBoardDeletedNotification({
+  boardName,
+  icon = "view-grid",
+  iconColor,
+}) {
+  await sendNotification({
+    type: "info",
+    title: "Expense board deleted",
+    message: `"${boardName}" has been deleted.`,
+    tripName: boardName,
+    icon: icon,
+    iconColor: iconColor,
+  });
+  await sendPushNotification(
+    `Expense board "${boardName}" has been deleted`,
+    "Expense board deleted"
   );
 }
 

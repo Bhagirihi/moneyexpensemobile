@@ -27,6 +27,7 @@ import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { devLog } from "../utils/logger";
 import * as FileSystem from "expo-file-system";
 
 function getInitials(name) {
@@ -142,7 +143,7 @@ export const InvitationsScreen = ({ navigation }) => {
           };
         })
       );
-      console.log("enrichedData", enrichedData);
+      devLog("enrichedData", enrichedData);
 
       setSharedUsers(enrichedData);
       setLoading(false);

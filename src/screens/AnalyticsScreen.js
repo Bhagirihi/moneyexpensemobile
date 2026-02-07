@@ -286,7 +286,7 @@ export const AnalyticsScreen = ({ navigation }) => {
       const trends = await fetchExpenseTrends(user.id, selectedPeriod);
       const statistics = trends.statistics;
       const trendData = trends.trendData;
-      const dummyData = {
+      const analyticsData = {
         totalExpenses: statistics.totalAmount,
         averageExpense: statistics?.averageAmountPerDay,
         stats: {
@@ -341,7 +341,7 @@ export const AnalyticsScreen = ({ navigation }) => {
         ],
       };
 
-      await setAnalytics(dummyData);
+      await setAnalytics(analyticsData);
       await setLoading(false);
     } catch (error) {
       console.error("Error fetching analytics:", error);

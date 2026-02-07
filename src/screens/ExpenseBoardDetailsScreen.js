@@ -16,9 +16,11 @@ import { Header } from "../components/Header";
 import ShareModal from "../components/ShareModal";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
+import { realTimeSync } from "../services/realTimeSync";
 import { showToast } from "../utils/toast";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { formatCurrency } from "../utils/formatters";
+import { devLog } from "../utils/logger";
 import ExpenseItem from "../components/ExpenseItem";
 
 export const ExpenseBoardDetailsScreen = () => {
@@ -115,6 +117,13 @@ export const ExpenseBoardDetailsScreen = () => {
 
   useEffect(() => {
     fetchData();
+  }, [boardId]);
+
+  useEffect(() => {
+    const unsubscribe = realTimeSync.subscribeToExpense(() => {
+      fetchData(1, true);
+    });
+    return unsubscribe;
   }, [boardId]);
 
   const onRefresh = React.useCallback(() => {
@@ -439,7 +448,7 @@ export const ExpenseBoardDetailsScreen = () => {
                     }
                     onDelete={() => {
                       // Handle delete if needed
-                      console.log("Delete expense:", expense.id);
+                      devLog("Delete expense:", expense.id);
                     }}
                   />
                 ))}

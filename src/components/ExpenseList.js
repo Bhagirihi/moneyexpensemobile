@@ -22,6 +22,7 @@ const ExpenseList = memo(
     showHeader = true,
     showEmptyState = true,
     navigation,
+    embedded = false,
   }) => {
     const { theme } = useTheme();
     const { t } = useTranslation();
@@ -156,6 +157,21 @@ const ExpenseList = memo(
         </View>
       );
     };
+
+    if (embedded) {
+      return (
+        <View style={styles.container}>
+          {renderHeader()}
+          {expenses.length === 0
+            ? renderEmptyState()
+            : expenses.map((item) => (
+                <View key={keyExtractor(item)} style={{ paddingBottom: 0 }}>
+                  {renderItem({ item })}
+                </View>
+              ))}
+        </View>
+      );
+    }
 
     return (
       <View style={styles.container}>

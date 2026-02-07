@@ -392,6 +392,7 @@ export const ExpenseScreen = ({ navigation }) => {
             showAllButton={false}
             navigation={navigation}
             title={t("transactions")}
+            embedded={true}
           />
         )}
       </ScrollView>

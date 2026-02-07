@@ -363,22 +363,33 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       const { data: createdBoard, error } =
         await expenseBoardService.createExpenseBoard(boardData);
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error?.message || "Failed to create board");
+      }
 
-      // Send notification after successful board creation
-      await sendCreateExpenseBoardNotification({
-        boardName: boardName.trim(),
-        icon: selectedIcon.name,
-        iconColor: selectedColor.value,
-      });
+      // Send notification after successful board creation (non-blocking)
+      try {
+        await sendCreateExpenseBoardNotification({
+          boardName: boardName.trim(),
+          icon: selectedIcon.name,
+          iconColor: selectedColor.value,
+        });
+      } catch (notifError) {
+        console.error("Error sending notification:", notifError);
+        console.warn("Board created but notification failed:", notifError);
+      }
 
       showToast.success("Expense board created successfully");
       navigation.goBack();
     } catch (error) {
       console.error("Error creating board:", error);
-      showToast.error("Failed to create board");
+      showToast.error(
+        "Failed to create board",
+        error?.message || "Please try again"
+      );
     } finally {
       setLoading(false);
+      navigation.goBack();
     }
   };
 
@@ -585,7 +596,10 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title={t("createExpenseBoard")} onBack={() => navigation.goBack()} />
+      <Header
+        title={t("createExpenseBoard")}
+        onBack={() => navigation.goBack()}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}

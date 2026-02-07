@@ -195,32 +195,42 @@ export const getSession = async () => {
   }
 };
 
-// Verification helpers
+/**
+ * Verification helpers (Supabase Edge Functions).
+ * Requires Edge Functions "send-otp" and "verify-otp" to be deployed in your Supabase project.
+ * Deploy via: supabase functions deploy send-otp; supabase functions deploy verify-otp
+ * If not deployed, these will return an error (callers should handle gracefully).
+ */
 export const sendVerificationOTP = async (type, value) => {
   try {
-    // In a real implementation, you would call your backend to send OTP
-    // This is a mock implementation
     const { data, error } = await supabase.functions.invoke("send-otp", {
       body: { type, value },
     });
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    return { data: null, error };
+    return {
+      data: null,
+      error: error?.message
+        ? error
+        : new Error("OTP send unavailable. Deploy Edge Function 'send-otp' to enable."),
+    };
   }
 };
 
 export const verifyOTP = async (type, value, code) => {
   try {
-    // In a real implementation, you would verify OTP with your backend
     const { data, error } = await supabase.functions.invoke("verify-otp", {
       body: { type, value, code },
     });
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    return { data: null, error };
+    return {
+      data: null,
+      error: error?.message
+        ? error
+        : new Error("OTP verify unavailable. Deploy Edge Function 'verify-otp' to enable."),
+    };
   }
 };

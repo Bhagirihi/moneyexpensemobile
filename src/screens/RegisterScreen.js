@@ -93,7 +93,12 @@ const RegisterScreen = ({ navigation }) => {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "EmailVerification" }],
+        routes: [
+          {
+            name: "EmailVerification",
+            params: { email: formData.email.trim() },
+          },
+        ],
       });
     } catch (error) {
       console.error("Registration error:", error.message);

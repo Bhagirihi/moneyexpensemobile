@@ -260,7 +260,7 @@ export const expenseBoardService = {
         .insert([
           {
             name: boardData.name,
-            description: boardData.description,
+            description: boardData.description || null,
             board_color: boardData.color,
             board_icon: boardData.icon,
             created_by: user.id,
@@ -272,11 +272,14 @@ export const expenseBoardService = {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (error) return { data: null, error };
+      return { data, error: null };
     } catch (error) {
       console.error("Error creating expense board:", error);
-      throw error;
+      return {
+        data: null,
+        error: error?.message ? { message: error.message } : error,
+      };
     }
   },
 

@@ -170,11 +170,16 @@
 // };
 
 import { supabase } from "../config/supabase";
+import { devLog } from "../utils/logger";
 import React, { useEffect } from "react";
 
-export function realTimeSync(callback) {
+/**
+ * @param {() => void} callback - Called when any subscribed table changes
+ * @param {string} [channelName] - Unique channel name. Use different names per screen to avoid "subscribe multiple times" error when multiple screens subscribe.
+ */
+export function realTimeSync(callback, channelName = "realtime-dashboard") {
   const channel = supabase
-    .channel("realtime-dashboard")
+    .channel(channelName)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "expenses" },
@@ -207,7 +212,7 @@ export function realTimeSync(callback) {
     )
     .subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        console.log("✅ Subscribed to realtime");
+        devLog("✅ Subscribed to realtime");
       } else if (status === "CHANNEL_ERROR") {
         console.error("❌ Error subscribing to dashboard realtime");
       }
@@ -215,7 +220,7 @@ export function realTimeSync(callback) {
 
   return () => {
     supabase.removeChannel(channel);
-    console.log("🧹 Unsubscribed from all realtime updates");
+    devLog("🧹 Unsubscribed from all realtime updates");
   };
 }
 
