@@ -1,6 +1,7 @@
 import "react-native-url-polyfill/auto";
 import "react-native-get-random-values";
 import { crypto } from "expo-crypto";
+import { showToast } from "../utils/toast";
 if (!globalThis.crypto) {
   globalThis.crypto = crypto;
 }
@@ -25,6 +26,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+  },
+  realtime: {
+    // (since v2.47) explicitly tell Realtime which WS implementation to use
+    WebSocket: global.WebSocket,
   },
 });
 

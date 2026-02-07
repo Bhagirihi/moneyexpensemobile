@@ -45,6 +45,7 @@ import {
   handleForegroundNotifications,
   registerForPushNotificationsAsync,
 } from "./src/services/pushNotificationService";
+import { useColorScheme } from "react-native";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -203,15 +204,16 @@ const AppContent = () => {
   if (!appIsReady) {
     return null;
   }
+  console.log("theme.background", theme.background);
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
-      <StatusBar
+      {/* <StatusBar
         barStyle={
           theme.background === "#FFFFFF" ? "dark-content" : "light-content"
         }
         backgroundColor={theme.background}
-      />
+      /> */}
       <AuthProvider>
         <ThemeProvider>
           <AppSettingsProvider>

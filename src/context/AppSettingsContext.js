@@ -1,27 +1,27 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const AppSettingsContext = createContext();
+const AppSettingsContext = createContext(null);
 
 export const AppSettingsProvider = ({ children }) => {
   const [language, setLanguage] = useState("en");
   const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedLanguage = await AsyncStorage.getItem("app_language");
+        const savedCurrency = await AsyncStorage.getItem("app_currency");
+
+        if (savedLanguage) setLanguage(savedLanguage);
+        if (savedCurrency) setCurrency(savedCurrency);
+      } catch (error) {
+        console.error("Error loading app settings:", error);
+      }
+    };
+
     loadSettings();
   }, []);
-
-  const loadSettings = async () => {
-    try {
-      const savedLanguage = await AsyncStorage.getItem("app_language");
-      const savedCurrency = await AsyncStorage.getItem("app_currency");
-
-      if (savedLanguage) setLanguage(savedLanguage);
-      if (savedCurrency) setCurrency(savedCurrency);
-    } catch (error) {
-      console.error("Error loading app settings:", error);
-    }
-  };
 
   const updateLanguage = async (newLanguage) => {
     try {

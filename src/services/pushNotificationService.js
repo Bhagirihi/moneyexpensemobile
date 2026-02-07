@@ -46,10 +46,10 @@ export async function registerForPushNotificationsAsync() {
             onPress: async () => {
               const { status } = await Notifications.requestPermissionsAsync();
               if (status === "granted") {
-                const token = (await Notifications.getExpoPushTokenAsync())
-                  .data;
-                console.log("✅ Expo Push Token:", token);
-                resolve(token);
+                const tokenData = await Notifications.getExpoPushTokenAsync();
+                const token = tokenData?.data;
+                if (token) await savePushTokenToProfile(session.user.id, token);
+                resolve(token ?? null);
               } else {
                 Alert.alert(
                   "Permission Denied",
@@ -74,25 +74,15 @@ export async function registerForPushNotificationsAsync() {
     return null;
   }
 
-  // Get the Expo Push Token
-  const { data: tokenData } = await Notifications.getExpoPushTokenAsync();
-  const token = tokenData;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
 
-  if (token) {
-    // Save the token to Supabase
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ expo_push_token: token })
-      .eq("id", session.user.id);
-
-    if (updateError) {
-      console.error("Error updating token in profiles:", updateError.message);
-    }
-
-    console.log("Token saved to Supabase:", token);
-  }
-
-  // Set up Android-specific notification channel
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "default",
@@ -100,45 +90,45 @@ export async function registerForPushNotificationsAsync() {
     });
   }
 
-  return token;
+  // Actually get and save the token (was missing – function returned undefined)
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const token = tokenData?.data ?? null;
+    if (token) await savePushTokenToProfile(session.user.id, token);
+    return token;
+  } catch (e) {
+    console.error("Error getting push token:", e);
+    return null;
+  }
+}
+
+async function savePushTokenToProfile(userId, expoPushToken) {
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ expo_push_token: expoPushToken })
+      .eq("id", userId);
+    if (error) {
+      console.error("Error saving push token to profile:", error.message);
+      return;
+    }
+    console.log("✅ Push token saved to profile");
+  } catch (e) {
+    console.error("Error saving push token:", e);
+  }
 }
 
 // Function to send a push notification
 export async function sendPushNotification(title, message) {
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  const { data: user } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", session.user.id);
-
-  console.log("user", user[0].expo_push_token);
-  const body = {
-    to: user[0].expo_push_token,
-    sound: "default",
-    title: title,
-    body: message,
-    data: { extraData: "Some extra data if needed" },
-  };
-
-  const response = await fetch("https://exp.host/--/api/v2/push/send", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: title,
+      body: message,
+      sound: "default",
+      data: { screen: "SomeScreen" }, // Optional data payloadr
     },
-    body: JSON.stringify(body),
+    trigger: { seconds: 2 }, // Fires after 2 seconds
   });
-
-  const responseData = await response.json();
-
-  if (responseData.data) {
-    console.log("Push notification sent successfully");
-  } else {
-    console.error("Failed to send push notification:", responseData);
-  }
 }
 
 export async function sendNotification(
@@ -216,7 +206,6 @@ export function handleBackgroundNotifications() {
 }
 
 // Notification Triggers
-
 export async function sendCreateExpenseBoardNotification({
   boardName,
   icon,

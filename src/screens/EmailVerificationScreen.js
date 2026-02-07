@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Linking,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase, updateUserProfile } from "../config/supabase";

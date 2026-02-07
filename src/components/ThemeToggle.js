@@ -2,22 +2,31 @@ import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 
 const ThemeToggle = () => {
   const { theme, isDarkMode, toggleTheme } = useTheme();
 
   return (
-    <TouchableOpacity
-      style={[styles.container, { borderColor: theme.border }]}
-      activeOpacity={0.8}
-      onPress={toggleTheme}
-    >
-      <MaterialCommunityIcons
-        name={isDarkMode ? "white-balance-sunny" : "moon-waning-crescent"}
-        size={20}
-        color={isDarkMode ? "#FFD700" : "#2C3E50"}
+    <>
+      <StatusBar
+        style={isDarkMode ? "light" : "dark"}
+        backgroundColor="transparent"
+        translucent
       />
-    </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.container, { borderColor: theme.border }]}
+        activeOpacity={0.8}
+        onPress={toggleTheme}
+      >
+        <MaterialCommunityIcons
+          name={isDarkMode ? "white-balance-sunny" : "moon-waning-crescent"}
+          size={20}
+          color={isDarkMode ? "#FFD700" : "#2C3E50"}
+        />
+      </TouchableOpacity>
+    </>
   );
 };
 

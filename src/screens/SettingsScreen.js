@@ -15,6 +15,7 @@ import {
   Share,
   Clipboard,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
@@ -54,10 +55,9 @@ export const SettingsScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [sharedMembers, setSharedMembers] = useState([]);
-  const [SharedMemberCount, setSharedMemberCount] = useState(0);
-  const [invitees, setInvitees] = useState(0);
+  const [inviteeCount, setInviteeCount] = useState(0);
+  const [inviteesList, setInviteesList] = useState([]);
   const [loadingInvitees, setLoadingInvitees] = useState(false);
 
   const languages = [
@@ -102,16 +102,6 @@ export const SettingsScreen = ({ navigation }) => {
   useEffect(() => {
     fetchData();
     generateReferralCode();
-
-    // Store the subscription cleanup function
-    const cleanup = realTimeSync.subscribeToProfile(fetchData);
-
-    // Return a proper cleanup function
-    return () => {
-      if (typeof cleanup === "function") {
-        cleanup();
-      }
-    };
   }, []);
 
   const fetchData = async () => {
@@ -129,7 +119,6 @@ export const SettingsScreen = ({ navigation }) => {
       setMonthlyBudget(budgetData.default_board_budget);
       setReferralCode(budgetData.referral_code);
       setSharedMembers(sharedMembers);
-      setIs2FAEnabled(budgetData.is2FA);
       // Fetch expense boards
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
@@ -192,7 +181,7 @@ export const SettingsScreen = ({ navigation }) => {
           console.log("User dismissed the share dialog.");
         }
       } else if (method === "copy") {
-        await Clipboard.setStringAsync(referralCode);
+        Clipboard.setString(referralCode);
         showToast.success("Copied!", "Referral code copied to clipboard 📋");
       }
     } catch (error) {
@@ -320,33 +309,6 @@ export const SettingsScreen = ({ navigation }) => {
     }
   };
 
-  const handle2FAToggle = async (value) => {
-    try {
-      setLoading(true);
-      // Here you would typically make an API call to update 2FA status
-      // For now, we'll just update the local state
-      setIs2FAEnabled(value);
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is2FA: value })
-        .eq("id", userID);
-
-      if (value) {
-        showToast.success("Two-factor authentication enabled");
-      } else {
-        showToast.success("Two-factor authentication disabled");
-      }
-    } catch (error) {
-      console.error("Error updating 2FA status:", error);
-      showToast.error("Failed to update two-factor authentication status");
-      // Revert the switch if the update fails
-      setIs2FAEnabled(!value);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getConvertedPrice = (basePrice, currencyCode) => {
     const selectedCurrency = currencies.find(
       (curr) => curr.code === currencyCode
@@ -394,6 +356,22 @@ export const SettingsScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       ))}
+      <TouchableOpacity
+        style={[
+          styles.modalButton,
+          {
+            backgroundColor: theme.errorLight,
+            marginTop: 16,
+            alignSelf: "flex-start",
+          },
+        ]}
+        onPress={() => setEditModalVisible(false)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.modalButtonText, { color: theme.error }]}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -431,6 +409,23 @@ export const SettingsScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       ))}
+
+      <TouchableOpacity
+        style={[
+          styles.modalButton,
+          {
+            backgroundColor: theme.errorLight,
+            marginTop: 16,
+            alignSelf: "flex-start",
+          },
+        ]}
+        onPress={() => setEditModalVisible(false)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.modalButtonText, { color: theme.error }]}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -467,6 +462,22 @@ export const SettingsScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       ))}
+      <TouchableOpacity
+        style={[
+          styles.modalButton,
+          {
+            backgroundColor: theme.errorLight,
+            marginTop: 16,
+            alignSelf: "flex-start",
+          },
+        ]}
+        onPress={() => setEditModalVisible(false)}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.modalButtonText, { color: theme.error }]}>
+          Cancel
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -671,7 +682,6 @@ export const SettingsScreen = ({ navigation }) => {
       {expenseBoards.slice(-3).map((board) => {
         const members =
           sharedMembers?.filter((member) => member.board_id === board.id) || [];
-        setSharedMemberCount(members);
         return (
           <View key={board.id} style={styles.boardDetailItem}>
             <View style={styles.boardDetailHeader}>
@@ -914,28 +924,35 @@ export const SettingsScreen = ({ navigation }) => {
         data: { session },
         error: sessionError,
       } = await supabase.auth.getSession();
-      // Get all Invitees with their profile information
-      const { count, error } = await supabase
+      if (sessionError || !session?.user) return;
+
+      const { data: sharedUsers, error } = await supabase
         .from("shared_users")
-        .select("*", { count: "exact", head: true })
+        .select(
+          `
+          id,
+          shared_with,
+          board_id,
+          is_accepted,
+          created_at,
+          expense_boards (name)
+        `
+        )
         .eq("shared_by", session.user.id);
 
       if (error) throw error;
 
-      console.log("sharedUsers", count);
+      const formattedInvitees = (sharedUsers || []).map((su) => ({
+        id: su.id,
+        userName: su.shared_with || "Unknown",
+        userEmail: su.shared_with || "Unknown",
+        boardName: su.expense_boards?.name || "Unknown Board",
+        status: su.is_accepted ? "accepted" : "pending",
+        createdAt: su.created_at,
+      }));
 
-      // const formattedInvitees = sharedUsers.map((sharedUser) => ({
-      //   id: sharedUser.id,
-      //   userId: sharedUser.user_id,
-      //   userName: sharedUser.profiles?.full_name || "Unknown",
-      //   userEmail: sharedUser.profiles?.email_address || "Unknown",
-      //   boardId: sharedUser.board_id,
-      //   boardName: sharedUser.expense_boards?.name || "Unknown Board",
-      //   status: sharedUser.is_accepted ? "accepted" : "pending",
-      //   createdAt: sharedUser.created_at,
-      // }));
-
-      setInvitees(count);
+      setInviteesList(formattedInvitees);
+      setInviteeCount(formattedInvitees.length);
     } catch (error) {
       console.error("Error fetching invitees:", error);
       showToast.error("Error", "Failed to load invitees");
@@ -972,7 +989,7 @@ export const SettingsScreen = ({ navigation }) => {
             Loading invitees...
           </Text>
         </View>
-      ) : invitees.length === 0 ? (
+      ) : inviteesList.length === 0 ? (
         <View style={[styles.emptyContainer, { padding: 20 }]}>
           <MaterialCommunityIcons
             name="account-group-outline"
@@ -988,12 +1005,12 @@ export const SettingsScreen = ({ navigation }) => {
         </View>
       ) : (
         <ScrollView style={{ flex: 1 }}>
-          {invitees.map((invitee, index) => (
+          {inviteesList.map((invitee, index) => (
             <View
               key={invitee.id}
               style={{
                 padding: 16,
-                borderBottomWidth: index !== invitees.length - 1 ? 1 : 0,
+                borderBottomWidth: index !== inviteesList.length - 1 ? 1 : 0,
                 borderBottomColor: `${theme.text}10`,
               }}
             >
@@ -1413,6 +1430,7 @@ export const SettingsScreen = ({ navigation }) => {
               subtitle:
                 languages.find((lang) => lang.code === language)?.name ||
                 "English",
+              onPress: () => handleEdit({ title: "Language" }),
               showBorder: false,
             }),
           ],
@@ -1467,7 +1485,7 @@ export const SettingsScreen = ({ navigation }) => {
             renderSettingItem({
               icon: "account-group",
               title: "Invitees",
-              subtitle: `${invitees} Invited`,
+              subtitle: `${inviteeCount} Invited`,
               onPress: () => navigation.navigate("Profile2"),
               editable: false,
             }),
@@ -1485,15 +1503,6 @@ export const SettingsScreen = ({ navigation }) => {
         {renderSection({
           title: "Security",
           children: [
-            renderSettingItem({
-              icon: "two-factor-authentication",
-              title: "Two-Factor Authentication",
-              subtitle: "Add extra security to your account",
-              isSwitch: true,
-              switchValue: is2FAEnabled,
-              onSwitchChange: handle2FAToggle,
-              editable: false,
-            }),
             renderSettingItem({
               icon: "lock-reset",
               title: "Reset Password",
@@ -1568,7 +1577,6 @@ export const SettingsScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1989,3 +1997,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
 });
+
+export default SettingsScreen;

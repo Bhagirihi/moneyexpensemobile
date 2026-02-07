@@ -9,12 +9,12 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   RefreshControl,
   Platform,
   Animated,
   Easing,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { getSession, supabase, getUserProfile } from "../config/supabase";
@@ -44,6 +44,7 @@ import {
   sendPushNotification,
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
+import { fetchDashboardData } from "../fetcher";
 
 const { width, height } = Dimensions.get("window");
 
@@ -67,6 +68,21 @@ export const DashboardScreen = ({ navigation }) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pushToken = userProfile?.expo_push_token; // Replace with actual token
   const message = "Hello, you have a new notification!";
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const { session } = await getSession();
+      if (!session?.user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+      if (!error) setUserProfile(data);
+    } catch (err) {
+      console.error("Error loading profile:", err);
+    }
+  }, []);
 
   const memoizedCalculateMonthlyStats = useCallback(
     (expensesData) => {
@@ -122,54 +138,46 @@ export const DashboardScreen = ({ navigation }) => {
 
   // Set up real-time subscriptions
   useEffect(() => {
-    const cleanup = realTimeSync.subscribeToDashboard(fetchDashboardData);
-    return cleanup;
+    const stop = realTimeSync(async (payload) => {
+      console.log("📥", payload);
+      await loadProfile();
+      await fetchDashboardDataState(); // or React Query invalidateQueries
+      await fetchUnreadCount();
+    });
+
+    return stop; // unsubscribe on unmount
   }, []);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        getSession().then(async ({ session }) => {
-          const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setUserProfile(data);
-        });
-      } catch (error) {
-        console.error("Error loading profile:", error);
-      }
-    };
-
     loadProfile();
-
-    // Subscribe to profile changes
-    const unsubscribeProfile = realTimeSync.subscribeToProfile(() => {
-      loadProfile();
-    });
-
-    // Cleanup function
-    return () => {
-      unsubscribeProfile();
-    };
-  }, []);
+  }, [loadProfile]);
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchUnreadCount();
+    fetchDashboardDataState(), fetchUnreadCount();
   }, []);
 
-  useEffect(() => {
-    const subscription = realTimeSync.subscribeToNotifications(() => {
-      fetchUnreadCount();
-    });
+  const fetchDashboardDataState = async () => {
+    try {
+      const data = await fetchDashboardData();
+      setExpenses(data.recentTransactions);
+      setHasBoards(data.hasBoard);
+      setStats(data.stats);
+      memoizedCalculateMonthlyStats(data.recentTransactions);
+      console.log(data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  };
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  // useEffect(() => {
+  //   const subscription = realTimeSync.subscribeToNotifications(() => {
+  //     fetchUnreadCount();
+  //   });
+
+  //   return () => {
+  //     subscription.unsubscribe();
+  //   };
+  // }, []);
 
   useEffect(() => {
     if (loading) {
@@ -220,9 +228,9 @@ export const DashboardScreen = ({ navigation }) => {
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchUserProfile(), fetchDashboardData()]);
+    await Promise.all([loadProfile(), fetchDashboardDataState()]);
     setRefreshing(false);
-  }, []);
+  }, [loadProfile]);
 
   const handleDeletePress = async (expenseId) => {
     try {
@@ -242,51 +250,51 @@ export const DashboardScreen = ({ navigation }) => {
     }
   };
   let remainingBudget;
-  const fetchDashboardData = async () => {
-    try {
-      //setLoading(true);
+  // const fetchDashboardData = async () => {
+  //   try {
+  //     //setLoading(true);
 
-      // Fetch expense boards
-      const expenseBoards = await expenseBoardService.getExpenseBoards();
-      setHasBoards(expenseBoards.length > 0);
+  //     // Fetch expense boards
+  //     const expenseBoards = await expenseBoardService.getExpenseBoards();
+  //     setHasBoards(expenseBoards.length > 0);
 
-      // Calculate total budget and expenses from boards
-      const totalBudget = expenseBoards.reduce(
-        (sum, board) => sum + (board.total_budget || 0),
-        0
-      );
-      const totalExpenses = expenseBoards.reduce(
-        (sum, board) => sum + (board.totalExpenses || 0),
-        0
-      );
-      remainingBudget = totalBudget - totalExpenses;
+  //     // Calculate total budget and expenses from boards
+  //     const totalBudget = expenseBoards.reduce(
+  //       (sum, board) => sum + (board.total_budget || 0),
+  //       0
+  //     );
+  //     const totalExpenses = expenseBoards.reduce(
+  //       (sum, board) => sum + (board.totalExpenses || 0),
+  //       0
+  //     );
+  //     remainingBudget = totalBudget - totalExpenses;
 
-      // Update stats
-      setStats({
-        totalBudget,
-        totalExpenses,
-        remainingBudget,
-      });
+  //     // Update stats
+  //     setStats({
+  //       totalBudget,
+  //       totalExpenses,
+  //       remainingBudget,
+  //     });
 
-      // Fetch recent transactions
-      const { data: transactionsData, error: transactionsError } =
-        await dashboardService.getRecentTransactions();
+  //     // Fetch recent transactions
+  //     const { data: transactionsData, error: transactionsError } =
+  //       await dashboardService.getRecentTransactions();
 
-      console.log("transactionsData", transactionsData);
+  //     console.log("transactionsData", transactionsData);
 
-      if (transactionsError) {
-        console.log("Error fetching transactions:", transactionsError);
-      }
+  //     if (transactionsError) {
+  //       console.log("Error fetching transactions:", transactionsError);
+  //     }
 
-      setExpenses(transactionsData);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error.message);
-      showToast.error("Failed to load dashboard data");
-      setExpenses([]);
-    } finally {
-      // setLoading(false);
-    }
-  };
+  //     setExpenses(transactionsData);
+  //   } catch (error) {
+  //     console.error("Error fetching dashboard data:", error.message);
+  //     showToast.error("Failed to load dashboard data");
+  //     setExpenses([]);
+  //   } finally {
+  //     // setLoading(false);
+  //   }
+  // };
 
   const fetchUnreadCount = async () => {
     try {
@@ -591,7 +599,11 @@ export const DashboardScreen = ({ navigation }) => {
             })
           }
         >
-          <MaterialCommunityIcons name="pencil" size={20} color={theme.primary} />
+          <MaterialCommunityIcons
+            name="pencil"
+            size={20}
+            color={theme.primary}
+          />
           <Text style={[styles.notificationButtonText, { color: theme.text }]}>
             Update Category
           </Text>

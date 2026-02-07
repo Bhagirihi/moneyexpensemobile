@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 
@@ -28,7 +28,7 @@ export const Header = ({
   };
 
   return (
-    <SafeAreaView
+    <View
       style={[
         styles.header,
         { borderBottomColor: theme.border },
@@ -62,7 +62,7 @@ export const Header = ({
       </View>
 
       <View style={styles.rightSection}>{renderRightSection()}</View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -71,8 +71,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: Platform.OS == "ios" ? "auto" : "10%",
-    marginTop: Platform.OS == "ios" ? null : 10,
+    marginVertical: 15,
     borderBottomWidth: 1,
+    paddingBottom: 15,
   },
   leftSection: {
     width: "15%",
