@@ -13,13 +13,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
-import { supabase, updateUserProfile } from "../config/supabase";
+import { supabase, signInWithGoogle } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { showToast } from "../utils/toast";
 
 export const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -80,6 +81,26 @@ export const LoginScreen = ({ navigation }) => {
       showToast.error(error.message || "Failed to login");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      const { data, error } = await signInWithGoogle();
+      if (error) throw error;
+      if (data?.user?.email_confirmed_at) {
+        navigation.replace("Dashboard");
+      } else {
+        navigation.replace("EmailVerification", {
+          email: data?.user?.email,
+        });
+      }
+    } catch (error) {
+      if (error?.message?.toLowerCase().includes("cancelled")) return;
+      showToast.error(error?.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -250,6 +271,42 @@ export const LoginScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
+                or
+              </Text>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={handleGoogleLogin}
+              disabled={googleLoading}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={theme.text} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="google"
+                    size={22}
+                    color="#4285F4"
+                    style={styles.googleIcon}
+                  />
+                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
+                    Sign in with Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <View style={styles.registerContainer}>
               <Text
                 style={[styles.registerText, { color: theme.textSecondary }]}
@@ -346,6 +403,34 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   loginButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 14,
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },

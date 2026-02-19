@@ -5,7 +5,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 import { AuthProvider } from "./src/context/AuthContext";
-import { supabase } from "./src/config/supabase";
+import { supabase, createSessionFromUrl } from "./src/config/supabase";
+import * as Linking from "expo-linking";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 // import * as SplashScreen from "expo-splash-screen";
@@ -115,12 +116,23 @@ const AppContent = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Session is ==> onAuthStateChange", session);
       setSession(session);
     });
     return () => {
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Handle OAuth deep link (e.g. Google sign-in redirect)
+  useEffect(() => {
+    const handleUrl = async (url) => {
+      if (url?.includes("auth/callback")) {
+        await createSessionFromUrl(url);
+      }
+    };
+    Linking.getInitialURL().then((url) => url && handleUrl(url));
+    const sub = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

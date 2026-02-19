@@ -9,6 +9,8 @@ if (!globalThis.crypto) {
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
 //Live
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -128,6 +130,82 @@ export const signOut = async () => {
   } catch (error) {
     console.error("SignOut error:", error.message);
     return { error };
+  }
+};
+
+/**
+ * Parse OAuth callback URL and return access_token and refresh_token.
+ * Supabase redirects with hash fragment: #access_token=...&refresh_token=...
+ */
+const getTokensFromUrl = (url) => {
+  if (!url) return {};
+  const hash = url.includes("#") ? url.split("#")[1] : "";
+  const query = url.includes("?") ? url.split("?").pop().split("#")[0] : "";
+  const params = new URLSearchParams(hash || query);
+  return {
+    access_token: params.get("access_token"),
+    refresh_token: params.get("refresh_token"),
+  };
+};
+
+/**
+ * Create a session from OAuth redirect URL (e.g. after Google sign-in).
+ * Call this when the app is opened via deep link from the OAuth callback.
+ */
+export const createSessionFromUrl = async (url) => {
+  const { access_token, refresh_token } = getTokensFromUrl(url);
+  if (!access_token) return { data: null, error: new Error("No access token in URL") };
+  const { data, error } = await supabase.auth.setSession({
+    access_token,
+    refresh_token: refresh_token || "",
+  });
+  if (error) return { data: null, error };
+  return { data: data.session, error: null };
+};
+
+/**
+ * Sign in with Google using OAuth (opens in-app browser).
+ * Requires: Supabase Dashboard > Auth > Providers > Google enabled,
+ * and redirect URL (e.g. trivense://**) added in Auth > URL Configuration.
+ */
+export const signInWithGoogle = async () => {
+  try {
+    WebBrowser.maybeCompleteAuthSession();
+
+    const redirectTo = AuthSession.makeRedirectUri({
+      scheme: "trivense",
+      path: "auth/callback",
+    });
+
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    });
+
+    if (oauthError) throw oauthError;
+    if (!data?.url) throw new Error("No OAuth URL returned");
+
+    const result = await WebBrowser.openAuthSessionAsync(
+      data.url,
+      redirectTo
+    );
+
+    if (result.type !== "success" || !result.url) {
+      return { data: null, error: new Error("OAuth cancelled or failed") };
+    }
+
+    const { data: sessionData, error: sessionError } = await createSessionFromUrl(
+      result.url
+    );
+    if (sessionError) throw sessionError;
+
+    return { data: sessionData, error: null };
+  } catch (error) {
+    console.error("Google sign-in error:", error?.message);
+    return { data: null, error };
   }
 };
 

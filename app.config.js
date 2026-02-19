@@ -5,6 +5,7 @@ export default {
     name: "Trivense",
     slug: "Trivense",
     version: "1.0.0",
+    scheme: "trivense",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
@@ -66,6 +67,7 @@ export default {
         },
       ],
       "@react-native-community/datetimepicker",
+      "expo-web-browser",
     ],
     extra: {
       eas: {

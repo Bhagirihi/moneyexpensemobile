@@ -17,24 +17,32 @@ import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { supabase } from "../config/supabase";
+import { supabase, signInWithGoogle } from "../config/supabase";
 import {
   capitalizeFirstLetter,
   formatCurrency,
-  formatDate,
   formatDateTime,
 } from "../utils/formatters";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { userService } from "../services/supabaseService";
 import { useAuth } from "../context/AuthContext";
+import { useAppSettings } from "../context/AppSettingsContext";
 import { useTranslation } from "../hooks/useTranslation";
 import { devLog } from "../utils/logger";
 import * as FileSystem from "expo-file-system";
 
+const getLocaleFromLanguage = (language) => {
+  if (language === "hi") return "hi-IN";
+  if (language === "en") return "en-US";
+  return "en-IN";
+};
+
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { language } = useAppSettings();
+  const locale = getLocaleFromLanguage(language);
   const scrollY = useRef(new Animated.Value(0)).current;
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,9 +55,10 @@ export const ProfileScreen = ({ navigation }) => {
   const [totalCategories, setTotalCategories] = useState(0);
   const [totalBoards, setTotalBoards] = useState(0);
   const featureAnimation = useRef(new Animated.Value(0)).current;
-  const [isGoogleconnected, setIsGoogleconnected] = useState(false);
   const [totalSharedMembers, setTotalSharedMembers] = useState(0);
   const { session } = useAuth();
+  const isGoogleconnected =
+    session?.user?.identities?.some((i) => i.provider === "google") ?? false;
 
   useEffect(() => {
     fetchUserProfile();
@@ -858,7 +867,17 @@ export const ProfileScreen = ({ navigation }) => {
             <Text
               style={[styles.statsDetailValue, { color: theme.textSecondary }]}
             >
-              {formatDate(userProfile?.created_at)}
+              {(() => {
+                const date =
+                  session?.user?.created_at || userProfile?.created_at;
+                return date
+                  ? new Date(date).toLocaleDateString(locale, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "";
+              })()}
             </Text>
           </View>
 
@@ -876,7 +895,10 @@ export const ProfileScreen = ({ navigation }) => {
             <Text
               style={[styles.statsDetailValue, { color: theme.textSecondary }]}
             >
-              {formatDateTime(userProfile?.updated_at)}
+              {formatDateTime(
+                session?.user?.last_sign_in_at || userProfile?.updated_at,
+                locale
+              )}
             </Text>
           </View>
 
@@ -936,12 +958,18 @@ export const ProfileScreen = ({ navigation }) => {
                     : theme.primary,
                 },
               ]}
-              onPress={() => {
-                Alert.alert(
-                  "Coming Soon",
-                  "Social connections will be available soon!"
-                );
+              onPress={async () => {
+                if (isGoogleconnected) return;
+                try {
+                  const { error } = await signInWithGoogle();
+                  if (error && !error?.message?.toLowerCase().includes("cancelled")) {
+                    Alert.alert(t("error"), error?.message || "Failed to connect Google");
+                  }
+                } catch (e) {
+                  Alert.alert(t("error"), e?.message || "Failed to connect Google");
+                }
               }}
+              disabled={isGoogleconnected}
             >
               <Text style={styles.connectButtonText}>
                 {isGoogleconnected ? "Connected" : "Connect"}

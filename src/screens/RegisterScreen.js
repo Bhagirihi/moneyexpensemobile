@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { signUpWithEmail } from "../config/supabase";
+import { signUpWithEmail, signInWithGoogle } from "../config/supabase";
 import CustomModal from "../components/common/CustomModal";
 import { showToast } from "../utils/toast";
 
@@ -35,6 +35,7 @@ const RegisterScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const validateForm = () => {
@@ -117,9 +118,33 @@ const RegisterScreen = ({ navigation }) => {
     navigation.navigate("Login");
   };
 
-  const handleGoogleSignUp = () => {
-    // Implement Google sign up logic
-    console.log("Google sign up attempted");
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true);
+    try {
+      const { data, error } = await signInWithGoogle();
+      if (error) throw error;
+      if (data?.user?.email_confirmed_at) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Dashboard" }],
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: "EmailVerification",
+              params: { email: data?.user?.email },
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      if (error?.message?.toLowerCase().includes("cancelled")) return;
+      showToast.error(error?.message || "Google sign-up failed");
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -394,6 +419,42 @@ const RegisterScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
+                or
+              </Text>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={handleGoogleSignUp}
+              disabled={googleLoading}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={theme.text} />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="google"
+                    size={22}
+                    color="#4285F4"
+                    style={styles.googleIcon}
+                  />
+                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
+                    Sign up with Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <View style={styles.loginContainer}>
               <Text style={[styles.loginText, { color: theme.textSecondary }]}>
                 Already have an account?{" "}
@@ -501,6 +562,34 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   registerButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 14,
+  },
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  googleIcon: {
+    marginRight: 10,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },
