@@ -44,6 +44,7 @@ import {
   sendPushNotification,
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
+import { useFocusEffect } from "@react-navigation/native";
 import { fetchDashboardData } from "../fetcher";
 import { useTranslation } from "../hooks/useTranslation";
 import { devLog } from "../utils/logger";
@@ -156,7 +157,24 @@ export const DashboardScreen = ({ navigation }) => {
   }, [loadProfile]);
 
   useEffect(() => {
-    fetchDashboardDataState(), fetchUnreadCount();
+    fetchDashboardDataState();
+    fetchUnreadCount();
+  }, []);
+
+  // Refetch Recent Transactions when screen comes into focus (e.g. after adding an expense)
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardDataState();
+    }, [])
+  );
+
+  // Real-time: refetch Recent Transactions when expenses change (unique channel to avoid double-subscribe)
+  useEffect(() => {
+    const unsubscribe = realTimeSync.subscribeToExpense(
+      () => fetchDashboardDataState(),
+      "realtime-expenses-dashboard"
+    );
+    return unsubscribe;
   }, []);
 
   const fetchDashboardDataState = async () => {
@@ -658,7 +676,7 @@ export const DashboardScreen = ({ navigation }) => {
         title={t("recentTransactions")}
         onSeeAllPress={() => navigation.navigate("Expense")}
         onDeletePress={handleDeletePress}
-        onExpensePress={(expense) => {}}
+        onExpensePress={(expense) => navigation.navigate("ExpenseDetails", { expense })}
         showHeader={true}
         showAllButton={true}
         showEmptyState={true}

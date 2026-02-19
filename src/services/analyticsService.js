@@ -16,7 +16,9 @@ export const fetchAnalytics = async (userId, period) => {
       .eq("created_by", userId);
 
     if (boardError) throw boardError;
-    if (!expenseBoard) throw new Error("No expense board found");
+    const boards = Array.isArray(expenseBoard) ? expenseBoard : expenseBoard ? [expenseBoard] : [];
+    const boardId = boards[0]?.id;
+    if (!boardId) throw new Error("No expense board found");
 
     // Calculate date range based on selected period
     const now = new Date();
@@ -54,7 +56,7 @@ export const fetchAnalytics = async (userId, period) => {
         )
       `
       )
-      .eq("board_id", expenseBoard.id)
+      .eq("board_id", boardId)
       .gte("date", startDate.toISOString())
       .order("date", { ascending: false });
 

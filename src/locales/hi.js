@@ -139,6 +139,26 @@ export default {
   totalSpending: "कुल खर्च",
   byCategory: "श्रेणी के अनुसार",
   noData: "कोई डेटा उपलब्ध नहीं",
+  selectPeriod: "अवधि चुनें",
+  noExpenseDataForPeriod: "इस अवधि के लिए कोई खर्च डेटा उपलब्ध नहीं",
+
+  // Analysis (trip/board breakdown)
+  analysis: "विश्लेषण",
+  selectedTrip: "चयनित यात्रा",
+  selectTrip: "यात्रा चुनें",
+  tripSummary: "यात्रा सारांश",
+  expense: "खर्च",
+  perPerson: "प्रति व्यक्ति",
+  underBudget: "बजट के अंतर्गत",
+  noParticipants: "कोई प्रतिभागी नहीं",
+  perPersonSpendingCount: "प्रति व्यक्ति खर्च ({{count}})",
+  paymentSettlements: "भुगतान निपटान",
+  whoNeedsToPayWhom: "किसे किसे भुगतान करना है",
+  allPaymentsSettled: "सभी भुगतान निपटा दिए गए!",
+  openAnalysisFromBoard: "विश्लेषण देखने के लिए किसी बोर्ड से खोलें।",
+  noBoardsToAnalyze: "विश्लेषण के लिए कोई बोर्ड नहीं।",
+  loadingAnalysis: "विश्लेषण लोड हो रहा है...",
+  percentOfTotal: "कुल का {{percent}}%",
 
   // Notifications
   notifications: "सूचनाएं",

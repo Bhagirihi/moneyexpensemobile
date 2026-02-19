@@ -224,10 +224,11 @@ export function realTimeSync(callback, channelName = "realtime-dashboard") {
   };
 }
 
-// Backward-compatible per-table subscriptions (used by ExpenseScreen, CategoriesScreen, etc.)
-realTimeSync.subscribeToExpense = (callback) => {
+// Backward-compatible per-table subscriptions. Use a unique channelName per caller to avoid "subscribe multiple times" error.
+realTimeSync.subscribeToExpense = (callback, channelName = "realtime-expenses") => {
+  const name = typeof channelName === "string" ? channelName : `realtime-expenses-${Date.now()}`;
   const channel = supabase
-    .channel("realtime-expenses")
+    .channel(name)
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, callback)
     .subscribe();
   return () => supabase.removeChannel(channel);

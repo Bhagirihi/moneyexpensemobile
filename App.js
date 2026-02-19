@@ -38,6 +38,7 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { InvitationsScreen } from "./src/screens/InvitationsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
+import { ExpenseDetailsScreen } from "./src/screens/ExpenseDetailsScreen";
 import * as SplashScreen from "expo-splash-screen";
 
 import { showToast } from "./src/utils/toast";
@@ -264,6 +265,10 @@ const AppContent = () => {
                     <Stack.Screen
                       name="ExpenseBoardDetails"
                       component={ExpenseBoardDetailsScreen}
+                    />
+                    <Stack.Screen
+                      name="ExpenseDetails"
+                      component={ExpenseDetailsScreen}
                     />
                     <Stack.Screen
                       name="CreateExpenseBoard"

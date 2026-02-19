@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
@@ -76,7 +77,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -255,12 +255,25 @@ const styles = StyleSheet.create({
     marginTop: 12,
     opacity: 0.7,
   },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });
 
 export const AnalyticsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [analytics, setAnalytics] = useState({
@@ -275,9 +288,10 @@ export const AnalyticsScreen = ({ navigation }) => {
     },
   });
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchAnalytics = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      setErrorMessage(null);
+      if (!isRefresh) setLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -326,47 +340,51 @@ export const AnalyticsScreen = ({ navigation }) => {
           },
           {
             title: "Top Category",
-            description: `${statistics?.categoryBreakdown[0]?.name},${statistics?.categoryBreakdown[1]?.name},and ${statistics?.categoryBreakdown[2]?.name} are the top 3 categories of your spending.`,
+            description: (() => {
+              const names = (statistics?.categoryBreakdown || [])
+                .slice(0, 3)
+                .map((c) => c?.name)
+                .filter(Boolean);
+              if (names.length === 0) return "Add expenses to see top categories.";
+              if (names.length === 1) return `${names[0]} is your top spending category.`;
+              const last = names.pop();
+              return `${names.join(", ")} and ${last} are your top spending categories.`;
+            })(),
             icon: "food",
             color: "#4ECDC4",
           },
           {
             title: "Savings Opportunity",
-            description: `You could save ${Math.abs(
-              statistics.previousPeriod?.percentageChange || 0
-            )}% by reducing ${statistics?.categoryBreakdown[0]?.name} expenses`,
+            description: (() => {
+              const top = statistics?.categoryBreakdown?.[0]?.name;
+              const pct = Math.abs(statistics?.previousPeriod?.percentageChange || 0);
+              if (!top) return "Track spending to find savings opportunities.";
+              return `You could save ${pct}% by reducing ${top} expenses`;
+            })(),
             icon: "piggy-bank",
             color: "#45B7D1",
           },
         ],
       };
 
-      await setAnalytics(analyticsData);
-      await setLoading(false);
+      setAnalytics(analyticsData);
     } catch (error) {
       console.error("Error fetching analytics:", error);
+      setErrorMessage(error?.message || "Couldn't load analytics");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [selectedPeriod]);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAnalytics(true);
+  };
+
   useEffect(() => {
-    const checkAnalytics = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const analytics = await fetchAnalytics(user.id, selectedPeriod);
-        const trends = await fetchExpenseTrends(user.id, selectedPeriod);
-      } catch (error) {
-        console.log("Error checking analytics:", error);
-      }
-    };
-
-    checkAnalytics();
-  }, [selectedPeriod]);
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const renderPeriodDropdown = () => (
     <TouchableOpacity
@@ -403,7 +421,7 @@ export const AnalyticsScreen = ({ navigation }) => {
         <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Select Period
+              {t("selectPeriod")}
             </Text>
             <TouchableOpacity onPress={() => setShowPeriodDropdown(false)}>
               <MaterialCommunityIcons
@@ -648,10 +666,38 @@ export const AnalyticsScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <Header title={t("analytics")} onBack={() => navigation.goBack()} />
-      <ScrollView style={styles.content}>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
+      >
         {renderPeriodDropdown()}
-        {loading ? (
+        {loading && !refreshing ? (
           <ActivityIndicator size="large" color={theme.primary} />
+        ) : errorMessage ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons
+              name="alert-circle-outline"
+              size={48}
+              color={theme.error}
+              style={{ marginBottom: 12 }}
+            />
+            <Text style={[styles.emptyStateText, { color: theme.text }]}>
+              {errorMessage}
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: theme.primary }]}
+              onPress={() => fetchAnalytics()}
+            >
+              <Text style={styles.retryButtonText}>
+                {t("retry") || "Retry"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : analytics.totalExpenses === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons
@@ -660,7 +706,7 @@ export const AnalyticsScreen = ({ navigation }) => {
               color={theme.textSecondary}
             />
             <Text style={[styles.emptyStateText, { color: theme.text }]}>
-              No expense data available for this period
+              {t("noExpenseDataForPeriod")}
             </Text>
           </View>
         ) : (

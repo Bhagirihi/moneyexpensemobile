@@ -120,9 +120,10 @@ export const ExpenseBoardDetailsScreen = () => {
   }, [boardId]);
 
   useEffect(() => {
-    const unsubscribe = realTimeSync.subscribeToExpense(() => {
-      fetchData(1, true);
-    });
+    const unsubscribe = realTimeSync.subscribeToExpense(
+      () => fetchData(1, true),
+      "realtime-expenses-board-details"
+    );
     return unsubscribe;
   }, [boardId]);
 

@@ -109,7 +109,10 @@ export const ExpenseScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchExpenses();
-    const EnpenseRealTimeSync = realTimeSync.subscribeToExpense(fetchExpenses);
+    const EnpenseRealTimeSync = realTimeSync.subscribeToExpense(
+      fetchExpenses,
+      "realtime-expenses-list"
+    );
     return () => {
       if (EnpenseRealTimeSync && typeof EnpenseRealTimeSync === "function") {
         EnpenseRealTimeSync();

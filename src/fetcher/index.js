@@ -32,13 +32,12 @@ const fetchDashboardData = async () => {
     dashboard.stats.totalExpenses = totalExpenses;
     dashboard.stats.remainingBudget = remainingBudget;
 
-    // Fetch recent transactions
-    const { data: transactionsData, error: transactionsError } =
-      await dashboardService.getRecentTransactions();
-    if (transactionsError) {
-      devLog("Error fetching transactions:", transactionsError);
+    // Fetch recent transactions (request enough for dashboard + buffer)
+    const result = await dashboardService.getRecentTransactions(20);
+    if (result.error) {
+      devLog("Error fetching transactions:", result.error);
     }
-    dashboard.recentTransactions = transactionsData;
+    dashboard.recentTransactions = Array.isArray(result.data) ? result.data : [];
     return dashboard;
   } catch (error) {
     console.error("Error fetching dashboard data:", error.message);

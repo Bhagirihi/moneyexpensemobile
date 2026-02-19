@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
@@ -17,42 +18,41 @@ import StatCard from "../components/common/StatCard";
 import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
 import { expenseBoardService } from "../services/expenseBoardService";
+import { useTranslation } from "../hooks/useTranslation";
 const { width } = Dimensions.get("window");
 
 export const AnalysisScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
-  const { boardId } = route.params;
-  console.log("boardId", boardId);
+  const { t } = useTranslation();
+  const boardId = route.params?.boardId;
   const [loading, setLoading] = useState(true);
   const [showTripSelector, setShowTripSelector] = useState(false);
-  const [selectedTrip, setSelectedTrip] = useState({
-    id: 1,
-    name: "Summer Vacation 2024",
-    date: "Jun 15 - Jun 30",
-  });
+  const [selectedTrip, setSelectedTrip] = useState(null);
   const [trips, setTrips] = useState([]);
   const [analysisData, setAnalysisData] = useState({
     totalExpense: 0,
     totalBudget: 0,
     perPersonBudget: 0,
-    participants: [
-      { id: 1, name: "John", spent: 800, percentage: 53.33 },
-      { id: 2, name: "Alice", spent: 400, percentage: 26.67 },
-      { id: 3, name: "Bob", spent: 300, percentage: 20 },
-    ],
-    settlements: [
-      { from: "Alice", to: "John", amount: 150 },
-      { from: "Bob", to: "John", amount: 200 },
-    ],
+    participantCount: 0,
+    participants: [],
+    settlements: [],
   });
+  const [missingBoardId, setMissingBoardId] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchBoardsDetails(boardId);
-  }, []);
+    if (boardId) {
+      setMissingBoardId(false);
+      fetchBoardsDetails(boardId);
+    } else {
+      setMissingBoardId(true);
+      setLoading(false);
+    }
+  }, [boardId]);
 
   useEffect(() => {
-    fetchAnalysisData();
-  }, [selectedTrip]);
+    if (selectedTrip?.id) fetchAnalysisData();
+  }, [selectedTrip?.id]);
 
   const fetchBoardsDetails = async (boardId) => {
     try {
@@ -81,11 +81,10 @@ export const AnalysisScreen = ({ navigation, route }) => {
         date: new Date(board.created_at).toLocaleDateString(),
         total_budget: board.total_budget,
       }));
-      console.log("formattedBoards", formattedBoards);
       setTrips(formattedBoards);
       if (formattedBoards.length > 0) {
-        const selected = formattedBoards.find((board) => board.id === boardId);
-        setSelectedTrip(selected || formattedBoards[0]);
+        const selected = formattedBoards.find((board) => board.id === boardId) || formattedBoards[0];
+        setSelectedTrip(selected);
       }
     } catch (error) {
       console.error("Error fetching boards details:", error);
@@ -94,19 +93,30 @@ export const AnalysisScreen = ({ navigation, route }) => {
     }
   };
 
+  const onRefresh = async () => {
+    if (!boardId) return;
+    setRefreshing(true);
+    try {
+      await fetchBoardsDetails(boardId);
+      if (selectedTrip?.id) await fetchAnalysisData();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const fetchAnalysisData = async () => {
+    if (!selectedTrip?.id) return;
     try {
       const data = await expenseBoardService.getExpenseBoardsByID(
         selectedTrip.id
       );
 
-      // Calculate per person budget properly
       const totalBudget = Number(data.totalBudget);
       const totalExpenses = Number(data.totalExpenses);
-      const participantCount = data.participants?.length; // Fallback to 1 if no participants
+      const participantCount = data.participants?.length ?? 0;
       const perPersonBudget = Number(data.perPersonBudget);
-      const participant = data.participants;
-      const settlements = data.settlements;
+      const participant = data.participants ?? [];
+      const settlements = data.settlements ?? [];
 
       setAnalysisData({
         totalExpense: totalExpenses,
@@ -121,9 +131,11 @@ export const AnalysisScreen = ({ navigation, route }) => {
     }
   };
 
-  const renderTripSelector = () => (
+  const renderTripSelector = () => {
+    if (!selectedTrip) return null;
+    return (
     <TouchableOpacity
-      style={[styles.tripSelector, { backgroundColor: theme.cardBackground }]}
+      style={[styles.tripSelector, { backgroundColor: theme.cardBackground || theme.card }]}
       onPress={() => setShowTripSelector(true)}
     >
       <View style={styles.tripSelectorContent}>
@@ -131,7 +143,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
           <Text
             style={[styles.tripSelectorLabel, { color: theme.textSecondary }]}
           >
-            Selected Trip
+            {t("selectedTrip")}
           </Text>
           <Text style={[styles.tripSelectorName, { color: theme.text }]}>
             {selectedTrip.name}
@@ -150,6 +162,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
       </View>
     </TouchableOpacity>
   );
+  };
 
   const renderTripSelectorModal = () => (
     <Modal
@@ -169,7 +182,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
         >
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Select Trip
+              {t("selectTrip")}
             </Text>
             <TouchableOpacity onPress={() => setShowTripSelector(false)}>
               <MaterialCommunityIcons
@@ -236,27 +249,27 @@ export const AnalysisScreen = ({ navigation, route }) => {
             style={styles.cardHeaderIcon}
           />
           <Text style={[styles.cardTitle, { color: theme.text }]}>
-            Trip Summary
+            {t("tripSummary")}
           </Text>
         </View>
       </View>
       <View style={styles.summaryGrid}>
         <StatCard
-          title="Expense"
+          title={t("expense")}
           value={formatCurrency(Number(analysisData.totalExpense.toFixed(2)))}
           icon="cash-multiple"
           style={styles.summaryItem}
           valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
-          title="Budget"
+          title={t("budget")}
           value={formatCurrency(Number(analysisData.totalBudget.toFixed(2)))}
           icon="wallet"
           style={styles.summaryItem}
           valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
-          title="Per Person"
+          title={t("perPerson")}
           value={formatCurrency(
             Number(analysisData.perPersonBudget.toFixed(2))
           )}
@@ -265,11 +278,11 @@ export const AnalysisScreen = ({ navigation, route }) => {
           valueStyle={{ fontSize: 16, fontWeight: "600" }}
         />
         <StatCard
-          title="Status"
+          title={t("status")}
           value={
             analysisData.totalExpense > analysisData.totalBudget
-              ? "Over Budget"
-              : "Under Budget"
+              ? t("overBudget")
+              : t("underBudget")
           }
           icon={
             analysisData.totalExpense > analysisData.totalBudget
@@ -300,8 +313,8 @@ export const AnalysisScreen = ({ navigation, route }) => {
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, { color: theme.text }]}>
           {analysisData.participantCount > 0
-            ? `Per Person Spending (${analysisData.participantCount})`
-            : "No participants"}
+            ? t("perPersonSpendingCount").replace("{{count}}", String(analysisData.participantCount))
+            : t("noParticipants")}
         </Text>
         <MaterialCommunityIcons
           name="account-group"
@@ -345,7 +358,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
                   { color: theme.textSecondary, fontWeight: "800" },
                 ]}
               >
-                {participant.percentage}% of total
+                {t("percentOfTotal").replace("{{percent}}", String(participant.percentage))}
               </Text>
             </View>
           </View>
@@ -362,10 +375,10 @@ export const AnalysisScreen = ({ navigation, route }) => {
       <View style={styles.cardHeader}>
         <View>
           <Text style={[styles.cardTitle, { color: theme.text }]}>
-            Payment Settlements
+            {t("paymentSettlements")}
           </Text>
           <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
-            Who needs to pay whom
+            {t("whoNeedsToPayWhom")}
           </Text>
         </View>
         <MaterialCommunityIcons
@@ -439,13 +452,13 @@ export const AnalysisScreen = ({ navigation, route }) => {
             color={theme.success}
             style={styles.emptySettlementsIcon}
           />
-          <Text
-            style={[
-              styles.emptySettlementsText,
-              { color: theme.textSecondary },
-            ]}
+            <Text
+              style={[
+                styles.emptySettlementsText,
+                { color: theme.textSecondary },
+              ]}
           >
-            All payments are settled!
+            {t("allPaymentsSettled")}
           </Text>
         </View>
       )}
@@ -457,7 +470,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
-        <Header title="Analysis" onBack={() => navigation.goBack()} />
+        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <MaterialCommunityIcons
             name="loading"
@@ -466,7 +479,43 @@ export const AnalysisScreen = ({ navigation, route }) => {
             style={styles.loadingIcon}
           />
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            Loading analysis...
+            {t("loadingAnalysis")}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (missingBoardId) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <MaterialCommunityIcons
+            name="chart-box-outline"
+            size={48}
+            color={theme.textSecondary}
+            style={styles.loadingIcon}
+          />
+          <Text style={[styles.loadingText, { color: theme.text }]}>
+            {t("openAnalysisFromBoard")}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!selectedTrip) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.background }]}
+      >
+        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            {t("noBoardsToAnalyze")}
           </Text>
         </View>
       </SafeAreaView>
@@ -477,8 +526,16 @@ export const AnalysisScreen = ({ navigation, route }) => {
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <Header title="Analysis" onBack={() => navigation.goBack()} />
-      <ScrollView style={styles.content}>
+      <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
+      >
         {renderTripSelector()}
         {renderSummaryCard()}
         {renderParticipantSpending()}

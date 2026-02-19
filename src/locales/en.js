@@ -139,6 +139,26 @@ export default {
   totalSpending: "Total Spending",
   byCategory: "By Category",
   noData: "No data available",
+  selectPeriod: "Select Period",
+  noExpenseDataForPeriod: "No expense data available for this period",
+
+  // Analysis (trip/board breakdown)
+  analysis: "Analysis",
+  selectedTrip: "Selected Trip",
+  selectTrip: "Select Trip",
+  tripSummary: "Trip Summary",
+  expense: "Expense",
+  perPerson: "Per Person",
+  underBudget: "Under Budget",
+  noParticipants: "No participants",
+  perPersonSpendingCount: "Per Person Spending ({{count}})",
+  paymentSettlements: "Payment Settlements",
+  whoNeedsToPayWhom: "Who needs to pay whom",
+  allPaymentsSettled: "All payments are settled!",
+  openAnalysisFromBoard: "Open Analysis from a board to see breakdown.",
+  noBoardsToAnalyze: "No boards to analyze.",
+  loadingAnalysis: "Loading analysis...",
+  percentOfTotal: "{{percent}}% of total",
 
   // Notifications
   notifications: "Notifications",
