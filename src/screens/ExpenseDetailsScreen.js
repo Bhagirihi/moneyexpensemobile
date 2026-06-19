@@ -3,9 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
+  TouchableOpacity,  ScrollView,
   ActivityIndicator,
   Alert,
   Platform,
@@ -13,6 +11,7 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { expenseService } from "../services/expenseService";
 import { showToast } from "../utils/toast";
 import { formatCurrency, formatDateTime } from "../utils/formatters";
@@ -108,25 +107,23 @@ export const ExpenseDetailsScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <Header title={t("expenseDetails") || "Expense Details"} onBack={() => navigation.goBack()} />
+      <ScreenLayout header={<Header title={t("expenseDetails") || "Expense Details"} onBack={() => navigation.goBack()} />}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   if (!expense) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <Header title={t("expenseDetails") || "Expense Details"} onBack={() => navigation.goBack()} />
+      <ScreenLayout header={<Header title={t("expenseDetails") || "Expense Details"} onBack={() => navigation.goBack()} />}>
         <View style={styles.centered}>
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
             {t("expenseNotFound") || "Expense not found"}
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
@@ -137,8 +134,7 @@ export const ExpenseDetailsScreen = ({ navigation, route }) => {
   const iconColor = expense.color || expense.category?.color || theme.primary;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Header
+    <ScreenLayout header={<Header
         title={t("expenseDetails") || "Expense Details"}
         onBack={() => navigation.goBack()}
         rightComponent={
@@ -162,7 +158,7 @@ export const ExpenseDetailsScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         }
-      />
+      />}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -221,7 +217,7 @@ export const ExpenseDetailsScreen = ({ navigation, route }) => {
           ) : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -275,7 +271,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...Platform.select({
       ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
-      android: { elevation: 3 },
+      android: {},
     }),
   },
   iconWrap: {
@@ -305,7 +301,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...Platform.select({
       ios: { shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8 },
-      android: { elevation: 3 },
+      android: {},
     }),
   },
   sectionTitle: {

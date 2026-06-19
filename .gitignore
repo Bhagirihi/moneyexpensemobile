@@ -128,3 +128,6 @@ android/build/
 *.pid
 *.gz
 *.swp
+
+# Store submission credentials
+google-play-service-account.json

@@ -2,10 +2,8 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { supabase } from "../config/supabase";
-import { Alert } from "react-native";
 import { formatCurrency } from "../utils/formatters";
 
-// Function to register for push notifications and save the token
 export async function registerForPushNotificationsAsync() {
   const {
     data: { session },
@@ -13,56 +11,15 @@ export async function registerForPushNotificationsAsync() {
   } = await supabase.auth.getSession();
 
   if (sessionError || !session?.user) {
-    console.error(
-      "Session error:",
-      sessionError?.message || "No user session found"
-    );
-    Alert.alert("Login required to get push notifications!");
     return null;
   }
 
   if (!Device.isDevice) {
-    Alert.alert("Must use physical device for Push Notifications!");
     return null;
   }
 
-  // Check for existing notification permissions
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
-
-  if (existingStatus === "denied") {
-    return new Promise((resolve) => {
-      Alert.alert(
-        "Notifications Blocked",
-        "Push notifications are currently denied. Would you like to allow them?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-            onPress: () => resolve(null),
-          },
-          {
-            text: "Allow",
-            onPress: async () => {
-              const { status } = await Notifications.requestPermissionsAsync();
-              if (status === "granted") {
-                const tokenData = await Notifications.getExpoPushTokenAsync();
-                const token = tokenData?.data;
-                if (token) await savePushTokenToProfile(session.user.id, token);
-                resolve(token ?? null);
-              } else {
-                Alert.alert(
-                  "Permission Denied",
-                  "You did not enable notifications."
-                );
-                resolve(null);
-              }
-            },
-          },
-        ]
-      );
-    });
-  }
 
   if (existingStatus !== "granted") {
     const { status } = await Notifications.requestPermissionsAsync();
@@ -70,7 +27,6 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (finalStatus !== "granted") {
-    Alert.alert("Failed to get push token for push notification!");
     return null;
   }
 
@@ -90,7 +46,6 @@ export async function registerForPushNotificationsAsync() {
     });
   }
 
-  // Actually get and save the token (was missing – function returned undefined)
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync();
     const token = tokenData?.data ?? null;
@@ -110,35 +65,25 @@ async function savePushTokenToProfile(userId, expoPushToken) {
       .eq("id", userId);
     if (error) {
       console.error("Error saving push token to profile:", error.message);
-      return;
     }
-    console.log("✅ Push token saved to profile");
   } catch (e) {
     console.error("Error saving push token:", e);
   }
 }
 
-// Function to send a push notification (shows immediately)
-export async function sendPushNotification(title, message) {
+export async function sendPushNotification(title, message, data = {}) {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: title,
+      title,
       body: message,
       sound: "default",
-      data: { screen: "SomeScreen" },
+      data,
     },
-    trigger: null, // null = show immediately (required by Expo SDK)
+    trigger: null,
   });
 }
 
-export async function sendNotification(
-  type = "info",
-  title = "New Notification",
-  message = "You have a new notification!",
-  tripName = null,
-  icon = "dots-horizontal",
-  iconColor = "#000000"
-) {
+export async function sendNotification(payloadOrType, titleArg, messageArg, tripNameArg, iconArg, iconColorArg) {
   try {
     const {
       data: { session },
@@ -146,23 +91,31 @@ export async function sendNotification(
     } = await supabase.auth.getSession();
 
     if (sessionError || !session?.user) {
-      console.error(
-        "Session error:",
-        sessionError?.message || "No user session found"
-      );
-      Alert.alert("Login required to get push notifications!");
       return null;
     }
+
+    const payload =
+      typeof payloadOrType === "object" && payloadOrType !== null
+        ? payloadOrType
+        : {
+            type: payloadOrType || "info",
+            title: titleArg || "New Notification",
+            message: messageArg || "You have a new notification!",
+            tripName: tripNameArg,
+            icon: iconArg || "dots-horizontal",
+            iconColor: iconColorArg || "#000000",
+          };
+
     const { error } = await supabase.from("notifications").insert([
       {
         user_id: session.user.id,
-        type: type,
-        title: title,
-        message: message,
-        trip_name: tripName,
-        icon: icon,
-        icon_color: iconColor,
-        read: false, // new notifications are unread by default
+        type: payload.type || "info",
+        title: payload.title,
+        message: payload.message,
+        trip_name: payload.tripName ?? payload.boardName ?? null,
+        icon: payload.icon || "dots-horizontal",
+        icon_color: payload.iconColor || "#000000",
+        read: false,
       },
     ]);
 
@@ -170,42 +123,28 @@ export async function sendNotification(
       console.error("Error sending notification:", error.message);
       throw new Error(error.message);
     }
-
-    console.log("Notification sent successfully.");
   } catch (err) {
     console.error("sendNotification error:", err.message);
   }
 }
 
-// Handle foreground notifications
 export function handleForegroundNotifications() {
   Notifications.addNotificationReceivedListener((notification) => {
     console.log("Notification received in foreground:", notification);
-    // Handle the notification (show an alert, update UI, etc.)
-  });
-
-  Notifications.addNotificationResponseReceivedListener((response) => {
-    console.log("Notification clicked:", response);
-    // Handle the user click (navigate, perform an action, etc.)
   });
 }
 
-// Handle background notifications
 export function handleBackgroundNotifications() {
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      console.log("Notification received in background:", notification);
-      // Modify notification behavior (e.g., sound, priority)
-      return {
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      };
-    },
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
   });
 }
 
-// Notification Triggers
 export async function sendCreateExpenseBoardNotification({
   boardName,
   icon,
@@ -216,13 +155,13 @@ export async function sendCreateExpenseBoardNotification({
     title: "Expense board created",
     message: "Your expense board has been created successfully",
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
+    icon,
+    iconColor,
   });
 
   await sendPushNotification(
-    `Your expense board ${boardName} has been created successfully`,
-    "Expense board created"
+    "Expense board created",
+    `Your expense board "${boardName}" has been created successfully`
   );
 }
 
@@ -236,13 +175,13 @@ export async function sendExpenseBoardInviteNotification({
     type: "info",
     title: "Expense board invited",
     message: "You have been invited to an expense board",
-    tripName: inviteeName,
-    icon: icon,
-    iconColor: iconColor,
+    tripName: boardName || inviteeName,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `You have been invited to an expense board ${boardName}`,
-    "Expense board invited"
+    "Expense board invited",
+    `You have been invited to an expense board${boardName ? `: ${boardName}` : ""}`
   );
 }
 
@@ -256,12 +195,12 @@ export async function sendExpenseBoardDeletedNotification({
     title: "Expense board deleted",
     message: `"${boardName}" has been deleted.`,
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `Expense board "${boardName}" has been deleted`,
-    "Expense board deleted"
+    "Expense board deleted",
+    `Expense board "${boardName}" has been deleted`
   );
 }
 
@@ -275,14 +214,14 @@ export async function sendCreateExpenseNotification({
   await sendNotification({
     type: "info",
     title: "Expense created",
-    message: `You have created an expense of ${formatCurrency(expenseAmount)}.`,
+    message: `You created an expense of ${formatCurrency(expenseAmount)}.`,
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `You have created ${expenseName} expense of ${expenseAmount}`,
-    "Expense created"
+    "Expense created",
+    `${expenseName}: ${formatCurrency(expenseAmount)}`
   );
 }
 
@@ -297,13 +236,12 @@ export async function sendCreateCategoryNotification({
     title: "Category created",
     message: "You have created a category",
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-    categoryName: categoryName,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `You have created a category ${categoryName}`,
-    "Category created"
+    "Category created",
+    `Category "${categoryName}" was created`
   );
 }
 
@@ -318,13 +256,12 @@ export async function sendDeleteCategoryNotification({
     title: "Category deleted",
     message: "You have deleted a category",
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-    categoryName: categoryName,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `You have deleted a category ${categoryName}`,
-    "Category deleted"
+    "Category deleted",
+    `Category "${categoryName}" was deleted`
   );
 }
 
@@ -339,13 +276,12 @@ export async function sendUpdateCategoryNotification({
     title: "Category updated",
     message: "You have updated a category",
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-    categoryName: categoryName,
+    icon,
+    iconColor,
   });
   await sendPushNotification(
-    `You have updated a category ${categoryName}`,
-    "Category updated"
+    "Category updated",
+    `Category "${categoryName}" was updated`
   );
 }
 
@@ -357,42 +293,36 @@ export async function sendExpenseOverBudgetNotification({
   expenseAmount,
 }) {
   await sendNotification({
-    type: "info",
+    type: "warning",
     title: "Expense over budget",
-    message: "You have exceeded your budget",
+    message: `Spending on "${boardName}" has reached ${formatCurrency(expenseAmount)} of ${formatCurrency(budgetAmount)}.`,
     tripName: boardName,
-    icon: icon,
-    iconColor: iconColor,
-    budgetAmount: budgetAmount,
-    expenseAmount: expenseAmount,
+    icon: icon || "alert",
+    iconColor: iconColor || "#F44336",
   });
   await sendPushNotification(
-    `You have exceeded your budget ${expenseAmount}`,
-    "Expense over budget"
+    "Expense over budget",
+    `"${boardName}" is at ${formatCurrency(expenseAmount)}`
   );
 }
 
 export async function sendExpenseDeletedNotification({
-  boardName = "Board Name",
+  boardName = "Board",
   icon = "dots-horizontal",
   iconColor = "#000000",
-  expenseName = "Expense Name",
+  expenseName = "Expense",
   expenseAmount = 0,
 }) {
-  await sendNotification(
-    "info",
-    "Expense deleted",
-    `You have deleted ${expenseName} expense of ${formatCurrency(
-      expenseAmount
-    )}`,
-    boardName,
+  await sendNotification({
+    type: "info",
+    title: "Expense deleted",
+    message: `You deleted ${expenseName} (${formatCurrency(expenseAmount)}).`,
+    tripName: boardName,
     icon,
-    iconColor
-  );
+    iconColor,
+  });
   await sendPushNotification(
-    `You have deleted ${expenseName} expense of ${formatCurrency(
-      expenseAmount
-    )} from ${boardName}`,
-    "Expense deleted"
+    "Expense deleted",
+    `${expenseName} removed from ${boardName}`
   );
 }

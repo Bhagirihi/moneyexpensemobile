@@ -3,56 +3,43 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
+  TextInput,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { supabase, signInWithGoogle } from "../config/supabase";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { showToast } from "../utils/toast";
+import { isValidEmail } from "../utils/validation";
+import AuthShell from "../components/ui/AuthShell";
+import FormButton from "../components/common/FormButton";
+import { spacing, typography } from "../theme/tokens";
 
 export const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    }
+    if (!formData.email.trim()) newErrors.email = "Email is required";
+    else if (!isValidEmail(formData.email)) newErrors.email = "Please enter a valid email";
+    if (!formData.password) newErrors.password = "Password is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email.trim(),
         password: formData.password,
       });
-      console.log("SUCCESS LOGIN", data);
-
       if (error) {
         if (
           error.message === "Email not confirmed" ||
@@ -60,24 +47,15 @@ export const LoginScreen = ({ navigation }) => {
         ) {
           navigation.reset({
             index: 0,
-            routes: [
-              {
-                name: "EmailVerification",
-                params: { email: formData.email.trim() },
-              },
-            ],
+            routes: [{ name: "EmailVerification", params: { email: formData.email.trim() } }],
           });
           return;
         }
         showToast.error(error.message || "Failed to login");
         return;
       }
-      if (data?.user?.email_confirmed_at) {
-        navigation.replace("Dashboard");
-      }
-      // Session exists but email not verified: App will show EmailVerification (protected stack)
+      if (data?.user?.email_confirmed_at) navigation.replace("Dashboard");
     } catch (error) {
-      console.error("Login error:", error.message);
       showToast.error(error.message || "Failed to login");
     } finally {
       setLoading(false);
@@ -89,363 +67,166 @@ export const LoginScreen = ({ navigation }) => {
     try {
       const { data, error } = await signInWithGoogle();
       if (error) throw error;
-      if (data?.user?.email_confirmed_at) {
-        navigation.replace("Dashboard");
-      } else {
-        navigation.replace("EmailVerification", {
-          email: data?.user?.email,
-        });
-      }
+      if (data?.user?.email_confirmed_at) navigation.replace("Dashboard");
+      else navigation.replace("EmailVerification", { email: data?.user?.email });
     } catch (error) {
-      if (error?.message?.toLowerCase().includes("cancelled")) return;
-      showToast.error(error?.message || "Google sign-in failed");
+      if (!error?.message?.toLowerCase().includes("cancelled")) {
+        showToast.error(error?.message || "Google sign-in failed");
+      }
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoid}
+  const renderField = (label, key, options = {}) => (
+    <View style={styles.field}>
+      <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+      <View
+        style={[
+          styles.inputWrap,
+          {
+            backgroundColor: theme.inputBackground,
+            borderColor: errors[key] ? theme.error : theme.border,
+          },
+        ]}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            {/* <MaterialCommunityIcons
-              name="wallet-outline"
-              size={64}
-              color={theme.primary}
-            /> */}
-            <Image
-              source={require("../../assets/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-              tintColor={theme.primary}
+        <MaterialCommunityIcons
+          name={options.icon}
+          size={20}
+          color={theme.textMuted}
+          style={styles.inputIcon}
+        />
+        <TextInput
+          style={[styles.input, { color: theme.text }]}
+          placeholder={options.placeholder}
+          placeholderTextColor={theme.textMuted}
+          value={formData[key]}
+          onChangeText={(text) => {
+            setFormData((p) => ({ ...p, [key]: text }));
+            if (errors[key]) setErrors((p) => ({ ...p, [key]: undefined }));
+          }}
+          secureTextEntry={options.secure && !showPassword}
+          keyboardType={options.keyboard || "default"}
+          autoCapitalize={options.autoCapitalize || "none"}
+        />
+        {options.secure ? (
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+            <MaterialCommunityIcons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color={theme.textMuted}
             />
-            <Text
-              adjustsFontSizeToFit
-              style={[
-                styles.title,
-                {
-                  color: theme.text,
-                  fontFamily: "Poppins-Bold",
-                  fontWeight: "bold",
-                },
-              ]}
-            >
-              Welcome Back
-            </Text>
-            <Text
-              adjustsFontSizeToFit
-              style={[
-                styles.subtitle,
-                {
-                  color: theme.textSecondary,
-                  fontFamily: "Poppins-Light",
-                  fontWeight: "200",
-                },
-              ]}
-            >
-              SignIn to continue tracking
-            </Text>
-          </View>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+      {errors[key] ? (
+        <Text style={[styles.error, { color: theme.error }]}>{errors[key]}</Text>
+      ) : null}
+    </View>
+  );
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.email ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="email-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter your email"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.email}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, email: text }));
-                    if (errors.email) {
-                      setErrors((prev) => ({ ...prev, email: undefined }));
-                    }
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              {errors.email && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.email}
-                </Text>
-              )}
-            </View>
+  return (
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to track trips, split bills, and manage budgets"
+      footer={
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+            Don't have an account?{" "}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+            <Text style={[styles.footerLink, { color: theme.primary }]}>Create account</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      {renderField("Email", "email", {
+        icon: "email-outline",
+        placeholder: "you@example.com",
+        keyboard: "email-address",
+      })}
+      {renderField("Password", "password", {
+        icon: "lock-outline",
+        placeholder: "Your password",
+        secure: true,
+      })}
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Password
-              </Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.password ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="lock-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter your password"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.password}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, password: text }));
-                    if (errors.password) {
-                      setErrors((prev) => ({ ...prev, password: undefined }));
-                    }
-                  }}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.passwordToggle}
-                >
-                  <MaterialCommunityIcons
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color={theme.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.password}
-                </Text>
-              )}
-            </View>
+      <TouchableOpacity
+        style={styles.forgot}
+        onPress={() => navigation.navigate("ForgotPassword")}
+      >
+        <Text style={[styles.forgotText, { color: theme.primary }]}>Forgot password?</Text>
+      </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => navigation.navigate("ForgotPassword")}
-            >
-              <Text
-                style={[styles.forgotPasswordText, { color: theme.primary }]}
-              >
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
+      <FormButton title="Sign in" onPress={handleLogin} loading={loading} size="large" />
 
-            <TouchableOpacity
-              style={[styles.loginButton, { backgroundColor: theme.primary }]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.white} />
-              ) : (
-                <Text style={[styles.loginButtonText, { color: theme.white }]}>
-                  Sign In
-                </Text>
-              )}
-            </TouchableOpacity>
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Text style={[styles.dividerText, { color: theme.textMuted }]}>or</Text>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      </View>
 
-            <View style={styles.dividerContainer}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-                or
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.googleButton,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={handleGoogleLogin}
-              disabled={googleLoading}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color={theme.text} />
-              ) : (
-                <>
-                  <MaterialCommunityIcons
-                    name="google"
-                    size={22}
-                    color="#4285F4"
-                    style={styles.googleIcon}
-                  />
-                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
-                    Sign in with Google
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.registerContainer}>
-              <Text
-                style={[styles.registerText, { color: theme.textSecondary }]}
-              >
-                Don't have an account?{" "}
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-                <Text style={[styles.registerLink, { color: theme.primary }]}>
-                  Sign Up
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <TouchableOpacity
+        style={[styles.googleBtn, { borderColor: theme.border, backgroundColor: theme.inputBackground }]}
+        onPress={handleGoogleLogin}
+        disabled={googleLoading}
+        activeOpacity={0.85}
+      >
+        {googleLoading ? (
+          <Text style={{ color: theme.text }}>...</Text>
+        ) : (
+          <>
+            <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+            <Text style={[styles.googleText, { color: theme.text }]}>Continue with Google</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </AuthShell>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  header: {
-    alignItems: "center",
-    // marginTop: 40,
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    // marginTop: 16,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    opacity: 0.7,
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  inputWrapper: {
+  field: { marginBottom: spacing.lg },
+  label: { ...typography.label, marginBottom: spacing.sm },
+  inputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    minHeight: 52,
   },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-  },
-  passwordToggle: {
-    padding: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-  },
-  logo: {
-    height: 100,
-    width: 200,
-  },
-  loginButton: {
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  loginButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  dividerContainer: {
+  inputIcon: { marginRight: spacing.sm },
+  input: { flex: 1, fontSize: 16, paddingVertical: spacing.md },
+  eyeBtn: { padding: spacing.sm },
+  error: { fontSize: 12, marginTop: spacing.xs },
+  forgot: { alignSelf: "flex-end", marginBottom: spacing.lg, marginTop: -spacing.sm },
+  forgotText: { ...typography.caption },
+  dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
-    gap: 12,
+    marginVertical: spacing.xl,
+    gap: spacing.md,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 14,
-  },
-  googleButton: {
+  divider: { flex: 1, height: 1 },
+  dividerText: { ...typography.caption },
+  googleBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
+    gap: spacing.sm,
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  registerContainer: {
+  googleText: { ...typography.label },
+  footer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 16,
+    flexWrap: "wrap",
   },
-  registerText: {
-    fontSize: 14,
-  },
-  registerLink: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  footerText: { fontSize: 14 },
+  footerLink: { fontSize: 14, fontWeight: "700" },
 });
 
 export default LoginScreen;

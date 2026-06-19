@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   Text,
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
     minWidth: 100,
   },
   boardIcon: {
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
     minWidth: 100,
   },
   addNewIcon: {

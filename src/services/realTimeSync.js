@@ -1,271 +1,94 @@
-// import { supabase } from "../config/supabase";
-
-// export const realTimeSync = {
-//   // Set up real-time subscriptions
-//   subscribeToDashboard(callback) {
-//     // Subscribe to expense changes
-//     const expensesSubscription = supabase
-//       .channel("expenses_changes")
-//       .on(
-//         "postgres_changes",
-//         {
-//           event: "*",
-//           schema: "public",
-//           table: "expenses",
-//         },
-//         (payload) => {
-//           console.log("Expense change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-
-//     // Subscribe to expense board changes
-//     const boardsSubscription = supabase
-//       .channel("boards_changes")
-//       .on(
-//         "postgres_changes",
-//         {
-//           event: "*",
-//           schema: "public",
-//           table: "expense_boards",
-//         },
-//         (payload) => {
-//           console.log("Board change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-
-//     // Subscribe to category changes
-//     const categoriesSubscription = supabase
-//       .channel("categories_changes")
-//       .on(
-//         "postgres_changes",
-//         {
-//           event: "*",
-//           schema: "public",
-//           table: "categories",
-//         },
-//         (payload) => {
-//           console.log("Category change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-
-//     // Return cleanup function
-//     return () => {
-//       expensesSubscription.unsubscribe();
-//       boardsSubscription.unsubscribe();
-//       categoriesSubscription.unsubscribe();
-//     };
-//   },
-
-//   // Subscribe to new notifications
-//   subscribeToNotifications: (callback) => {
-//     return supabase
-//       .channel("notifications")
-//       .on(
-//         "postgres_changes",
-//         {
-//           event: "INSERT",
-//           schema: "public",
-//           table: "notifications",
-//         },
-//         async (payload) => {
-//           // Fetch full notification details when new notification arrives
-//           const { data: notificationDetails } = await supabase
-//             .from("notifications")
-//             .select("*")
-//             .eq("id", payload.new.id)
-//             .single();
-//           callback(notificationDetails);
-//         }
-//       )
-//       .subscribe();
-//   },
-
-//   // Subscribe to expense board changes
-//   subscribeToExpenseBoard: (callback) => {
-//     return supabase
-//       .channel("expense_boards")
-//       .on(
-//         "postgres_changes",
-//         { event: "*", schema: "public", table: "expense_boards" },
-//         (payload) => {
-//           console.log("Expense change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-//   },
-
-//   // Subscribe to expense changes
-//   subscribeToExpense: (callback) => {
-//     return supabase
-//       .channel("expenses")
-//       .on(
-//         "postgres_changes",
-//         { event: "*", schema: "public", table: "expenses" },
-//         (payload) => {
-//           console.log("Expense change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-//   },
-
-//   // Subscribe to category changes
-//   subscribeToCategory: (callback) => {
-//     return supabase
-//       .channel("categories")
-//       .on(
-//         "postgres_changes",
-//         { event: "*", schema: "public", table: "categories" },
-//         (payload) => {
-//           console.log("Category change received:", payload);
-//           callback();
-//         }
-//       )
-//       .subscribe();
-//   },
-
-//   subscribeToProfile: (callback) => {
-//     const channel = supabase
-//       .channel("profile_changes")
-//       .on(
-//         "postgres_changes",
-//         { event: "*", schema: "public", table: "profiles" },
-//         (payload) => {
-//           console.log("Profile change received:", payload);
-//           callback();
-//         }
-//       );
-//     // ✅ Only one subscribe per channel instance
-//     // Subscribe and confirm connection
-//     channel.subscribe((status) => {
-//       if (status === "SUBSCRIBED") {
-//         console.log("✅ Subscribed to profile changes");
-//       }
-//     });
-
-//     // 🧹 Cleanup on unmount
-//     return () => {
-//       supabase.removeChannel(channel);
-//       console.log("🧹 Unsubscribed from profile changes");
-//     };
-//   },
-
-//   subscribeToVerification: (callback) => {
-//     return supabase
-//       .channel("verification")
-//       .on(
-//         "postgres_changes",
-//         { event: "*", schema: "public", table: "verification" },
-//         callback
-//       )
-//       .subscribe();
-//   },
-// };
-
 import { supabase } from "../config/supabase";
 import { devLog } from "../utils/logger";
-import React, { useEffect } from "react";
+
+let channelSeq = 0;
+
+/** Unique physical channel name — avoids double-subscribe when effects remount. */
+function uniqueChannelName(prefix) {
+  channelSeq += 1;
+  return `${prefix}-${channelSeq}`;
+}
+
+function removeStaleChannels(prefix) {
+  const topicPrefix = `realtime:${prefix}`;
+  supabase.getChannels().forEach((ch) => {
+    if (ch.topic === topicPrefix || ch.topic?.startsWith(`${topicPrefix}-`)) {
+      supabase.removeChannel(ch);
+    }
+  });
+}
 
 /**
- * @param {() => void} callback - Called when any subscribed table changes
- * @param {string} [channelName] - Unique channel name. Use different names per screen to avoid "subscribe multiple times" error when multiple screens subscribe.
+ * @param {string} prefix - Logical channel prefix (used for cleanup of stale channels)
+ * @param {(channel: import("@supabase/supabase-js").RealtimeChannel) => import("@supabase/supabase-js").RealtimeChannel} configure
+ * @param {(status: string) => void} [onStatus]
  */
-export function realTimeSync(callback, channelName = "realtime-dashboard") {
-  const channel = supabase
-    .channel(channelName)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "expenses" },
-      callback
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "categories" },
-      callback
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "expense_boards" },
-      callback
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "notifications" },
-      callback
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "profiles" },
-      callback
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "shared_users" },
-      callback
-    )
-    .subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        devLog("✅ Subscribed to realtime");
-      } else if (status === "CHANNEL_ERROR") {
-        console.error("❌ Error subscribing to dashboard realtime");
-      }
-    });
-
+function subscribeChannel(prefix, configure, onStatus) {
+  removeStaleChannels(prefix);
+  const name = uniqueChannelName(prefix);
+  const channel = configure(supabase.channel(name));
+  channel.subscribe((status) => {
+    if (status === "SUBSCRIBED") {
+      devLog(`✅ Subscribed to ${prefix}`);
+    } else if (status === "CHANNEL_ERROR") {
+      console.error(`❌ Error subscribing to ${prefix}`);
+    }
+    onStatus?.(status);
+  });
   return () => {
     supabase.removeChannel(channel);
-    devLog("🧹 Unsubscribed from all realtime updates");
+    devLog(`🧹 Unsubscribed from ${prefix}`);
   };
 }
 
-// Backward-compatible per-table subscriptions. Use a unique channelName per caller to avoid "subscribe multiple times" error.
-realTimeSync.subscribeToExpense = (callback, channelName = "realtime-expenses") => {
-  const name = typeof channelName === "string" ? channelName : `realtime-expenses-${Date.now()}`;
-  const channel = supabase
-    .channel(name)
-    .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, callback)
-    .subscribe();
-  return () => supabase.removeChannel(channel);
-};
+/**
+ * @param {() => void} callback - Called when any subscribed table changes
+ * @param {string} [channelName] - Logical channel prefix
+ */
+export function realTimeSync(callback, channelName = "realtime-dashboard") {
+  return subscribeChannel(channelName, (channel) =>
+    channel
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, callback)
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, callback)
+      .on("postgres_changes", { event: "*", schema: "public", table: "expense_boards" }, callback)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, callback)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, callback)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shared_users" }, callback)
+  );
+}
 
-realTimeSync.subscribeToExpenseBoard = (callback) => {
-  const channel = supabase
-    .channel("realtime-expense-boards")
-    .on("postgres_changes", { event: "*", schema: "public", table: "expense_boards" }, callback)
-    .subscribe();
-  return () => supabase.removeChannel(channel);
-};
+realTimeSync.subscribeToExpense = (callback, channelName = "realtime-expenses") =>
+  subscribeChannel(channelName, (channel) =>
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, callback)
+  );
 
-realTimeSync.subscribeToCategory = (callback) => {
-  const channel = supabase
-    .channel("realtime-categories")
-    .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, callback)
-    .subscribe();
-  return () => supabase.removeChannel(channel);
-};
+realTimeSync.subscribeToExpenseBoard = (callback, channelName = "realtime-expense-boards") =>
+  subscribeChannel(channelName, (channel) =>
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "expense_boards" }, callback)
+  );
 
-realTimeSync.subscribeToNotifications = (callback) => {
-  const channel = supabase
-    .channel("realtime-notifications")
-    .on(
+realTimeSync.subscribeToCategory = (callback, channelName = "realtime-categories") =>
+  subscribeChannel(channelName, (channel) =>
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "categories" }, callback)
+  );
+
+realTimeSync.subscribeToNotifications = (callback, channelName = "realtime-notifications") => {
+  const unsubscribe = subscribeChannel(channelName, (channel) =>
+    channel.on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "notifications" },
       async (payload) => {
-        const { data } = await supabase.from("notifications").select("*").eq("id", payload.new.id).single();
+        const { data } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("id", payload.new.id)
+          .single();
         callback(data);
       }
     )
-    .subscribe();
-  return { unsubscribe: () => supabase.removeChannel(channel) };
+  );
+  return { unsubscribe };
 };
 
-// No "verification" table in schema; auth state is used for email verification. Return no-op cleanup.
-realTimeSync.subscribeToVerification = (callback) => {
-  return () => {};
-};
+// No "verification" table in schema; auth state is used for email verification.
+realTimeSync.subscribeToVerification = () => () => {};

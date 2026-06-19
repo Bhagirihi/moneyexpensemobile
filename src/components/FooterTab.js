@@ -1,89 +1,60 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { useTranslation } from "../hooks/useTranslation";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+
+const TABS = [
+  { key: "Home", route: "Dashboard", icon: "home-variant", iconOutline: "home-variant-outline", labelKey: "home" },
+  { key: "Analytics", route: "Analytics", icon: "chart-box", iconOutline: "chart-box-outline", labelKey: "analytics" },
+  { key: "Settings", route: "Settings", icon: "cog", iconOutline: "cog-outline", labelKey: "settings" },
+];
 
 const FooterTab = ({ navigation, activeRoute = "Home" }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
 
-  const getTabColor = (tabName) => {
-    return activeRoute === tabName ? theme.white : theme.white;
-  };
-
-  const getTextColor = (tabName) => {
-    return activeRoute === tabName ? theme.white : theme.white;
-  };
-
-  const getTabStyle = (tabName) => {
-    return [
-      styles.tabItem,
-      activeRoute === tabName && [
-        styles.activeTabItem,
-        { backgroundColor: `${theme.textSecondary}65` },
-      ],
-    ];
-  };
-
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: "transparent" }]}>
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: theme.primary, overflow: "hidden" },
-        ]}
-      >
-        <TouchableOpacity
-          style={getTabStyle("Home")}
-          onPress={() => navigation.navigate("Dashboard")}
-        >
-          <View style={styles.tabContent}>
-            <MaterialCommunityIcons
-              name="home"
-              size={24}
-              color={getTabColor("Home")}
-            />
-            <Text style={[styles.tabText, { color: getTextColor("Home") }]}>
-              {t("home")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={getTabStyle("Analytics")}
-          onPress={() => navigation.navigate("Analytics")}
-        >
-          <View style={styles.tabContent}>
-            <MaterialCommunityIcons
-              name="chart-bar"
-              size={24}
-              color={getTabColor("Analytics")}
-            />
-            <Text
-              style={[styles.tabText, { color: getTextColor("Analytics") }]}
+    <SafeAreaView
+      edges={["bottom", "left", "right"]}
+      style={[styles.safeArea, { backgroundColor: theme.tabBar, borderTopColor: theme.border }]}
+    >
+      <View style={styles.container}>
+        {TABS.map((tab) => {
+          const isActive = activeRoute === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tabItem}
+              onPress={() => navigation.navigate(tab.route)}
+              activeOpacity={0.75}
             >
-              {t("analytics")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={getTabStyle("Settings")}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <View style={styles.tabContent}>
-            <MaterialCommunityIcons
-              name="cog"
-              size={24}
-              color={getTabColor("Settings")}
-            />
-            <Text style={[styles.tabText, { color: getTextColor("Settings") }]}>
-              {t("settings")}
-            </Text>
-          </View>
-        </TouchableOpacity>
+              <View
+                style={[
+                  styles.iconWrap,
+                  isActive && { backgroundColor: theme.primaryMuted },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={isActive ? tab.icon : tab.iconOutline}
+                  size={22}
+                  color={isActive ? theme.tabBarActive : theme.tabBarInactive}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: isActive ? theme.tabBarActive : theme.tabBarInactive },
+                  isActive && styles.tabTextActive,
+                ]}
+              >
+                {t(tab.labelKey)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </SafeAreaView>
   );
@@ -91,46 +62,41 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
 
 const styles = StyleSheet.create({
   safeArea: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#0F172A",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+      },
+      android: { elevation: 8 },
+    }),
   },
   container: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 16,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingTop: Platform.OS === "android" ? 6 : spacing.sm,
+    paddingBottom: Platform.OS === "android" ? 4 : spacing.xs,
+    paddingHorizontal: spacing.sm,
+    minHeight: layout.tabBarHeight,
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 8,
+    justifyContent: "center",
+    gap: Platform.OS === "android" ? 0 : 2,
   },
-  activeTabItem: {
-    borderRadius: 20,
-  },
-  tabContent: {
+  iconWrap: {
+    width: Platform.OS === "android" ? 40 : 44,
+    height: Platform.OS === "android" ? 28 : 32,
+    borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabText: {
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: "500",
-  },
+  tabText: { ...typography.micro, fontSize: 10 },
+  tabTextActive: { fontWeight: "700" },
 });
 
 export default FooterTab;

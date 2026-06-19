@@ -2,25 +2,18 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
-  StatusBar,
-  Pressable,
-  Alert,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Linking,
-  SafeAreaView,
-  Image,
+  TouchableOpacity,
+  TextInput,
 } from "react-native";
-import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
 import { signUpWithEmail, signInWithGoogle } from "../config/supabase";
-import CustomModal from "../components/common/CustomModal";
+import { isValidEmail } from "../utils/validation";
 import { showToast } from "../utils/toast";
+import AuthShell from "../components/ui/AuthShell";
+import FormButton from "../components/common/FormButton";
+import { spacing, typography } from "../theme/tokens";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -36,7 +29,6 @@ const RegisterScreen = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -47,7 +39,7 @@ const RegisterScreen = ({ navigation }) => {
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!isValidEmail(formData.email)) {
       newErrors.email = "Please enter a valid email";
     }
 
@@ -109,15 +101,6 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  const handleOpenEmail = () => {
-    Linking.openURL("mailto:");
-  };
-
-  const handleGoToLogin = () => {
-    setShowVerificationModal(false);
-    navigation.navigate("Login");
-  };
-
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
@@ -147,464 +130,188 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+  const renderField = (label, key, options = {}) => {
+    const isSecure = options.secure;
+    const visible = options.secureKey === "confirm" ? showConfirmPassword : showPassword;
+    const toggleVisible =
+      options.secureKey === "confirm"
+        ? () => setShowConfirmPassword((v) => !v)
+        : () => setShowPassword((v) => !v);
+
+    return (
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+        <View
+          style={[
+            styles.inputWrap,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: errors[key] ? theme.error : theme.border,
+            },
+          ]}
         >
-          <View style={styles.header}>
-            {/* <MaterialCommunityIcons
-              name="account-plus"
-              size={64}
-              color={theme.primary}
-            /> */}
-            <Image
-              source={require("../../assets/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.title, { color: theme.text }]}>
-              Create Account
-            </Text>
-          </View>
-
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Full Name
-              </Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.fullName ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="account-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter your full name"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.fullName}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, fullName: text }));
-                    if (errors.fullName) {
-                      setErrors((prev) => ({ ...prev, fullName: undefined }));
-                    }
-                  }}
-                />
-              </View>
-              {errors.fullName && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.fullName}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.email ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="email-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter your email"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.email}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, email: text }));
-                    if (errors.email) {
-                      setErrors((prev) => ({ ...prev, email: undefined }));
-                    }
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-              {errors.email && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.email}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Mobile Number
-              </Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.mobile ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="phone-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter your mobile number"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.mobile}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, mobile: text }));
-                    if (errors.mobile) {
-                      setErrors((prev) => ({ ...prev, mobile: undefined }));
-                    }
-                  }}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
-              </View>
-              {errors.mobile && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.mobile}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Password
-              </Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.password ? theme.error : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="lock-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Create a password"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.password}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, password: text }));
-                    if (errors.password) {
-                      setErrors((prev) => ({ ...prev, password: undefined }));
-                    }
-                  }}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.passwordToggle}
-                >
-                  <MaterialCommunityIcons
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color={theme.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.password}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: theme.text }]}>
-                Confirm Password
-              </Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: errors.confirmPassword
-                      ? theme.error
-                      : theme.border,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="lock-check-outline"
-                  size={20}
-                  color={theme.textSecondary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Confirm your password"
-                  placeholderTextColor={theme.textSecondary}
-                  value={formData.confirmPassword}
-                  onChangeText={(text) => {
-                    setFormData((prev) => ({ ...prev, confirmPassword: text }));
-                    if (errors.confirmPassword) {
-                      setErrors((prev) => ({
-                        ...prev,
-                        confirmPassword: undefined,
-                      }));
-                    }
-                  }}
-                  secureTextEntry={!showConfirmPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={styles.passwordToggle}
-                >
-                  <MaterialCommunityIcons
-                    name={showConfirmPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color={theme.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.confirmPassword && (
-                <Text style={[styles.errorText, { color: theme.error }]}>
-                  {errors.confirmPassword}
-                </Text>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.registerButton,
-                { backgroundColor: theme.primary },
-              ]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.white} />
-              ) : (
-                <Text
-                  style={[styles.registerButtonText, { color: theme.white }]}
-                >
-                  Create Account
-                </Text>
-              )}
+          <MaterialCommunityIcons
+            name={options.icon}
+            size={20}
+            color={theme.textMuted}
+            style={styles.inputIcon}
+          />
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder={options.placeholder}
+            placeholderTextColor={theme.textMuted}
+            value={formData[key]}
+            onChangeText={(text) => {
+              setFormData((prev) => ({ ...prev, [key]: text }));
+              if (errors[key]) {
+                setErrors((prev) => ({ ...prev, [key]: undefined }));
+              }
+            }}
+            secureTextEntry={isSecure && !visible}
+            keyboardType={options.keyboard || "default"}
+            autoCapitalize={options.autoCapitalize || "none"}
+            maxLength={options.maxLength}
+          />
+          {isSecure ? (
+            <TouchableOpacity onPress={toggleVisible} style={styles.eyeBtn}>
+              <MaterialCommunityIcons
+                name={visible ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color={theme.textMuted}
+              />
             </TouchableOpacity>
+          ) : null}
+        </View>
+        {errors[key] ? (
+          <Text style={[styles.error, { color: theme.error }]}>{errors[key]}</Text>
+        ) : null}
+      </View>
+    );
+  };
 
-            <View style={styles.dividerContainer}>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-              <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-                or
-              </Text>
-              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            </View>
+  return (
+    <AuthShell
+      title="Create account"
+      subtitle="Join Trivense to track trips, split expenses, and stay on budget"
+      footer={
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+            Already have an account?{" "}
+          </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <Text style={[styles.footerLink, { color: theme.primary }]}>Sign in</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      {renderField("Full name", "fullName", {
+        icon: "account-outline",
+        placeholder: "Your full name",
+        autoCapitalize: "words",
+      })}
+      {renderField("Email", "email", {
+        icon: "email-outline",
+        placeholder: "you@example.com",
+        keyboard: "email-address",
+      })}
+      {renderField("Mobile", "mobile", {
+        icon: "phone-outline",
+        placeholder: "10-digit mobile number",
+        keyboard: "phone-pad",
+        maxLength: 10,
+      })}
+      {renderField("Password", "password", {
+        icon: "lock-outline",
+        placeholder: "At least 8 characters",
+        secure: true,
+        secureKey: "password",
+      })}
+      {renderField("Confirm password", "confirmPassword", {
+        icon: "lock-check-outline",
+        placeholder: "Re-enter your password",
+        secure: true,
+        secureKey: "confirm",
+      })}
 
-            <TouchableOpacity
-              style={[
-                styles.googleButton,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                },
-              ]}
-              onPress={handleGoogleSignUp}
-              disabled={googleLoading}
-            >
-              {googleLoading ? (
-                <ActivityIndicator color={theme.text} />
-              ) : (
-                <>
-                  <MaterialCommunityIcons
-                    name="google"
-                    size={22}
-                    color="#4285F4"
-                    style={styles.googleIcon}
-                  />
-                  <Text style={[styles.googleButtonText, { color: theme.text }]}>
-                    Sign up with Google
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.loginContainer}>
-              <Text style={[styles.loginText, { color: theme.textSecondary }]}>
-                Already have an account?{" "}
-              </Text>
-              <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-                <Text style={[styles.loginLink, { color: theme.primary }]}>
-                  Sign Up
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <CustomModal
-        visible={showVerificationModal}
-        onClose={() => setShowVerificationModal(false)}
-        title="Verify Your Email"
-        message="We have sent a verification link to your email. Please verify your email to continue."
-        icon="email-check"
-        buttons={[
-          {
-            text: "Open Email App",
-            onPress: handleOpenEmail,
-            style: "default",
-          },
-          {
-            text: "Go to Login",
-            onPress: handleGoToLogin,
-            style: "outline",
-          },
-        ]}
+      <FormButton
+        title="Create account"
+        onPress={handleRegister}
+        loading={loading}
+        size="large"
+        style={styles.submitBtn}
       />
-    </SafeAreaView>
+
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Text style={[styles.dividerText, { color: theme.textMuted }]}>or</Text>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      </View>
+
+      <TouchableOpacity
+        style={[
+          styles.googleBtn,
+          { borderColor: theme.border, backgroundColor: theme.inputBackground },
+        ]}
+        onPress={handleGoogleSignUp}
+        disabled={googleLoading}
+        activeOpacity={0.85}
+      >
+        {googleLoading ? (
+          <Text style={{ color: theme.text }}>...</Text>
+        ) : (
+          <>
+            <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+            <Text style={[styles.googleText, { color: theme.text }]}>
+              Continue with Google
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </AuthShell>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  logo: {
-    height: 100,
-    width: 200,
-  },
-  header: {
-    alignItems: "center",
-    marginVertical: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    // marginTop: 16,
-    // marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    opacity: 0.7,
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  inputWrapper: {
+  field: { marginBottom: spacing.md },
+  label: { ...typography.label, marginBottom: spacing.sm },
+  inputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    minHeight: 52,
   },
-  inputIcon: {
-    marginRight: 12,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-  },
-  passwordToggle: {
-    padding: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  registerButton: {
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  registerButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  dividerContainer: {
+  inputIcon: { marginRight: spacing.sm },
+  input: { flex: 1, fontSize: 16, paddingVertical: spacing.md },
+  eyeBtn: { padding: spacing.sm },
+  error: { fontSize: 12, marginTop: spacing.xs },
+  submitBtn: { marginTop: spacing.sm },
+  dividerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 16,
-    gap: 12,
+    marginVertical: spacing.lg,
+    gap: spacing.md,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 14,
-  },
-  googleButton: {
+  divider: { flex: 1, height: 1 },
+  dividerText: { ...typography.caption },
+  googleBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
+    gap: spacing.sm,
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
-  googleIcon: {
-    marginRight: 10,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loginContainer: {
+  googleText: { ...typography.label },
+  footer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 16,
+    flexWrap: "wrap",
   },
-  loginText: {
-    fontSize: 14,
-  },
-  loginLink: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  footerText: { fontSize: 14 },
+  footerLink: { fontSize: 14, fontWeight: "700" },
 });
 
 export default RegisterScreen;

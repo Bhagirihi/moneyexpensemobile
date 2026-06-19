@@ -3,8 +3,9 @@ import React, { useEffect, useState, useCallback } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
+import { ThemeProvider } from "./src/context/ThemeContext";
 import { AuthProvider } from "./src/context/AuthContext";
+import { SubscriptionProvider } from "./src/context/SubscriptionContext";
 import { supabase, createSessionFromUrl } from "./src/config/supabase";
 import * as Linking from "expo-linking";
 import Toast from "react-native-toast-message";
@@ -13,15 +14,10 @@ import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 import * as Font from "expo-font";
 import { Asset } from "expo-asset";
 
-import { StatusBar } from "expo-status-bar";
-import OnboardingScreen from "./src/screens/OnboardingScreen";
-import WelcomeScreen from "./src/screens/WelcomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
 import EmailVerificationScreen from "./src/screens/EmailVerificationScreen";
-import FontTestScreen from "./src/screens/FontTestScreen";
-
 // Import all screens
 
 import { DashboardScreen } from "./src/screens/DashboardScreen";
@@ -39,15 +35,17 @@ import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { InvitationsScreen } from "./src/screens/InvitationsScreen";
 import { AddCategoryScreen } from "./src/screens/AddCategoryScreen";
 import { ExpenseDetailsScreen } from "./src/screens/ExpenseDetailsScreen";
+import PaywallScreen from "./src/screens/PaywallScreen";
 import * as SplashScreen from "expo-splash-screen";
 
 import { showToast } from "./src/utils/toast";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import {
   handleBackgroundNotifications,
   handleForegroundNotifications,
   registerForPushNotificationsAsync,
 } from "./src/services/pushNotificationService";
-import { useColorScheme } from "react-native";
+import { expenseBoardService } from "./src/services/expenseBoardService";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -106,7 +104,6 @@ const screenOptions = {
 };
 
 const AppContent = () => {
-  const { theme } = useTheme();
   const [session, setSession] = useState(null);
   const [appIsReady, setAppIsReady] = useState(false);
   const [fontsLoaded] = Font.useFonts({
@@ -124,13 +121,45 @@ const AppContent = () => {
     };
   }, []);
 
-  // Handle OAuth deep link (e.g. Google sign-in redirect)
+  // Handle auth and sharing deep links
   useEffect(() => {
     const handleUrl = async (url) => {
-      if (url?.includes("auth/callback")) {
+      if (!url) return;
+
+      if (
+        url.includes("auth/callback") ||
+        url.includes("verify-email") ||
+        url.includes("reset-password")
+      ) {
         await createSessionFromUrl(url);
+        return;
+      }
+
+      if (url.includes("/join/")) {
+        const code = url.split("/join/").pop()?.split("?")[0]?.trim();
+        if (!code) return;
+
+        try {
+          const {
+            data: { session: currentSession },
+          } = await supabase.auth.getSession();
+          if (!currentSession?.user) {
+            showToast.info("Sign in required", "Log in to join this board");
+            return;
+          }
+          const result = await expenseBoardService.joinBoard(code);
+          showToast.success(
+            "Board joined",
+            result?.board_name
+              ? `You joined "${result.board_name}"`
+              : "Shared board added to your list"
+          );
+        } catch (error) {
+          showToast.error("Could not join board", error.message);
+        }
       }
     };
+
     Linking.getInitialURL().then((url) => url && handleUrl(url));
     const sub = Linking.addEventListener("url", ({ url }) => handleUrl(url));
     return () => sub.remove();
@@ -160,32 +189,13 @@ const AppContent = () => {
 
         const {
           data: { session },
-          error: sessionError,
         } = await supabase.auth.getSession();
 
-        if (sessionError || !session?.user) {
-          showToast.error("Error", "User session not found.");
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("profiles")
-          .update({ updated_at: new Date().toISOString() }) // Optionally use new Date()
-          .eq("id", session.user.id)
-          .select("updated_at") // So you get the updated value
-          .single();
-
-        if (error) {
-          showToast.error("Update failed", error.message);
-        } else {
-          showToast.success("Updated at", data?.updated_at);
-        }
-
-        setSession(session);
+        setSession(session ?? null);
       } catch (e) {
         console.warn(e);
       } finally {
-        setAppIsReady(true); // Ready to render
+        setAppIsReady(true);
       }
     }
 
@@ -193,15 +203,12 @@ const AppContent = () => {
   }, []);
 
   useEffect(() => {
-    // Register for push notifications when the app is loaded
+    if (!session?.user) return;
+
     registerForPushNotificationsAsync();
-
-    // Handle foreground notifications
     handleForegroundNotifications();
-
-    // Handle background notifications
     handleBackgroundNotifications();
-  }, []);
+  }, [session?.user?.id]);
 
   const onLayoutRootView = useCallback(() => {
     if (appIsReady) {
@@ -217,7 +224,6 @@ const AppContent = () => {
   if (!appIsReady) {
     return null;
   }
-  console.log("theme.background", theme.background);
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
@@ -228,8 +234,8 @@ const AppContent = () => {
         backgroundColor={theme.background}
       /> */}
       <AuthProvider>
-        <ThemeProvider>
-          <AppSettingsProvider>
+          <SubscriptionProvider>
+            <AppSettingsProvider>
             <NavigationContainer>
               <Stack.Navigator
                 screenOptions={screenOptions}
@@ -248,7 +254,6 @@ const AppContent = () => {
                       name="EmailVerification"
                       component={EmailVerificationScreen}
                     />
-                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
                     <Stack.Screen
                       name="Dashboard"
                       component={DashboardScreen}
@@ -294,19 +299,14 @@ const AppContent = () => {
                     <Stack.Screen name="Profile" component={ProfileScreen} />
                     <Stack.Screen name="Settings" component={SettingsScreen} />
                     <Stack.Screen
-                      name="Profile2"
+                      name="Invitations"
                       component={InvitationsScreen}
                     />
-                    <Stack.Screen name="FontTest" component={FontTestScreen} />
+                    <Stack.Screen name="Paywall" component={PaywallScreen} />
                   </>
                 ) : (
                   // Public routes
                   <>
-                    {/* <Stack.Screen name="Welcome" component={WelcomeScreen} /> */}
-                    {/* <Stack.Screen
-                      name="Onboarding"
-                      component={OnboardingScreen}
-                    /> */}
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
                     <Stack.Screen
@@ -324,7 +324,7 @@ const AppContent = () => {
               <Toast />
             </NavigationContainer>
           </AppSettingsProvider>
-        </ThemeProvider>
+          </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
@@ -332,12 +332,10 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppSettingsProvider>
-          <AppContent />
-        </AppSettingsProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

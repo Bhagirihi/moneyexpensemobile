@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Card from "../components/common/Card";
 import StatCard from "../components/common/StatCard";
@@ -19,11 +20,15 @@ import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useSubscription } from "../context/SubscriptionContext";
+import { FEATURES } from "../config/subscriptionPlans";
+import PaywallGate from "../components/PaywallGate";
 const { width } = Dimensions.get("window");
 
 export const AnalysisScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { hasFeature } = useSubscription();
   const boardId = route.params?.boardId;
   const [loading, setLoading] = useState(true);
   const [showTripSelector, setShowTripSelector] = useState(false);
@@ -465,12 +470,26 @@ export const AnalysisScreen = ({ navigation, route }) => {
     </Card>
   );
 
+  const analysisHeader = (
+    <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+  );
+
+  if (!hasFeature(FEATURES.BOARD_SETTLEMENTS)) {
+    return (
+      <ScreenLayout header={analysisHeader}>
+        <View style={[styles.loadingContainer, { padding: 24 }]}>
+          <PaywallGate
+            feature={FEATURES.BOARD_SETTLEMENTS}
+            navigation={navigation}
+          />
+        </View>
+      </ScreenLayout>
+    );
+  }
+
   if (loading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
-        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+      <ScreenLayout header={analysisHeader}>
         <View style={styles.loadingContainer}>
           <MaterialCommunityIcons
             name="loading"
@@ -482,16 +501,13 @@ export const AnalysisScreen = ({ navigation, route }) => {
             {t("loadingAnalysis")}
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   if (missingBoardId) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
-        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+      <ScreenLayout header={analysisHeader}>
         <View style={styles.loadingContainer}>
           <MaterialCommunityIcons
             name="chart-box-outline"
@@ -503,30 +519,24 @@ export const AnalysisScreen = ({ navigation, route }) => {
             {t("openAnalysisFromBoard")}
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   if (!selectedTrip) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
-        <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+      <ScreenLayout header={analysisHeader}>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
             {t("noBoardsToAnalyze")}
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+    <ScreenLayout header={analysisHeader}>
       <ScrollView
         style={styles.content}
         refreshControl={
@@ -542,7 +552,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
         {renderSettlements()}
       </ScrollView>
       {renderTripSelectorModal()}
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -577,7 +587,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 5,
+    ...shadowStyle(5),
   },
   tripSelectorContent: {
     flexDirection: "row",
@@ -646,7 +656,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 5,
+    ...shadowStyle(5),
   },
   cardHeader: {
     flexDirection: "row",

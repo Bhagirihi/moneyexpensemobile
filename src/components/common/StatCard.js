@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import Card from "./Card";
+import { radii, spacing, typography } from "../../theme/tokens";
 
 const StatCard = memo(
   ({
@@ -22,46 +23,40 @@ const StatCard = memo(
     const styles = useMemo(
       () =>
         StyleSheet.create({
-          container: {
-            ...style,
-          },
+          container: { ...style },
           header: {
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 12,
+            marginBottom: spacing.md,
           },
           iconContainer: {
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: `${theme.primary}20`,
+            width: 44,
+            height: 44,
+            borderRadius: radii.md,
+            backgroundColor: theme.primaryMuted,
             justifyContent: "center",
             alignItems: "center",
-            marginRight: 12,
+            marginRight: spacing.md,
           },
           title: {
-            fontSize: 14,
-            fontWeight: "500",
+            ...typography.caption,
+            fontWeight: "600",
             color: theme.textSecondary,
             ...titleStyle,
           },
           value: {
-            fontSize: 24,
-            fontWeight: "600",
+            fontSize: 26,
+            fontWeight: "700",
+            letterSpacing: -0.5,
             color: theme.text,
-            marginBottom: 4,
+            marginBottom: spacing.xs,
             ...valueStyle,
           },
-          trendContainer: {
-            flexDirection: "row",
-            alignItems: "center",
-          },
-          trendIcon: {
-            marginRight: 4,
-          },
+          trendContainer: { flexDirection: "row", alignItems: "center" },
+          trendIcon: { marginRight: spacing.xs },
           trendText: {
-            fontSize: 14,
-            fontWeight: "500",
+            ...typography.caption,
+            fontWeight: "600",
             color:
               trendType === "positive"
                 ? theme.success
@@ -71,7 +66,7 @@ const StatCard = memo(
             ...trendStyle,
           },
         }),
-      [theme, trendType]
+      [theme, trendType, style, titleStyle, valueStyle, trendStyle]
     );
 
     const getTrendIcon = () => {
@@ -86,19 +81,15 @@ const StatCard = memo(
     };
 
     return (
-      <Card style={styles.container} {...props}>
+      <Card variant="elevated" style={styles.container} {...props}>
         <View style={styles.header}>
           <View style={styles.iconContainer}>
-            <MaterialCommunityIcons
-              name={icon}
-              size={20}
-              color={theme.primary}
-            />
+            <MaterialCommunityIcons name={icon} size={22} color={theme.primary} />
           </View>
           <Text style={styles.title}>{title}</Text>
         </View>
         <Text style={styles.value}>{value}</Text>
-        {trend && (
+        {trend ? (
           <View style={styles.trendContainer}>
             <MaterialCommunityIcons
               name={getTrendIcon()}
@@ -108,7 +99,7 @@ const StatCard = memo(
             />
             <Text style={styles.trendText}>{trend}</Text>
           </View>
-        )}
+        ) : null}
       </Card>
     );
   }

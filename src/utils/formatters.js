@@ -1,89 +1,92 @@
-import { useAppSettings } from "../context/AppSettingsContext";
+let activeCurrency = "USD";
+let activeLanguage = "en";
 
-/**
- * Format a number as currency
- * @param {number} amount - The amount to format
- * @param {string} currency - The currency code (default: null)
- * @returns {string} Formatted currency string
- */
-export const formatCurrency = (amount, currency = "INR") => {
-  const { currency: selectedCurrency } = useAppSettings();
-  const currencyToUse = currency || selectedCurrency;
+export function setFormatterSettings({ currency, language } = {}) {
+  if (currency) activeCurrency = currency;
+  if (language) activeLanguage = language;
+}
 
-  const currencyConfig = {
-    USD: { locale: "en-US", currency: "USD" },
-    EUR: { locale: "en-EU", currency: "EUR" },
-    GBP: { locale: "en-GB", currency: "GBP" },
-    INR: { locale: "en-IN", currency: "INR" },
-  };
+export function getActiveCurrency() {
+  return activeCurrency;
+}
 
-  const config = currencyConfig[currencyToUse] || currencyConfig.INR;
-
-  return new Intl.NumberFormat(config.locale, {
-    style: "currency",
-    currency: config.currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+export const CURRENCY_SYMBOLS = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  INR: "₹",
+  AUD: "A$",
+  CAD: "C$",
+  NZD: "NZ$",
+  SGD: "S$",
+  HKD: "HK$",
 };
 
-/**
- * Format a number as compact currency (e.g., $1.2K, $1.2M)
- * @param {number} amount - The amount to format
- * @param {string} currency - The currency code (default: null)
- * @returns {string} Formatted compact currency string
- */
-export const formatCompactCurrency = (amount, currency = "INR") => {
-  const { currency: selectedCurrency } = useAppSettings();
-  const currencyToUse = currency || selectedCurrency;
-
-  const currencyConfig = {
-    USD: { locale: "en-US", currency: "USD" },
-    EUR: { locale: "en-EU", currency: "EUR" },
-    GBP: { locale: "en-GB", currency: "GBP" },
-    INR: { locale: "en-IN", currency: "INR" },
-  };
-
-  const config = currencyConfig[currencyToUse] || currencyConfig.INR;
-
-  return new Intl.NumberFormat(config.locale, {
-    style: "currency",
-    currency: config.currency,
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(amount);
+const CURRENCY_LOCALES = {
+  USD: "en-US",
+  EUR: "de-DE",
+  GBP: "en-GB",
+  INR: "en-IN",
+  AUD: "en-AU",
+  CAD: "en-CA",
+  NZD: "en-NZ",
+  SGD: "en-SG",
+  HKD: "en-HK",
 };
 
+export function getCurrencySymbol(currencyCode) {
+  const code = currencyCode || activeCurrency;
+  return CURRENCY_SYMBOLS[code] || code;
+}
+
 /**
- * Parse a currency string back to a number
- * @param {string} currencyString - The formatted currency string
- * @param {string} currency - The currency code (default: null)
- * @returns {number} The parsed number
+ * Format a number as currency using the selected app currency.
  */
-export const parseCurrency = (currencyString, currency = null) => {
-  const { currency: selectedCurrency } = useAppSettings();
-  const currencyToUse = currency || selectedCurrency;
+export const formatCurrency = (amount, currencyCode = null) => {
+  const currencyToUse = currencyCode || activeCurrency;
+  const num = Number(amount);
+  if (Number.isNaN(num)) {
+    return `${getCurrencySymbol(currencyToUse)}0.00`;
+  }
 
-  const currencyConfig = {
-    USD: { locale: "en-US", currency: "USD" },
-    EUR: { locale: "en-EU", currency: "EUR" },
-    GBP: { locale: "en-GB", currency: "GBP" },
-    INR: { locale: "en-IN", currency: "INR" },
-  };
+  const locale = CURRENCY_LOCALES[currencyToUse] || "en-US";
 
-  const config = currencyConfig[currencyToUse] || currencyConfig.USD;
-
-  // Remove currency symbol and any non-numeric characters except decimal point
-  const cleanString = currencyString.replace(/[^0-9.-]/g, "");
-  return parseFloat(cleanString);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyToUse,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  } catch {
+    return `${getCurrencySymbol(currencyToUse)}${num.toFixed(2)}`;
+  }
 };
 
-/**
- * Format a date to a readable string
- * @param {Date|string} date - The date to format
- * @param {string} format - The format to use (default: 'medium')
- * @returns {string} Formatted date string
- */
+export const formatCompactCurrency = (amount, currencyCode = null) => {
+  const currencyToUse = currencyCode || activeCurrency;
+  const num = Number(amount);
+  if (Number.isNaN(num)) return getCurrencySymbol(currencyToUse);
+
+  const locale = CURRENCY_LOCALES[currencyToUse] || "en-US";
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyToUse,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(num);
+  } catch {
+    return `${getCurrencySymbol(currencyToUse)}${num.toFixed(1)}`;
+  }
+};
+
+export const parseCurrency = (currencyString, currencyCode = null) => {
+  const cleanString = String(currencyString || "").replace(/[^0-9.-]/g, "");
+  return parseFloat(cleanString) || 0;
+};
+
 const getLocaleFromLanguage = (language) => {
   if (language === "hi") return "hi-IN";
   if (language === "en") return "en-US";
@@ -91,8 +94,7 @@ const getLocaleFromLanguage = (language) => {
 };
 
 export const formatDate = (date = new Date(), format = "medium") => {
-  const { language } = useAppSettings();
-  const locale = getLocaleFromLanguage(language);
+  const locale = getLocaleFromLanguage(activeLanguage);
 
   const options = {
     short: {
@@ -113,19 +115,11 @@ export const formatDate = (date = new Date(), format = "medium") => {
     },
   };
 
-  return new Intl.DateTimeFormat(locale, options[format]).format(
-    new Date(date)
-  );
+  return new Intl.DateTimeFormat(locale, options[format]).format(new Date(date));
 };
 
-/**
- * Format a percentage
- * @param {number} value - The value to format as percentage
- * @returns {string} Formatted percentage string
- */
 export const formatPercentage = (value) => {
-  const { language } = useAppSettings();
-  const locale = getLocaleFromLanguage(language);
+  const locale = getLocaleFromLanguage(activeLanguage);
 
   return new Intl.NumberFormat(locale, {
     style: "percent",
@@ -134,15 +128,8 @@ export const formatPercentage = (value) => {
   }).format(value / 100);
 };
 
-/**
- * Format a number with thousands separators
- * @param {number} number - The number to format
- * @returns {string} Formatted number string
- */
 export const formatNumber = (number) => {
-  const { language } = useAppSettings();
-  const locale = getLocaleFromLanguage(language);
-
+  const locale = getLocaleFromLanguage(activeLanguage);
   return new Intl.NumberFormat(locale).format(number);
 };
 

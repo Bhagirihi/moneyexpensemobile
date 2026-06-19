@@ -4,8 +4,10 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { radii, spacing, typography } from "../../theme/tokens";
 
 const FormButton = memo(
   ({
@@ -25,29 +27,47 @@ const FormButton = memo(
       () =>
         StyleSheet.create({
           button: {
-            height: size === "large" ? 56 : 48,
-            borderRadius: 8,
+            minHeight: size === "large" ? 56 : 52,
+            borderRadius: radii.md,
             justifyContent: "center",
             alignItems: "center",
             flexDirection: "row",
+            paddingHorizontal: spacing.xl,
             backgroundColor:
-              variant === "primary" ? theme.primary : "transparent",
-            borderWidth: variant === "secondary" ? 1 : 0,
-            borderColor: theme.primary,
+              variant === "primary"
+                ? theme.primary
+                : variant === "danger"
+                ? theme.error
+                : "transparent",
+            borderWidth: variant === "secondary" || variant === "outline" ? 1.5 : 0,
+            borderColor:
+              variant === "outline" ? theme.border : theme.primary,
             opacity: disabled ? 0.5 : 1,
+            ...Platform.select({
+              ios: variant === "primary" && {
+                shadowColor: theme.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+              },
+              android: variant === "primary" && { elevation: 3 },
+            }),
             ...style,
           },
           buttonText: {
-            fontSize: size === "large" ? 18 : 16,
-            fontWeight: "600",
-            color: variant === "primary" ? "#FFFFFF" : theme.primary,
+            ...(size === "large" ? typography.bodyMedium : typography.label),
+            fontSize: size === "large" ? 17 : 16,
+            color:
+              variant === "primary" || variant === "danger"
+                ? theme.white
+                : variant === "outline"
+                ? theme.text
+                : theme.primary,
             ...textStyle,
           },
-          loadingIndicator: {
-            marginRight: 8,
-          },
+          loadingIndicator: { marginRight: spacing.sm },
         }),
-      [theme, variant, size, disabled]
+      [theme, variant, size, disabled, style, textStyle]
     );
 
     return (
@@ -55,14 +75,19 @@ const FormButton = memo(
         style={styles.button}
         onPress={onPress}
         disabled={disabled || loading}
+        activeOpacity={0.85}
         {...props}
       >
-        {loading && (
+        {loading ? (
           <ActivityIndicator
-            color={variant === "primary" ? "#FFFFFF" : theme.primary}
+            color={
+              variant === "primary" || variant === "danger"
+                ? theme.white
+                : theme.primary
+            }
             style={styles.loadingIndicator}
           />
-        )}
+        ) : null}
         <Text style={styles.buttonText}>{title}</Text>
       </TouchableOpacity>
     );

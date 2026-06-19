@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   TouchableOpacity,
   TextInput,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { categoryService } from "../services/categoryService";
 import ListHeader from "../components/common/ListHeader";
@@ -132,9 +132,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
       },
-      android: {
-        elevation: 5,
-      },
+      android: {},
     }),
   },
   categoryItem: {
@@ -150,9 +148,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 2,
       },
-      android: {
-        elevation: 2,
-      },
+      android: {},
     }),
   },
   categoryIcon: {
@@ -201,9 +197,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
       },
-      android: {
-        elevation: 5,
-      },
+      android: {},
     }),
   },
   modalHeader: {
@@ -425,10 +419,7 @@ export const CategoriesScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Header title={t("categories")} onBack={() => navigation.goBack()} />
+    <ScreenLayout header={<Header title={t("categories")} onBack={() => navigation.goBack()} />}>
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -465,6 +456,6 @@ export const CategoriesScreen = ({ navigation }) => {
       >
         <MaterialCommunityIcons name="plus" size={24} color={theme.white} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };

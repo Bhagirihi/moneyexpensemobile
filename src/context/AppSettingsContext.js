@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { setFormatterSettings } from "../utils/formatters";
 
 const AppSettingsContext = createContext(null);
 
@@ -15,6 +16,11 @@ export const AppSettingsProvider = ({ children }) => {
 
         if (savedLanguage) setLanguage(savedLanguage);
         if (savedCurrency) setCurrency(savedCurrency);
+
+        setFormatterSettings({
+          language: savedLanguage || "en",
+          currency: savedCurrency || "USD",
+        });
       } catch (error) {
         console.error("Error loading app settings:", error);
       }
@@ -22,6 +28,10 @@ export const AppSettingsProvider = ({ children }) => {
 
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    setFormatterSettings({ currency, language });
+  }, [currency, language]);
 
   const updateLanguage = async (newLanguage) => {
     try {

@@ -1,158 +1,40 @@
 import { supabase } from "../config/supabase";
-import { formatCurrency } from "../utils/formatters";
 
-/**
- * Fetches analytics data for a given time period
- * @param {string} userId - The ID of the current user
- * @param {string} period - The time period ('week', 'month', 'year', 'all')
- * @returns {Promise<Object>} Analytics data including total expenses, categories, and insights
- */
-export const fetchAnalytics = async (userId, period) => {
-  try {
-    // Get the current user's expense board
-    const { data: expenseBoard, error: boardError } = await supabase
-      .from("expense_boards")
-      .select("id")
-      .eq("created_by", userId);
-
-    if (boardError) throw boardError;
-    const boards = Array.isArray(expenseBoard) ? expenseBoard : expenseBoard ? [expenseBoard] : [];
-    const boardId = boards[0]?.id;
-    if (!boardId) throw new Error("No expense board found");
-
-    // Calculate date range based on selected period
-    const now = new Date();
-    let startDate;
-    switch (period) {
-      case "week":
-        startDate = new Date(now.setDate(now.getDate() - 7));
-        break;
-      case "month":
-        startDate = new Date(now.setMonth(now.getMonth() - 1));
-        break;
-      case "year":
-        startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-        break;
-      case "all":
-        startDate = new Date(0); // Unix epoch
-        break;
-      default:
-        startDate = new Date(now.setMonth(now.getMonth() - 1));
-    }
-
-    // Fetch expenses with categories
-    const { data: expenses, error: expensesError } = await supabase
-      .from("expenses")
-      .select(
-        `
-        id,
-        amount,
-        date,
-        category_id,
-        categories (
-          name,
-          icon,
-          color
-        )
-      `
-      )
-      .eq("board_id", boardId)
-      .gte("date", startDate.toISOString())
-      .order("date", { ascending: false });
-
-    if (expensesError) throw expensesError;
-
-    // Calculate analytics
-    const totalExpenses = expenses.reduce(
-      (sum, expense) => sum + expense.amount,
-      0
-    );
-    const averageExpense =
-      expenses.length > 0 ? totalExpenses / expenses.length : 0;
-
-    // Calculate category breakdown
-    const categoryMap = new Map();
-    expenses.forEach((expense) => {
-      const category = expense.categories;
-      if (!categoryMap.has(category.name)) {
-        categoryMap.set(category.name, {
-          name: category.name,
-          icon: category.icon,
-          color: category.color,
-          amount: 0,
-          count: 0,
-        });
-      }
-      const catData = categoryMap.get(category.name);
-      catData.amount += expense.amount;
-      catData.count += 1;
-    });
-
-    // Convert to array and calculate percentages
-    const topCategories = Array.from(categoryMap.values())
-      .map((cat) => ({
-        ...cat,
-        percentage:
-          totalExpenses > 0
-            ? Math.round((cat.amount / totalExpenses) * 100)
-            : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-
-    // Calculate stats
-    const amounts = expenses.map((e) => e.amount);
-    const stats = {
-      highestSpending: amounts.length > 0 ? Math.max(...amounts) : 0,
-      lowestSpending: amounts.length > 0 ? Math.min(...amounts) : 0,
-      totalTransactions: expenses.length,
-    };
-
-    // Generate insights
-    const insights = [];
-    if (topCategories.length > 0) {
-      insights.push({
-        title: "Top Category",
-        description: `${topCategories[0].name} is your highest spending category`,
-        icon: topCategories[0].icon,
-        color: topCategories[0].color,
-      });
-    }
-
-    if (stats.highestSpending > 0) {
-      insights.push({
-        title: "Highest Expense",
-        description: `Your highest expense was ${formatCurrency(
-          stats.highestSpending
-        )}`,
-        icon: "arrow-up",
-        color: "#FF6B6B",
-      });
-    }
-
-    if (averageExpense > 0) {
-      insights.push({
-        title: "Average Expense",
-        description: `You spend an average of ${formatCurrency(
-          averageExpense
-        )} per transaction`,
-        icon: "chart-line",
-        color: "#4ECDC4",
-      });
-    }
-
-    return {
-      totalExpenses,
-      averageExpense,
-      topCategories,
-      insights,
-      stats,
-    };
-  } catch (error) {
-    console.error("Error in fetchAnalytics:", error);
-    throw error;
-  }
+const FALLBACK_CATEGORY = {
+  name: "Uncategorized",
+  icon: "tag-outline",
+  color: "#94A3B8",
 };
+
+function getExpenseCategory(expense) {
+  const category = expense?.categories;
+  if (!category || !category.name) {
+    return FALLBACK_CATEGORY;
+  }
+  return category;
+}
+
+function accumulateCategoryTotals(expenses) {
+  const categoryMap = new Map();
+
+  expenses.forEach((expense) => {
+    const category = getExpenseCategory(expense);
+    if (!categoryMap.has(category.name)) {
+      categoryMap.set(category.name, {
+        name: category.name,
+        icon: category.icon,
+        color: category.color,
+        amount: 0,
+        count: 0,
+      });
+    }
+    const catData = categoryMap.get(category.name);
+    catData.amount += Number(expense.amount || 0);
+    catData.count += 1;
+  });
+
+  return categoryMap;
+}
 
 /**
  * Fetches expense trends over time with additional statistics
@@ -176,10 +58,36 @@ export const fetchExpenseTrends = async (userId, period) => {
       .eq("user_id", userId.toString())
       .eq("is_accepted", true);
     console.log("sharedBoards", sharedBoards);
+    if (sharedError) throw sharedError;
+
+    const ownedIds = expenseBoard?.map((b) => b.id) || [];
     const boardIds = [
-      ...expenseBoard.map((b) => b.id),
-      ...sharedBoards.map((s) => s.board_id),
+      ...ownedIds,
+      ...(sharedBoards || []).map((s) => s.board_id),
     ];
+
+    if (boardIds.length === 0) {
+      return {
+        labels: [],
+        datasets: [{ data: [] }],
+        statistics: {
+          totalAmount: 0,
+          averageAmount: 0,
+          highestAmount: 0,
+          lowestAmount: 0,
+          totalCount: 0,
+          averageAmountPerDay: 0,
+          daysInPeriod: 0,
+          categoryBreakdown: [],
+          previousPeriod: {
+            totalAmount: 0,
+            percentageChange: 0,
+          },
+          percentageChange: 0,
+        },
+        insights: [],
+      };
+    }
     console.log("-----", boardIds);
 
     // Calculate date ranges for current and previous period
@@ -204,6 +112,11 @@ export const fetchExpenseTrends = async (userId, period) => {
         previousStartDate = new Date(startDate);
         previousStartDate.setFullYear(previousStartDate.getFullYear() - 1);
         previousEndDate = new Date(startDate);
+        break;
+      case "all":
+        startDate = new Date(0);
+        previousStartDate = new Date(0);
+        previousEndDate = new Date(0);
         break;
       default:
         startDate = new Date(now.setDate(now.getDate() - 30));
@@ -234,6 +147,8 @@ export const fetchExpenseTrends = async (userId, period) => {
       .lte("date", endDate.toISOString())
       .order("date", { ascending: true });
 
+    if (currentError) throw currentError;
+
     // Fetch previous period expenses
     const { data: previousData, error: previousError } = await supabase
       .from("expenses")
@@ -244,14 +159,17 @@ export const fetchExpenseTrends = async (userId, period) => {
 
     if (previousError) throw previousError;
 
+    const safeCurrentData = currentData || [];
+    const safePreviousData = previousData || [];
+
     // Calculate current period statistics
-    const currentAmounts = currentData.map((expense) => expense.amount);
+    const currentAmounts = safeCurrentData.map((expense) => expense.amount);
     const totalAmount = currentAmounts.reduce((sum, amount) => sum + amount, 0);
     const highestAmount =
       currentAmounts.length > 0 ? Math.max(...currentAmounts) : 0;
     const lowestAmount =
       currentAmounts.length > 0 ? Math.min(...currentAmounts) : 0;
-    const totalCount = currentData.length;
+    const totalCount = safeCurrentData.length;
     const daysInPeriod = Math.ceil(
       (endDate - startDate) / (1000 * 60 * 60 * 24)
     );
@@ -259,7 +177,7 @@ export const fetchExpenseTrends = async (userId, period) => {
       daysInPeriod > 0 ? totalAmount / daysInPeriod : 0;
 
     // Calculate previous period total
-    const previousTotal = previousData.reduce(
+    const previousTotal = safePreviousData.reduce(
       (sum, expense) => sum + expense.amount,
       0
     );
@@ -271,22 +189,7 @@ export const fetchExpenseTrends = async (userId, period) => {
         : 0;
 
     // Calculate category breakdown
-    const categoryMap = new Map();
-    currentData.forEach((expense) => {
-      const category = expense.categories;
-      if (!categoryMap.has(category.name)) {
-        categoryMap.set(category.name, {
-          name: category.name,
-          icon: category.icon,
-          color: category.color,
-          amount: 0,
-          count: 0,
-        });
-      }
-      const catData = categoryMap.get(category.name);
-      catData.amount += expense.amount;
-      catData.count += 1;
-    });
+    const categoryMap = accumulateCategoryTotals(safeCurrentData);
 
     // Convert to array and calculate percentages
     const categoryBreakdown = Array.from(categoryMap.values())

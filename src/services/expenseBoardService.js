@@ -32,26 +32,23 @@ export const expenseBoardService = {
       if (ownedBoardsRes.error) throw ownedBoardsRes.error;
       if (sharedLinksRes.error) throw sharedLinksRes.error;
 
-      const ownedBoards = ownedBoardsRes.data;
-      const sharedBoardLinks = sharedLinksRes.data;
+      const ownedBoards = ownedBoardsRes.data || [];
+      const sharedBoardLinks = sharedLinksRes.data || [];
       const sharedBoardIds = sharedBoardLinks.map((link) => link.board_id);
-      const sharedUserIds = sharedBoardLinks.map((link) => link.shared_by);
 
-      // Step 3: Fetch shared board owners and shared board details
-      const [sharedUsersRes, sharedBoardsRes] = await Promise.all([
-        supabase.from("profiles").select("*").in("id", sharedUserIds),
-        supabase
+      let sharedBoardsData = [];
+      if (sharedBoardIds.length > 0) {
+        const sharedBoardsRes = await supabase
           .from("expense_boards")
           .select("*, profiles:created_by ( id, full_name, email_address )")
           .in("id", sharedBoardIds)
-          .order("created_at", { ascending: false }),
-      ]);
+          .order("created_at", { ascending: false });
 
-      if (sharedUsersRes.error) throw sharedUsersRes.error;
-      if (sharedBoardsRes.error) throw sharedBoardsRes.error;
+        if (sharedBoardsRes.error) throw sharedBoardsRes.error;
+        sharedBoardsData = sharedBoardsRes.data || [];
+      }
 
-      const sharedBoards = sharedBoardsRes.data;
-      const allBoards = [...ownedBoards, ...sharedBoards];
+      const allBoards = [...ownedBoards, ...sharedBoardsData];
 
       if (allBoards.length === 0) return [];
 
@@ -73,18 +70,23 @@ export const expenseBoardService = {
 
       // Step 6: Format final result
       const boardsWithExpenses = allBoards
-        .map((board) => ({
-          ...board,
-          created_by:
-            board.profiles.id === user.id
-              ? "You"
-              : board.profiles?.full_name || "Unknown",
-          expenses: expensesMap[board.id] || [],
-          totalExpenses:
-            expensesMap[board.id]?.reduce((sum, e) => sum + e.amount, 0) || 0,
-          totalTransactions: expensesMap[board.id]?.length || 0,
-          isShared: board.created_by !== userId,
-        }))
+        .map((board) => {
+          const ownerId = board.created_by;
+          const ownerProfile = board.profiles;
+
+          return {
+            ...board,
+            created_by:
+              ownerProfile?.id === user.id
+                ? "You"
+                : ownerProfile?.full_name || "Shared board",
+            expenses: expensesMap[board.id] || [],
+            totalExpenses:
+              expensesMap[board.id]?.reduce((sum, e) => sum + e.amount, 0) || 0,
+            totalTransactions: expensesMap[board.id]?.length || 0,
+            isShared: ownerId !== userId,
+          };
+        })
         .sort((a, b) => {
           // Default board goes first
           if (a.is_default) return -1;
@@ -129,29 +131,34 @@ export const expenseBoardService = {
       console.log("Raw shared_users:", id, data);
       console.log("sharedUsersRes", user);
       const boardUsers = [];
-      sharedUsersRes.data.length > 0
-        ? sharedUsersRes.data.map((item) => {
-            boardUsers.push(
-              {
-                id: item.user_profile.id,
-                name: item.user_profile.full_name,
-                board_id: item.user_profile.board_id,
-                email: item.user_profile.email_address,
-              },
-              {
-                id: item.shared_by_profile.id,
-                name: item.shared_by_profile.full_name,
-                board_id: item.shared_by_profile.board_id,
-                email: item.shared_by_profile.email_address,
-              }
-            );
-          })
-        : boardUsers.push({
-            id: user.user_metadata.sub,
-            name: user.user_metadata.full_name,
-            board_id: id,
-            email: user.user_metadata.email,
-          });
+      const seenUserIds = new Set();
+
+      const addBoardUser = (profile) => {
+        if (!profile?.id || seenUserIds.has(profile.id)) return;
+        seenUserIds.add(profile.id);
+        boardUsers.push({
+          id: profile.id,
+          name: profile.full_name || profile.email_address || "Member",
+          board_id: profile.board_id,
+          email: profile.email_address,
+        });
+      };
+
+      if (sharedUsersRes.data?.length > 0) {
+        sharedUsersRes.data.forEach((item) => {
+          addBoardUser(item.user_profile);
+          addBoardUser(item.shared_by_profile);
+        });
+      }
+
+      if (boardUsers.length === 0) {
+        addBoardUser({
+          id: user.id,
+          full_name: user.user_metadata?.full_name,
+          board_id: id,
+          email_address: user.email,
+        });
+      }
       console.log("boardUsers", boardUsers);
 
       // 2. Calculate total per user
@@ -340,19 +347,206 @@ export const expenseBoardService = {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) console.log("No authenticated user");
+      if (!user) throw new Error("No authenticated user");
 
       const { data, error } = await supabase
         .from("shared_users")
         .select("*")
         .eq("shared_by", user.id);
 
-      if (error) console.log("getSharedMembers", error);
+      if (error) throw error;
 
-      return data;
+      return data || [];
     } catch (error) {
       console.error("Error fetching shared members:", error);
       throw error;
     }
+  },
+
+  async getBoardShareCode(boardId) {
+    const { data, error } = await supabase
+      .from("expense_boards")
+      .select("share_code")
+      .eq("id", boardId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data?.share_code || null;
+  },
+
+  async shareBoardWithEmail(boardId, email) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      throw new Error("Please enter a valid email address");
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("No authenticated user");
+
+    if (user.email?.toLowerCase() === normalizedEmail) {
+      throw new Error("You cannot share a board with yourself");
+    }
+
+    const { data: board, error: boardError } = await supabase
+      .from("expense_boards")
+      .select("id, name, created_by")
+      .eq("id", boardId)
+      .eq("created_by", user.id)
+      .maybeSingle();
+
+    if (boardError) throw boardError;
+    if (!board) throw new Error("Board not found or you are not the owner");
+
+    const { data: existing } = await supabase
+      .from("shared_users")
+      .select("id, is_accepted")
+      .eq("board_id", boardId)
+      .eq("shared_with", normalizedEmail)
+      .maybeSingle();
+
+    if (existing?.is_accepted) {
+      throw new Error("This user already has access to the board");
+    }
+    if (existing) {
+      throw new Error("An invitation is already pending for this email");
+    }
+
+    const { data: inviteeProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email_address", normalizedEmail)
+      .maybeSingle();
+
+    const { data, error } = await supabase
+      .from("shared_users")
+      .insert([
+        {
+          shared_by: user.id,
+          shared_with: normalizedEmail,
+          board_id: boardId,
+          user_id: inviteeProfile?.id || null,
+          is_accepted: false,
+          status: "pending",
+        },
+      ])
+      .select(
+        `
+        *,
+        expense_boards:board_id (name)
+      `
+      )
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async joinBoard(codeOrUrl) {
+    const raw = (codeOrUrl || "").trim();
+    if (!raw) throw new Error("Please enter an invite code or URL");
+
+    const code = raw.includes("/") ? raw.split("/").pop() : raw;
+
+    const { data, error } = await supabase.rpc("join_expense_board", {
+      p_code: code,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getSentInvitations() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("No authenticated user");
+
+    const { data, error } = await supabase
+      .from("shared_users")
+      .select(
+        `
+        *,
+        profiles:user_id (id, full_name, email_address),
+        expense_boards:board_id (id, name)
+      `
+      )
+      .eq("shared_by", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getReceivedInvitations() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("No authenticated user");
+
+    const email = user.email?.toLowerCase();
+    if (!email) throw new Error("No email on account");
+
+    const { data, error } = await supabase
+      .from("shared_users")
+      .select(
+        `
+        *,
+        shared_by_profile:profiles!shared_users_shared_by_fkey (id, full_name, email_address),
+        expense_boards:board_id (id, name)
+      `
+      )
+      .or(`user_id.eq.${user.id},shared_with.eq.${email}`)
+      .neq("shared_by", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async acceptInvitation(sharedUserId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("No authenticated user");
+
+    const { data, error } = await supabase
+      .from("shared_users")
+      .update({
+        user_id: user.id,
+        is_accepted: true,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      })
+      .eq("id", sharedUserId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async rejectInvitation(sharedUserId) {
+    const { error } = await supabase
+      .from("shared_users")
+      .update({
+        is_accepted: false,
+        status: "rejected",
+      })
+      .eq("id", sharedUserId);
+
+    if (error) throw error;
+    return true;
+  },
+
+  async removeSharedUser(sharedUserId) {
+    const { error } = await supabase
+      .from("shared_users")
+      .delete()
+      .eq("id", sharedUserId);
+
+    if (error) throw error;
+    return true;
   },
 };

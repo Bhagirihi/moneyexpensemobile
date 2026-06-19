@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
@@ -13,9 +12,11 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase, signInWithGoogle } from "../config/supabase";
 import {
@@ -27,10 +28,16 @@ import { expenseBoardService } from "../services/expenseBoardService";
 import { categoryService } from "../services/categoryService";
 import { userService } from "../services/supabaseService";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { PLAN_CATALOG } from "../config/subscriptionPlans";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { useTranslation } from "../hooks/useTranslation";
 import { devLog } from "../utils/logger";
 import * as FileSystem from "expo-file-system";
+import Card from "../components/common/Card";
+import { SectionLabel, SettingsRow } from "../components/ui/UIKit";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getLocaleFromLanguage = (language) => {
   if (language === "hi") return "hi-IN";
@@ -41,6 +48,8 @@ const getLocaleFromLanguage = (language) => {
 export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { plan, isPremium } = useSubscription();
   const { language } = useAppSettings();
   const locale = getLocaleFromLanguage(language);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -240,20 +249,15 @@ export const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const renderProfileImage = () => (
-    <View
-      style={[
-        styles.profileImageSection,
-        { backgroundColor: theme.cardBackground },
-      ]}
-    >
-      <View style={styles.profileRow}>
-        <View style={styles.profileImageContainer}>
-          <TouchableOpacity onPress={pickAndUploadImage}>
+  const renderProfileHero = () => (
+    <Card variant="elevated" style={styles.heroCard} padding="large">
+      <View style={styles.heroCenter}>
+        <TouchableOpacity onPress={pickAndUploadImage} activeOpacity={0.85}>
+          <View style={[styles.avatarRing, { borderColor: theme.primaryMuted }]}>
             <View
               style={[
                 styles.profileImage,
-                { backgroundColor: `${theme.primary}15` },
+                { backgroundColor: theme.primaryMuted },
               ]}
             >
               {userProfile?.avatar_url ? (
@@ -265,905 +269,481 @@ export const ProfileScreen = ({ navigation }) => {
               ) : (
                 <MaterialCommunityIcons
                   name="account"
-                  size={50}
+                  size={44}
                   color={theme.primary}
                 />
               )}
             </View>
-            <TouchableOpacity
-              style={[
-                styles.editImageButton,
-                { backgroundColor: theme.primary },
-              ]}
-              onPress={pickAndUploadImage}
-            >
+            <View style={[styles.editImageButton, { backgroundColor: theme.primary }]}>
               <MaterialCommunityIcons name="camera" size={14} color="#FFFFFF" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.profileDetails}>
-          {isEditing ? (
-            <>
-              <TextInput
-                style={[styles.profileName, styles.profileEditInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
-                value={editFullName}
-                onChangeText={setEditFullName}
-                placeholder="Full name"
-                placeholderTextColor={theme.textSecondary}
-              />
-              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-                {userProfile?.email_address || "No email"}
-              </Text>
-              <TextInput
-                style={[styles.profilePhone, styles.profileEditInput, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
-                value={editMobile}
-                onChangeText={setEditMobile}
-                placeholder="Mobile"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="phone-pad"
-              />
-              <View style={styles.profileEditActions}>
-                <TouchableOpacity
-                  style={[styles.profileEditBtn, { backgroundColor: theme.border }]}
-                  onPress={() => setIsEditing(false)}
-                  disabled={savingProfile}
-                >
-                  <Text style={[styles.profileEditBtnText, { color: theme.text }]}>{t("cancel")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.profileEditBtn, { backgroundColor: theme.primary }]}
-                  onPress={handleSaveProfile}
-                  disabled={savingProfile}
-                >
-                  <Text style={[styles.profileEditBtnText, { color: theme.white }]}>{savingProfile ? "..." : t("save")}</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.profileName, { color: theme.text }]}>
-                {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
-              </Text>
-              <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
-                {userProfile?.email_address || "No email Address"}
-              </Text>
-              <Text style={[styles.profilePhone, { color: theme.textSecondary }]}>
-                {userProfile?.mobile || "No phone Number"}
-              </Text>
-            </>
-          )}
-          {!isEditing && (
-          <View style={styles.profileBadge}>
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={14}
-              color={theme.success}
-            />
-            <Text style={[styles.profileBadgeText, { color: theme.success }]}>
-              Verified Account
-            </Text>
+            </View>
           </View>
-          )}
-        </View>
-      </View>
-    </View>
-  );
+        </TouchableOpacity>
 
-  const renderSubscriptionStatus = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="crown"
-            size={24}
-            color={theme.primary}
-          />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Premium Access
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Unlock all premium features
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.subscriptionInfo}>
-        <View style={styles.premiumHeader}>
-          <View style={styles.premiumBadgeContainer}>
-            <View
+        {isEditing ? (
+          <View style={styles.editFields}>
+            <TextInput
               style={[
-                styles.planBadge,
-                { backgroundColor: `${theme.primary}15` },
+                styles.profileEditInput,
+                { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBackground },
               ]}
-            >
-              <MaterialCommunityIcons
-                name="star"
-                size={16}
-                color={theme.primary}
-                style={styles.planIcon}
-              />
-              <Text style={[styles.planValue, { color: theme.primary }]}>
-                Free Plan
-              </Text>
-            </View>
-            <View style={styles.premiumPriceContainer}>
-              <Text style={[styles.premiumPrice, { color: theme.text }]}>
-                ₹299
-              </Text>
-              <Text
-                style={[styles.premiumPeriod, { color: theme.textSecondary }]}
-              >
-                /month
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.upgradePremiumButton,
-              { backgroundColor: theme.primary },
-            ]}
-            onPress={() => {
-              Alert.alert(
-                "Coming Soon",
-                "Premium features will be available soon!"
-              );
-            }}
-          >
-            <MaterialCommunityIcons
-              name="crown"
-              size={20}
-              color="#FFFFFF"
-              style={styles.upgradeIcon}
+              value={editFullName}
+              onChangeText={setEditFullName}
+              placeholder="Full name"
+              placeholderTextColor={theme.textMuted}
             />
-            <Text style={styles.upgradePremiumText}>Upgrade to Premium</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.premiumFeatures}>
-          <Text style={[styles.featuresTitle, { color: theme.text }]}>
-            Premium Features
-          </Text>
-          <View style={styles.featuresList}>
-            {[
-              {
-                icon: "view-grid-plus",
-                title: "Unlimited Boards",
-                description: "Create unlimited expense boards",
-                details: [
-                  "Create and manage unlimited expense boards",
-                  "Customize board settings and permissions",
-                  "Share boards with team members",
-                  "Advanced board analytics",
-                ],
-                color: theme.primary,
-              },
-              {
-                icon: "chart-line",
-                title: "Advanced Analytics",
-                description: "Detailed insights and reports",
-                details: [
-                  "Comprehensive expense analytics",
-                  "Custom report generation",
-                  "Trend analysis and forecasting",
-                  "Export data in multiple formats",
-                ],
-                color: theme.success,
-              },
-              {
-                icon: "file-export",
-                title: "Export Data",
-                description: "Export to PDF/Excel",
-                details: [
-                  "Export to PDF, Excel, and CSV",
-                  "Custom report templates",
-                  "Automated report scheduling",
-                  "Batch export capabilities",
-                ],
-                color: theme.warning,
-              },
-              {
-                icon: "headphones",
-                title: "Priority Support",
-                description: "24/7 dedicated support",
-                details: [
-                  "24/7 dedicated customer support",
-                  "Priority ticket resolution",
-                  "Direct access to support team",
-                  "Regular account reviews",
-                ],
-                color: theme.info,
-              },
-              {
-                icon: "tag-multiple",
-                title: "Custom Categories",
-                description: "Create custom categories",
-                details: [
-                  "Create unlimited custom categories",
-                  "Category-specific analytics",
-                  "Smart categorization rules",
-                  "Category templates",
-                ],
-                color: theme.error,
-              },
-              {
-                icon: "cloud",
-                title: "Cloud Backup",
-                description: "Automatic data backup",
-                details: [
-                  "Automatic daily backups",
-                  "Version history",
-                  "Secure data storage",
-                  "Cross-device sync",
-                ],
-                color: theme.primary,
-              },
-            ].map((feature, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.featureCard,
-                  { backgroundColor: `${feature.color}10` },
-                  expandedFeature === index && {
-                    transform: [{ scale: 1.02 }],
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={styles.featureCardHeader}
-                  onPress={() => toggleFeature(index)}
-                >
-                  <View
-                    style={[
-                      styles.featureIconContainer,
-                      { backgroundColor: `${feature.color}15` },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={feature.icon}
-                      size={24}
-                      color={feature.color}
-                    />
-                  </View>
-                  <View style={styles.featureCardContent}>
-                    <Text
-                      style={[styles.featureCardTitle, { color: theme.text }]}
-                    >
-                      {feature.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.featureCardDescription,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {feature.description}
-                    </Text>
-                  </View>
-                  <Animated.View
-                    style={{
-                      transform: [
-                        {
-                          rotate: expandedFeature === index ? "180deg" : "0deg",
-                        },
-                      ],
-                    }}
-                  >
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={24}
-                      color={theme.textSecondary}
-                    />
-                  </Animated.View>
-                </TouchableOpacity>
-                <Animated.View
-                  style={[
-                    styles.featureDetails,
-                    {
-                      maxHeight: expandedFeature === index ? 200 : 0,
-                      opacity: expandedFeature === index ? 1 : 0,
-                    },
-                  ]}
-                >
-                  {feature.details.map((detail, idx) => (
-                    <View key={idx} style={styles.featureDetailItem}>
-                      <MaterialCommunityIcons
-                        name="check-circle"
-                        size={16}
-                        color={feature.color}
-                      />
-                      <Text
-                        style={[
-                          styles.featureDetailText,
-                          { color: theme.text },
-                        ]}
-                      >
-                        {detail}
-                      </Text>
-                    </View>
-                  ))}
-                </Animated.View>
-              </Animated.View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.premiumFooter}>
-          <View style={styles.premiumGuarantee}>
-            <MaterialCommunityIcons
-              name="shield-check"
-              size={20}
-              color={theme.success}
-            />
-            <Text style={[styles.guaranteeText, { color: theme.text }]}>
-              30-day money-back guarantee
+            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+              {userProfile?.email_address || "No email"}
             </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.learnMoreButton}
-            onPress={() => {
-              Alert.alert(
-                "Coming Soon",
-                "Premium features will be available soon!"
-              );
-            }}
-          >
-            <Text style={[styles.learnMoreText, { color: theme.primary }]}>
-              Learn more about Premium
-            </Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={theme.primary}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderAccountConnections = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons name="link" size={24} color={theme.primary} />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Account Connections
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Connect your accounts for better experience
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.connectionsList}>
-        {[
-          {
-            name: "Google",
-            icon: "google",
-            color: "#DB4437",
-            connected: false,
-          },
-        ].map((connection, index) => (
-          <View key={index} style={styles.connectionItem}>
-            <View style={styles.connectionLeft}>
-              <View
-                style={[
-                  styles.socialIconContainer,
-                  { backgroundColor: connection.color },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={connection.icon}
-                  size={20}
-                  color="#FFFFFF"
-                />
-              </View>
-              <View>
-                <Text style={[styles.connectionText, { color: theme.text }]}>
-                  {connection.name}
-                </Text>
-                <Text
-                  style={[
-                    styles.connectionStatus,
-                    {
-                      color: connection.connected ? theme.success : theme.error,
-                    },
-                  ]}
-                >
-                  {connection.connected ? "✓ Connected" : "× Not connected"}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
+            <TextInput
               style={[
-                styles.connectButton,
-                {
-                  backgroundColor: connection.connected
-                    ? theme.success
-                    : theme.primary,
-                },
+                styles.profileEditInput,
+                { color: theme.text, borderColor: theme.border, backgroundColor: theme.inputBackground },
               ]}
-              onPress={() => {
-                Alert.alert(
-                  "Coming Soon",
-                  "Social connections will be available soon!"
-                );
-              }}
-            >
-              <Text style={styles.connectButtonText}>
-                {connection.connected ? "Connected" : "Connect"}
-              </Text>
-            </TouchableOpacity>
+              value={editMobile}
+              onChangeText={setEditMobile}
+              placeholder="Mobile"
+              placeholderTextColor={theme.textMuted}
+              keyboardType="phone-pad"
+            />
+            <View style={styles.profileEditActions}>
+              <TouchableOpacity
+                style={[styles.profileEditBtn, { backgroundColor: theme.borderLight }]}
+                onPress={() => setIsEditing(false)}
+                disabled={savingProfile}
+              >
+                <Text style={[styles.profileEditBtnText, { color: theme.text }]}>
+                  {t("cancel")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.profileEditBtn, { backgroundColor: theme.primary }]}
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+              >
+                <Text style={[styles.profileEditBtnText, { color: theme.white }]}>
+                  {savingProfile ? "..." : t("save")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        ))}
-      </View>
-    </View>
-  );
-
-  const renderAccountStatistics = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.sectionHeader}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: `${theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="chart-box"
-            size={24}
-            color={theme.primary}
-          />
-        </View>
-        <View style={styles.sectionTitleContainer}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Account Statistics
-          </Text>
-          <Text
-            style={[styles.sectionSubtitle, { color: theme.textSecondary }]}
-          >
-            Your account activity overview
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.primary}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
+        ) : (
+          <>
+            <Text style={[styles.profileName, { color: theme.text }]}>
+              {capitalizeFirstLetter(userProfile?.full_name) || "No name"}
+            </Text>
+            <Text style={[styles.profileEmail, { color: theme.textSecondary }]}>
+              {userProfile?.email_address || "No email"}
+            </Text>
+            {userProfile?.mobile ? (
+              <Text style={[styles.profilePhone, { color: theme.textMuted }]}>
+                {userProfile.mobile}
+              </Text>
+            ) : null}
+            <View style={[styles.planPill, { backgroundColor: theme.primaryMuted }]}>
               <MaterialCommunityIcons
-                name="cash-multiple"
-                size={20}
+                name={isPremium ? "crown" : "account-circle-outline"}
+                size={14}
                 color={theme.primary}
               />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Total Expenses
+              <Text style={[styles.planPillText, { color: theme.primary }]}>
+                {t(PLAN_CATALOG[plan]?.nameKey || "planFree")}
               </Text>
             </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {formatCurrency(totalExpenses)}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              This month
-            </Text>
-          </View>
+          </>
+        )}
+      </View>
+    </Card>
+  );
 
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.success}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="view-grid"
-                size={20}
-                color={theme.success}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Expense Boards
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalBoards}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Active boards
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statsCard,
-              { backgroundColor: `${theme.warning}10` },
-            ]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="tag"
-                size={20}
-                color={theme.warning}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Categories
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalCategories}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Custom categories
-            </Text>
-          </View>
-
-          <View
-            style={[styles.statsCard, { backgroundColor: `${theme.info}10` }]}
-          >
-            <View style={styles.statsCardHeader}>
-              <MaterialCommunityIcons
-                name="account-group"
-                size={20}
-                color={theme.text}
-              />
-              <Text style={[styles.statsCardTitle, { color: theme.text }]}>
-                Members
-              </Text>
-            </View>
-            <Text style={[styles.statsCardValue, { color: theme.text }]}>
-              {totalSharedMembers}
-            </Text>
-            <Text
-              style={[styles.statsCardSubtext, { color: theme.textSecondary }]}
-            >
-              Total members
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsDetails}>
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="calendar"
-                size={20}
-                color={theme.textSecondary}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Member Since
-              </Text>
-            </View>
-            <Text
-              style={[styles.statsDetailValue, { color: theme.textSecondary }]}
-            >
-              {(() => {
-                const date =
-                  session?.user?.created_at || userProfile?.created_at;
-                return date
-                  ? new Date(date).toLocaleDateString(locale, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
-                  : "";
-              })()}
-            </Text>
-          </View>
-
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={20}
-                color={theme.textSecondary}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Last Login
-              </Text>
-            </View>
-            <Text
-              style={[styles.statsDetailValue, { color: theme.textSecondary }]}
-            >
-              {formatDateTime(
-                session?.user?.last_sign_in_at || userProfile?.updated_at,
-                locale
-              )}
-            </Text>
-          </View>
-
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={20}
-                color={theme.success}
-              />
-              <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                Account Status
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: `${theme.success}15` },
-              ]}
-            >
-              <Text style={[styles.statusText, { color: theme.success }]}>
-                Active
+  const renderPremiumBanner = () => {
+    if (isPremium) return null;
+    return (
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate("Paywall")}
+        style={styles.premiumBannerWrap}
+      >
+        <LinearGradient
+          colors={theme.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.premiumBanner}
+        >
+          <View style={styles.premiumBannerLeft}>
+            <MaterialCommunityIcons name="crown" size={22} color="#FFFFFF" />
+            <View>
+              <Text style={styles.premiumBannerTitle}>Upgrade to Premium</Text>
+              <Text style={styles.premiumBannerSub}>
+                Unlimited boards, analytics & more
               </Text>
             </View>
           </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color="#FFFFFF" />
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
-          <View style={styles.statsDetailItem}>
-            <View style={styles.statsDetailLeft}>
-              <MaterialCommunityIcons
-                name="google"
-                size={20}
-                color={isGoogleconnected ? theme.success : theme.error}
-              />
-              <View style={{ flexDirection: "column", gap: 4 }}>
-                <Text style={[styles.statsDetailText, { color: theme.text }]}>
-                  Google Account
-                </Text>
-                <Text
-                  style={[
-                    styles.connectionStatus,
-                    {
-                      color: isGoogleconnected ? theme.success : theme.error,
-                      fontSize: 12,
-                    },
-                  ]}
-                >
-                  {isGoogleconnected ? "✓ Connected" : "× Not connected"}
-                </Text>
+  const renderStatsGrid = () => {
+    const stats = [
+      { icon: "cash-multiple", label: "Expenses", value: formatCurrency(totalExpenses), color: theme.primary },
+      { icon: "view-grid", label: "Boards", value: String(totalBoards), color: theme.accent },
+      { icon: "tag-multiple", label: "Categories", value: String(totalCategories), color: theme.warning },
+      { icon: "account-group", label: "Members", value: String(totalSharedMembers), color: theme.info },
+    ];
+
+    return (
+      <View style={styles.section}>
+        <SectionLabel title="Overview" style={{ marginTop: 0 }} />
+        <View style={styles.statsGrid}>
+          {stats.map((stat) => (
+            <Card key={stat.label} padding="small" style={styles.statTile}>
+              <View style={[styles.statIcon, { backgroundColor: `${stat.color}18` }]}>
+                <MaterialCommunityIcons name={stat.icon} size={18} color={stat.color} />
               </View>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: isGoogleconnected
-                    ? theme.success
-                    : theme.primary,
-                },
-              ]}
-              onPress={async () => {
-                if (isGoogleconnected) return;
-                try {
-                  const { error } = await signInWithGoogle();
-                  if (error && !error?.message?.toLowerCase().includes("cancelled")) {
-                    Alert.alert(t("error"), error?.message || "Failed to connect Google");
+              <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>{stat.label}</Text>
+            </Card>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderAccountMeta = () => (
+    <View style={styles.section}>
+      <SectionLabel title="Account" />
+      <Card padding="none">
+        <SettingsRow
+          icon="calendar"
+          iconColor={theme.primary}
+          title="Member since"
+          subtitle={(() => {
+            const date = session?.user?.created_at || userProfile?.created_at;
+            return date
+              ? new Date(date).toLocaleDateString(locale, {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              : "—";
+          })()}
+          showChevron={false}
+        />
+        <SettingsRow
+          icon="clock-outline"
+          iconColor={theme.accent}
+          title="Last login"
+          subtitle={formatDateTime(
+            session?.user?.last_sign_in_at || userProfile?.updated_at,
+            locale
+          )}
+          showChevron={false}
+        />
+        <SettingsRow
+          icon="google"
+          iconColor="#DB4437"
+          iconBg="#FEE2E2"
+          title="Google account"
+          subtitle={isGoogleconnected ? "Connected" : "Not connected"}
+          showChevron={false}
+          rightElement={
+            !isGoogleconnected ? (
+              <TouchableOpacity
+                style={[styles.connectPill, { backgroundColor: theme.primary }]}
+                onPress={async () => {
+                  try {
+                    const { error } = await signInWithGoogle();
+                    if (error && !error?.message?.toLowerCase().includes("cancelled")) {
+                      Alert.alert(t("error"), error?.message || "Failed to connect Google");
+                    }
+                  } catch (e) {
+                    Alert.alert(t("error"), e?.message || "Failed to connect Google");
                   }
-                } catch (e) {
-                  Alert.alert(t("error"), e?.message || "Failed to connect Google");
-                }
-              }}
-              disabled={isGoogleconnected}
-            >
-              <Text style={styles.connectButtonText}>
-                {isGoogleconnected ? "Connected" : "Connect"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+                }}
+              >
+                <Text style={styles.connectPillText}>Connect</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.connectedBadge, { backgroundColor: `${theme.success}18` }]}>
+                <Text style={[styles.connectedText, { color: theme.success }]}>Active</Text>
+              </View>
+            )
+          }
+          isLast
+        />
+      </Card>
     </View>
   );
 
-  const renderSettingsSection = () => (
-    <View style={[styles.section, { backgroundColor: theme.cardBackground }]}>
-      <View style={styles.settingsList}>
-        {[
-          {
-            icon: "cog",
-            title: "Settings",
-            subtitle: "Manage your account settings",
-            onPress: () => navigation.navigate("Settings"),
-          },
-          {
-            icon: "bell-outline",
-            title: "Notifications",
-            subtitle: "Manage notification preferences",
-            onPress: () => navigation.navigate("Notification"),
-          },
-          // {
-          //   icon: "lock-outline",
-          //   title: "Privacy",
-          //   subtitle: "Control your privacy settings",
-          //   onPress: () => {
-          //     Alert.alert(
-          //       "Coming Soon",
-          //       "Privacy settings will be available soon!"
-          //     );
-          //   },
-          // },
-          {
-            icon: "help-circle-outline",
-            title: "Help & Support",
-            subtitle: "Get help and contact support",
-            onPress: () => {
-              Alert.alert(
-                "Coming Soon",
-                "Support features will be available soon!"
-              );
-            },
-          },
-          {
-            icon: "information-outline",
-            title: "About",
-            subtitle: "App information and version",
-            onPress: () => {
-              Alert.alert(
-                "About",
-                "Trivense v1.0.0\n\nTrack your expenses with ease!"
-              );
-            },
-          },
-        ].map((setting, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.settingItem}
-            onPress={setting.onPress}
-          >
-            <View style={styles.settingLeft}>
-              <View
-                style={[
-                  styles.settingIconContainer,
-                  { backgroundColor: `${theme.primary}15` },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={setting.icon}
-                  size={20}
-                  color={theme.primary}
-                />
-              </View>
-              <View>
-                <Text style={[styles.settingTitle, { color: theme.text }]}>
-                  {setting.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.settingSubtitle,
-                    { color: theme.textSecondary },
-                  ]}
-                >
-                  {setting.subtitle}
-                </Text>
-              </View>
-            </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={theme.textSecondary}
+  const renderSettingsSection = () => {
+    const items = [
+      {
+        icon: "cog-outline",
+        iconColor: theme.primary,
+        title: "Settings",
+        subtitle: "Budget, currency & preferences",
+        onPress: () => navigation.navigate("Settings"),
+      },
+      {
+        icon: "bell-outline",
+        iconColor: theme.warning,
+        title: "Notifications",
+        subtitle: "Alerts and reminders",
+        onPress: () => navigation.navigate("Notification"),
+      },
+      {
+        icon: "help-circle-outline",
+        iconColor: theme.info,
+        title: "Help & Support",
+        subtitle: "Get help when you need it",
+        onPress: () => {
+          Alert.alert("Coming Soon", "Support features will be available soon!");
+        },
+      },
+      {
+        icon: "information-outline",
+        iconColor: theme.textSecondary,
+        title: "About",
+        subtitle: "Trivense v1.0.0",
+        onPress: () => {
+          Alert.alert("About", "Trivense v1.0.0\n\nTrack your expenses with ease!");
+        },
+        isLast: true,
+      },
+    ];
+
+    return (
+      <View style={styles.section}>
+        <SectionLabel title="Quick links" />
+        <Card padding="none">
+          {items.map((item, index) => (
+            <SettingsRow
+              key={item.title}
+              icon={item.icon}
+              iconColor={item.iconColor}
+              title={item.title}
+              subtitle={item.subtitle}
+              onPress={item.onPress}
+              isLast={item.isLast || index === items.length - 1}
             />
-          </TouchableOpacity>
-        ))}
+          ))}
+        </Card>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
+      <ScreenLayout>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
             Loading profile...
           </Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <ScreenLayout
+      header={
+        <Header
+          title={t("profile")}
+          onBack={() => navigation.goBack()}
+          rightComponent={
+            <TouchableOpacity
+              onPress={handleEditProfile}
+              style={[styles.editButton, { backgroundColor: theme.primaryMuted }]}
+            >
+              <MaterialCommunityIcons
+                name={isEditing ? "close" : "pencil"}
+                size={18}
+                color={theme.primary}
+              />
+            </TouchableOpacity>
+          }
+        />
+      }
     >
-      <Header
-        title={t("profile")}
-        onBack={() => navigation.goBack()}
-        rightComponent={
-          <TouchableOpacity
-            onPress={handleEditProfile}
-            style={[
-              styles.editButton,
-              { backgroundColor: `${theme.primary}15` },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={isEditing ? "close" : "pencil"}
-              size={18}
-              color={theme.primary}
-            />
-          </TouchableOpacity>
-        }
-      />
       <Animated.ScrollView
         style={styles.content}
+        contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
         )}
       >
-        {renderProfileImage()}
-        {/* {renderSubscriptionStatus()} */}
-        {renderAccountStatistics()}
-        {/* {renderAccountConnections()} */}
+        {renderProfileHero()}
+        {renderPremiumBanner()}
+        {renderStatsGrid()}
+        {renderAccountMeta()}
         {renderSettingsSection()}
       </Animated.ScrollView>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   content: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 12,
+    gap: spacing.md,
   },
-  loadingText: {
-    fontSize: 16,
+  loadingText: { ...typography.bodyMedium },
+  heroCard: { marginBottom: spacing.lg },
+  heroCenter: { alignItems: "center" },
+  avatarRing: {
+    position: "relative",
+    padding: 4,
+    borderRadius: 999,
+    borderWidth: 3,
+    marginBottom: spacing.md,
+  },
+  profileImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  editImageButton: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  profileName: {
+    ...typography.h2,
+    fontSize: 22,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+  profileEmail: {
+    ...typography.caption,
+    textAlign: "center",
     fontWeight: "500",
   },
-  profileImageSection: {
-    marginBottom: 24,
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+  profilePhone: {
+    ...typography.caption,
+    textAlign: "center",
+    marginTop: 2,
   },
+  planPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  planPillText: { ...typography.caption, fontWeight: "700" },
+  editFields: { width: "100%", marginTop: spacing.sm },
+  profileEditInput: {
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    ...typography.body,
+    textAlign: "center",
+  },
+  profileEditActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    justifyContent: "center",
+  },
+  profileEditBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radii.md,
+  },
+  profileEditBtnText: { ...typography.label },
+  premiumBannerWrap: { marginBottom: spacing.lg },
+  premiumBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+  },
+  premiumBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    flex: 1,
+  },
+  premiumBannerTitle: {
+    color: "#FFFFFF",
+    ...typography.label,
+    fontWeight: "700",
+  },
+  premiumBannerSub: {
+    color: "rgba(255,255,255,0.8)",
+    ...typography.caption,
+    marginTop: 2,
+    fontWeight: "400",
+  },
+  section: { marginBottom: spacing.lg },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  statTile: {
+    width: "48%",
+    flexGrow: 1,
+    minWidth: "46%",
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  statValue: { ...typography.label, fontWeight: "700", marginBottom: 2 },
+  statLabel: { ...typography.micro },
+  connectPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  connectPillText: { color: "#FFFFFF", ...typography.caption, fontWeight: "700" },
+  connectedBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+  },
+  connectedText: { ...typography.caption, fontWeight: "700" },
+  editButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // legacy styles kept for unused premium/connection renderers
+  profileImageSection: { marginBottom: 24, borderRadius: 16, padding: 20 },
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1185,9 +765,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
       },
-      android: {
-        elevation: 3,
-      },
+      android: {},
     }),
   },
   editImageButton: {
@@ -1208,9 +786,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
       },
-      android: {
-        elevation: 5,
-      },
+      android: {},
     }),
   },
   profileDetails: {
@@ -1272,9 +848,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 8,
       },
-      android: {
-        elevation: 3,
-      },
+      android: {},
     }),
   },
   sectionHeader: {
@@ -1356,9 +930,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
       },
-      android: {
-        elevation: 2,
-      },
+      android: {},
     }),
   },
   featureCardHeader: {

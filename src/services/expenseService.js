@@ -31,6 +31,16 @@ export const expenseService = {
         ...sharedBoards.map((s) => s.board_id),
       ];
 
+      if (boardIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          hasMore: false,
+          currentPage: page,
+          totalPages: 0,
+        };
+      }
+
       // Step 3: Get creator user IDs
       const sharedUserProfileResults = await Promise.all(
         sharedBoards.map((sb) =>
@@ -58,8 +68,7 @@ export const expenseService = {
           `,
           { count: "exact" }
         )
-        // .in("board_id", boardIds)
-        // .in("created_by", createdByIds)
+        .in("board_id", boardIds)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -87,11 +96,14 @@ export const expenseService = {
         amount: expense.amount,
         description: expense.description,
         date: expense.created_at,
+        board_id: expense.board_id,
+        category_id: expense.category_id,
         icon: expense.categories?.icon || "receipt",
         color: expense.categories?.color || "#6C5CE7",
         category: expense.categories?.name || "Uncategorized",
         board: expense.expense_boards?.name || "Default Board",
         payment_method: expense.payment_method || "Unknown",
+        created_by: expense.created_by,
         created_by_profile: userMap[expense.created_by] || null,
       }));
 
@@ -207,11 +219,11 @@ export const expenseService = {
             name,
             icon,
             color
-          )
+          ),
+          expense_boards (name)
         `
         )
         .eq("id", expenseId)
-        .eq("created_by", user.id)
         .single();
 
       if (error) {
@@ -233,6 +245,10 @@ export const expenseService = {
 
       return {
         ...data,
+        board: data.expense_boards?.name || "Default Board",
+        category: data.category?.name || "Uncategorized",
+        icon: data.category?.icon || "receipt",
+        color: data.category?.color || "#6C5CE7",
         created_by_profile: profile,
       };
     } catch (error) {
@@ -306,7 +322,6 @@ export const expenseService = {
         .from("expenses")
         .update(updates)
         .eq("id", expenseId)
-        .eq("created_by", user.id)
         .select()
         .single();
 

@@ -9,199 +9,150 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { formatCurrency } from "../utils/formatters";
-import { sendExpenseDeletedNotification } from "../services/pushNotificationService";
+import { radii, spacing, typography } from "../theme/tokens";
 
 const formatDate = (date) => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-
   const expenseDate = new Date(date);
-
-  if (expenseDate.toDateString() === today.toDateString()) {
-    return "Today";
-  } else if (expenseDate.toDateString() === yesterday.toDateString()) {
-    return "Yesterday";
-  } else {
-    return expenseDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  }
+  if (expenseDate.toDateString() === today.toDateString()) return "Today";
+  if (expenseDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return expenseDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-const ExpenseItem = memo(({ expense, onPress, onDelete }) => {
+const ExpenseItem = memo(({ expense, onPress, onDelete, compact = false }) => {
   const { theme } = useTheme();
+  const categoryName =
+    typeof expense.category === "string"
+      ? expense.category
+      : expense.category?.name || "Uncategorized";
+  const iconName = expense.icon || expense.category?.icon || "receipt";
+  const iconColor = expense.color || expense.category?.color || theme.primary;
 
-  const handleDelete = () => {
-    // Pass the expense data to the parent component
-    onDelete(expense);
-  };
-
-  // Memoize styles
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        expenseItem: {
+        row: {
           flexDirection: "row",
           alignItems: "center",
-          padding: Platform.OS == "ios" ? 16 : 12,
-          borderRadius: 16,
-          marginBottom: Platform.OS == "ios" ? 12 : 8,
-          backgroundColor: theme.card,
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: 2,
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
+          padding: compact ? spacing.sm : spacing.md,
+          borderRadius: compact ? radii.md : radii.lg,
+          marginBottom: compact ? spacing.xs : spacing.sm,
+          backgroundColor: theme.surface,
+          borderWidth: 1,
+          borderColor: theme.border,
+          ...Platform.select({
+            ios: compact
+              ? {}
+              : {
+                  shadowColor: "#0F172A",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 6,
+                },
+            android: { elevation: compact ? 0 : 1 },
+          }),
         },
-        expenseIcon: {
-          width: 40,
-          height: 40,
-          borderRadius: 20,
+        icon: {
+          width: compact ? 36 : 44,
+          height: compact ? 36 : 44,
+          borderRadius: compact ? radii.sm : radii.md,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: `${expense.color}20`,
+          backgroundColor: `${iconColor}18`,
         },
-        expenseInfo: {
+        body: { flex: 1, marginLeft: compact ? spacing.sm : spacing.md },
+        topRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: compact ? 0 : spacing.xs,
+        },
+        title: {
+          ...(compact ? typography.caption : typography.bodyMedium),
+          color: theme.text,
           flex: 1,
-          marginLeft: 16,
+          marginRight: spacing.sm,
         },
-        expenseHeader: {
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
-        },
-        expenseName: {
-          fontSize: 16,
-          fontWeight: "600",
+        amount: {
+          ...(compact ? typography.caption : typography.bodyMedium),
+          fontWeight: "700",
           color: theme.text,
         },
-        expenseAmount: {
-          fontSize: 16,
-          fontWeight: "600",
-          color: theme.text,
-        },
-        expenseDetails: {
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        },
-        expenseMeta: {
-          flexDirection: "row",
-          alignItems: "center",
-        },
-        metaIcon: {
-          marginRight: 4,
-        },
-        expenseDate: {
+        desc: {
           fontSize: 13,
-          opacity: 0.7,
           color: theme.textSecondary,
+          marginBottom: spacing.sm,
         },
-        expenseCreator: {
-          fontSize: 13,
-          opacity: 0.7,
-          color: theme.textSecondary,
-        },
-        deleteButton: {
-          padding: 8,
-          marginLeft: 8,
+        metaRow: { flexDirection: "row", flexWrap: "wrap", gap: compact ? spacing.sm : spacing.md },
+        meta: { flexDirection: "row", alignItems: "center", gap: 4 },
+        metaText: { fontSize: compact ? 11 : 12, color: theme.textMuted },
+        deleteBtn: {
+          width: compact ? 32 : 36,
+          height: compact ? 32 : 36,
+          borderRadius: radii.sm,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: theme.errorLight,
+          marginLeft: spacing.sm,
         },
       }),
-    [theme, expense.color]
+    [theme, iconColor, compact]
   );
 
   return (
-    <TouchableOpacity style={styles.expenseItem} onPress={onPress}>
-      <View style={styles.expenseIcon}>
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.icon}>
         <MaterialCommunityIcons
-          name={expense.icon}
-          size={20}
-          color={expense.color}
+          name={iconName}
+          size={compact ? 18 : 22}
+          color={iconColor}
         />
       </View>
-      <View style={styles.expenseInfo}>
-        <View style={styles.expenseHeader}>
-          <Text style={styles.expenseName}>
-            {typeof expense.category === "string"
-              ? expense.category
-              : expense.category?.name || "Uncategorized"}
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <Text style={styles.title} numberOfLines={1}>
+            {categoryName}
           </Text>
-          <Text style={styles.expenseAmount}>
-            {formatCurrency(expense.amount)}
-          </Text>
+          <Text style={styles.amount}>{formatCurrency(expense.amount)}</Text>
         </View>
-        <View style={styles.expenseDetails}>
-          <View style={styles.expenseMeta}>
-            <MaterialCommunityIcons
-              name="account-circle-outline"
-              size={14}
-              color={theme.textSecondary}
-              style={styles.metaIcon}
-            />
-            <Text style={styles.expenseCreator}>
-              {expense?.created_by_profile?.full_name || "Unknown"}
-            </Text>
-          </View>
-
-          <View style={styles.expenseMeta}>
+        {!compact && expense.description ? (
+          <Text style={styles.desc} numberOfLines={1}>
+            {expense.description}
+          </Text>
+        ) : null}
+        <View style={styles.metaRow}>
+          <View style={styles.meta}>
             <MaterialCommunityIcons
               name="calendar-outline"
-              size={14}
-              color={theme.textSecondary}
-              style={styles.metaIcon}
+              size={compact ? 11 : 13}
+              color={theme.textMuted}
             />
-            <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
+            <Text style={styles.metaText}>{formatDate(expense.date)}</Text>
           </View>
-        </View>
-        <View
-          style={[
-            styles.expenseMeta,
-            { marginVertical: 5, justifyContent: "space-between" },
-          ]}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <MaterialCommunityIcons
-              name="view-grid"
-              size={14}
-              color={theme.textSecondary}
-              style={styles.metaIcon}
-            />
-            <Text style={styles.expenseCreator}>
-              {expense?.board || "Unknown"}
-            </Text>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <MaterialCommunityIcons
-              name="view-grid"
-              size={14}
-              color={theme.textSecondary}
-              style={styles.metaIcon}
-            />
-            <Text style={styles.expenseCreator}>
-              {expense?.payment_method || "Unknown"}
-            </Text>
-          </View>
+          {expense.board ? (
+            <View style={styles.meta}>
+              <MaterialCommunityIcons
+                name="view-grid-outline"
+                size={compact ? 11 : 13}
+                color={theme.textMuted}
+              />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {expense.board}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
       <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={handleDelete}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={styles.deleteBtn}
+        onPress={() => onDelete(expense)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <MaterialCommunityIcons
-          name="delete-outline"
-          size={20}
+          name="trash-can-outline"
+          size={compact ? 16 : 18}
           color={theme.error}
         />
       </TouchableOpacity>

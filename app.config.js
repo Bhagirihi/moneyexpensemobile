@@ -16,7 +16,12 @@ export default {
       bundleIdentifier: "com.trivense.app",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        NSAppTransportSecurity: { NSAllowsArbitraryLoads: true },
+        NSCameraUsageDescription:
+          "Trivense needs camera access to attach receipt photos to expenses.",
+        NSPhotoLibraryUsageDescription:
+          "Trivense needs photo library access to attach receipt images to expenses.",
+        NSPhotoLibraryAddUsageDescription:
+          "Trivense can save exported expense files to your photo library.",
       },
     },
     android: {
@@ -58,23 +63,31 @@ export default {
         "expo-splash-screen",
         {
           backgroundColor: "#31356e",
-          image: "./assets/splash-icon.png",
+          image: "./assets/splash_icon.png",
           dark: {
-            image: "./assets/splash-icon.png",
+            image: "./assets/splash_icon.png",
             backgroundColor: "#31356e",
           },
           imageWidth: 200,
         },
       ],
+      [
+        "expo-notifications",
+        {
+          icon: "./assets/icon.png",
+          color: "#31356e",
+        },
+      ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
+      ...(process.env.EXPO_PUBLIC_SENTRY_DSN ? ["@sentry/react-native"] : []),
     ],
     extra: {
       eas: {
         projectId: "373dac47-60b0-4de3-8dfc-aea74ec58784",
       },
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     },
   },
 };

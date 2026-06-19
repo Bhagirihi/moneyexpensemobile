@@ -29,7 +29,10 @@ const CustomModal = ({
     >
       <View style={styles.modalOverlay}>
         <View
-          style={[styles.modalContent, { backgroundColor: theme.background }]}
+          style={[
+            styles.modalContent,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
         >
           {icon && (
             <View
@@ -99,7 +102,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: Dimensions.get("window").width * 0.85,
-    borderRadius: 16,
+    borderRadius: 20,
+    borderWidth: 1,
     padding: 24,
     alignItems: "center",
   },
@@ -128,8 +132,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
-    height: 48,
-    borderRadius: 8,
+    height: 52,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },

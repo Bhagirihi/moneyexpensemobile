@@ -1,25 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
-  Animated,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { notificationService } from "../services/notificationService";
+import { supabase } from "../config/supabase";
 import { showToast } from "../utils/toast";
-import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
 import { useTranslation } from "../hooks/useTranslation";
+import Card from "../components/common/Card";
+import { SectionLabel } from "../components/ui/UIKit";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const formatNotificationDate = (dateString, t) => {
+const getDateBucket = (dateString) => {
   const date = new Date(dateString);
   const today = new Date();
   const yesterday = new Date(today);
@@ -29,186 +33,278 @@ const formatNotificationDate = (dateString, t) => {
   yesterday.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
 
-  if (date.getTime() === today.getTime()) {
-    return t ? t("today") : "Today";
-  } else if (date.getTime() === yesterday.getTime()) {
-    return t ? t("yesterday") : "Yesterday";
-  } else {
-    return date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "numeric",
-    });
+  if (date.getTime() === today.getTime()) return "today";
+  if (date.getTime() === yesterday.getTime()) return "yesterday";
+  return "earlier";
+};
+
+const formatNotificationTime = (dateString) => {
+  const date = new Date(dateString);
+  const bucket = getDateBucket(dateString);
+
+  if (bucket === "today" || bucket === "yesterday") {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+};
+
+const groupNotifications = (items) => {
+  const groups = { today: [], yesterday: [], earlier: [] };
+  items.forEach((item) => {
+    groups[getDateBucket(item.created_at)].push(item);
+  });
+  return groups;
 };
 
 export const NotificationScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [buttonScale] = useState(new Animated.Value(1));
 
-  useEffect(() => {
-    fetchNotifications();
-    const subscription = realTimeSync.subscribeToNotifications(
-      (newNotification) => {
-        setNotifications((prev) => [newNotification, ...prev]);
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await notificationService.getNotifications();
-      setNotifications(data);
+      setNotifications(data || []);
     } catch (error) {
       console.error("Error fetching notifications:", error);
       showToast.error("Failed to fetch notifications");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  useEffect(() => {
+    fetchNotifications();
+    const subscription = realTimeSync.subscribeToNotifications((newNotification) => {
+      if (newNotification) {
+        setNotifications((prev) => [newNotification, ...prev]);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [fetchNotifications]);
+
+  const onRefresh = () => {
     setRefreshing(true);
-    await fetchNotifications();
-    setRefreshing(false);
+    fetchNotifications(true);
   };
 
   const markAsRead = async (id) => {
     try {
       await notificationService.markAsRead(id);
       setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === id
-            ? { ...notification, read: true }
-            : notification
-        )
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
     } catch (error) {
-      console.error("Error marking notification as read:", error);
       showToast.error("Failed to mark notification as read");
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      Animated.sequence([
-        Animated.timing(buttonScale, {
-          toValue: 0.95,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(buttonScale, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
       await notificationService.markAllAsRead();
-      setNotifications((prev) =>
-        prev.map((notification) => ({ ...notification, read: true }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
       showToast.error("Failed to mark all notifications as read");
     }
   };
 
-  const handleNotificationPress = (notification) => {
+  const handleNotificationPress = async (notification) => {
     markAsRead(notification.id);
+    if (!notification.trip_name) return;
 
-    if (notification.trip_name) {
-      navigation.navigate("ExpenseBoardDetails", {
-        boardName: notification.trip_name,
-      });
+    try {
+      const { data: boards } = await supabase
+        .from("expense_boards")
+        .select("id, name, total_budget, total_expense")
+        .eq("name", notification.trip_name)
+        .limit(1);
+
+      if (boards?.[0]) {
+        navigation.navigate("ExpenseBoardDetails", {
+          boardId: boards[0].id,
+          boardName: boards[0].name,
+          totalExpenses: boards[0].total_expense || 0,
+          totalBudget: boards[0].total_budget || 0,
+        });
+        return;
+      }
+    } catch (error) {
+      console.error("Error resolving notification board:", error);
     }
+
+    navigation.navigate("ExpenseBoard");
   };
 
-  const hasUnreadNotifications = notifications.some((n) => !n.read);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
 
-  const renderNotification = (notification) => (
-    <TouchableOpacity
-      key={notification.id}
-      style={[
-        styles.notificationItem,
-        {
-          backgroundColor: theme.cardBackground,
-          borderLeftColor: notification.read ? "transparent" : theme.primary,
-        },
-      ]}
-      onPress={() => handleNotificationPress(notification)}
-      activeOpacity={0.7}
-    >
-      <View
-        style={[
-          styles.notificationContent,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
+  const grouped = useMemo(() => groupNotifications(notifications), [notifications]);
+
+  const sectionMeta = [
+    { key: "today", label: t("today") },
+    { key: "yesterday", label: t("yesterday") },
+    { key: "earlier", label: "Earlier" },
+  ];
+
+  const renderUnreadBanner = () => {
+    if (unreadCount === 0) return null;
+    return (
+      <LinearGradient
+        colors={theme.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.unreadBanner}
       >
-        <View
-          style={[
-            styles.notificationIcon,
-            { backgroundColor: `${notification.icon_color}70` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={notification.icon}
-            size={24}
-            color={notification.icon_color}
-          />
-        </View>
-        <View style={styles.notificationText}>
-          <View style={styles.notificationHeader}>
-            <Text style={[styles.notificationTitle, { color: theme.text }]}>
-              {notification.title}
+        <View style={styles.unreadBannerLeft}>
+          <View style={styles.unreadBannerIcon}>
+            <MaterialCommunityIcons name="bell-ring" size={20} color="#FFFFFF" />
+          </View>
+          <View>
+            <Text style={styles.unreadBannerTitle}>
+              {unreadCount} unread
             </Text>
-            <Text style={[styles.timestamp, { color: theme.textSecondary }]}>
-              {formatNotificationDate(notification.created_at, t)}
+            <Text style={styles.unreadBannerSub}>
+              Tap a notification to open details
             </Text>
           </View>
-          <Text style={[styles.notificationMessage, { color: theme.text }]}>
-            {notification.message}
-          </Text>
-          {notification.trip_name && (
-            <View style={styles.tripNameContainer}>
-              <MaterialCommunityIcons
-                name="map-marker"
-                size={14}
-                color={theme.primary}
-                style={styles.tripIcon}
-              />
-              <Text style={[styles.tripName, { color: theme.primary }]}>
-                {notification.trip_name}
-              </Text>
-            </View>
-          )}
         </View>
-      </View>
-      {!notification.read && (
-        <View
-          style={[styles.unreadDot, { backgroundColor: theme.primary }]}
-        />
-      )}
-    </TouchableOpacity>
-  );
+        <TouchableOpacity
+          style={styles.markAllBtn}
+          onPress={markAllAsRead}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="check-all" size={16} color={theme.primary} />
+          <Text style={[styles.markAllBtnText, { color: theme.primary }]}>
+            Mark all
+          </Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  };
+
+  const renderNotification = (notification) => {
+    const iconColor = notification.icon_color || theme.primary;
+    const isUnread = !notification.read;
+
+    return (
+      <TouchableOpacity
+        key={notification.id}
+        activeOpacity={0.85}
+        onPress={() => handleNotificationPress(notification)}
+        style={styles.notificationWrap}
+      >
+        <Card
+          padding="small"
+          style={[
+            styles.notificationCard,
+            isUnread && {
+              borderColor: theme.primary,
+              backgroundColor: theme.primaryMuted,
+            },
+          ]}
+        >
+          <View style={styles.notificationRow}>
+            <View style={styles.iconCol}>
+              <View
+                style={[
+                  styles.notificationIcon,
+                  { backgroundColor: `${iconColor}20` },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={notification.icon || "bell-outline"}
+                  size={22}
+                  color={iconColor}
+                />
+              </View>
+              {isUnread ? (
+                <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />
+              ) : null}
+            </View>
+
+            <View style={styles.notificationBody}>
+              <View style={styles.notificationTop}>
+                <Text
+                  style={[
+                    styles.notificationTitle,
+                    { color: theme.text },
+                    isUnread && { fontWeight: "700" },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {notification.title}
+                </Text>
+                <Text style={[styles.timestamp, { color: theme.textMuted }]}>
+                  {formatNotificationTime(notification.created_at)}
+                </Text>
+              </View>
+
+              <Text
+                style={[styles.notificationMessage, { color: theme.textSecondary }]}
+                numberOfLines={2}
+              >
+                {notification.message}
+              </Text>
+
+              {notification.trip_name ? (
+                <View
+                  style={[
+                    styles.tripChip,
+                    { backgroundColor: isUnread ? theme.surface : theme.borderLight },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="view-grid-outline"
+                    size={14}
+                    color={theme.primary}
+                  />
+                  <Text
+                    style={[styles.tripName, { color: theme.primary }]}
+                    numberOfLines={1}
+                  >
+                    {notification.trip_name}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={16}
+                    color={theme.textMuted}
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderGroupedList = () =>
+    sectionMeta.map(({ key, label }) => {
+      const items = grouped[key];
+      if (!items.length) return null;
+      return (
+        <View key={key} style={styles.section}>
+          <SectionLabel title={label} style={key === "today" ? { marginTop: 0 } : undefined} />
+          {items.map(renderNotification)}
+        </View>
+      );
+    });
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons
-        name="bell-off"
-        size={64}
-        color={theme.textSecondary}
-        style={styles.emptyIcon}
-      />
+      <View style={[styles.emptyIconWrap, { backgroundColor: theme.primaryMuted }]}>
+        <MaterialCommunityIcons name="bell-check-outline" size={40} color={theme.primary} />
+      </View>
       <Text style={[styles.emptyTitle, { color: theme.text }]}>
         {t("noNotifications")}
       </Text>
@@ -218,199 +314,226 @@ export const NotificationScreen = ({ navigation }) => {
     </View>
   );
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+  const headerRight = (
+    <TouchableOpacity
+      style={[
+        styles.headerBtn,
+        {
+          backgroundColor: unreadCount > 0 ? theme.primaryMuted : theme.borderLight,
+          opacity: unreadCount > 0 ? 1 : 0.6,
+        },
+      ]}
+      onPress={markAllAsRead}
+      disabled={unreadCount === 0}
+      activeOpacity={0.7}
     >
-      <Header
-        title={t("notifications")}
-        onBack={() => navigation.goBack()}
-        rightComponent={
-          <TouchableOpacity
-            style={[
-              styles.markAllReadButton,
-              {
-                opacity: hasUnreadNotifications ? 1 : 0.5,
-                backgroundColor: hasUnreadNotifications
-                  ? `${theme.primary}15`
-                  : "rgba(0,0,0,0.05)",
-              },
-            ]}
-            onPress={markAllAsRead}
-            disabled={!hasUnreadNotifications}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons
-              name="check-all"
-              size={18}
-              color={theme.primary}
-              style={styles.markAllReadIcon}
-            />
+      <MaterialCommunityIcons name="check-all" size={18} color={theme.primary} />
+      {unreadCount > 0 ? (
+        <View style={[styles.headerBadge, { backgroundColor: theme.primary }]}>
+          <Text style={styles.headerBadgeText}>
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
 
-            {unreadCount > 0 && (
-              <View
-                style={[styles.unreadBadge, { backgroundColor: theme.primary }]}
-              >
-                <Text style={styles.unreadCount}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        }
-      />
+  return (
+    <ScreenLayout
+      header={
+        <Header
+          title={t("notifications")}
+          onBack={() => navigation.goBack()}
+          rightComponent={headerRight}
+        />
+      }
+    >
       <ScrollView
-        style={styles.content}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing.xxl + insets.bottom },
+        ]}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.primary}
             colors={[theme.primary]}
-            progressBackgroundColor={theme.cardBackground}
           />
         }
       >
-        {loading ? (
+        {loading && !refreshing ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
           </View>
         ) : notifications.length > 0 ? (
-          notifications.map(renderNotification)
+          <>
+            {renderUnreadBanner()}
+            {renderGroupedList()}
+          </>
         ) : (
           renderEmptyState()
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  scroll: { flex: 1 },
   content: {
-    flex: 1,
-    padding: 16,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.md,
+    flexGrow: 1,
   },
-  notificationItem: {
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  notificationContent: {
-    flex: 1,
-    flexDirection: "row",
-  },
-  notificationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
   },
-  notificationText: {
+  headerBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  headerBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  unreadBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  unreadBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     flex: 1,
   },
-  notificationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  unreadBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
-    marginBottom: 4,
+    justifyContent: "center",
   },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: "600",
+  unreadBannerTitle: {
+    color: "#FFFFFF",
+    ...typography.label,
+    fontWeight: "700",
   },
-  timestamp: {
-    fontSize: 12,
-    marginTop: 8,
+  unreadBannerSub: {
+    color: "rgba(255,255,255,0.8)",
+    ...typography.caption,
+    marginTop: 2,
+    fontWeight: "400",
   },
-  notificationMessage: {
-    fontSize: 14,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  tripNameContainer: {
+  markAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
   },
-  tripIcon: {
-    marginRight: 4,
-  },
-  tripName: {
-    fontSize: 14,
-    fontWeight: "500",
+  markAllBtnText: { ...typography.caption, fontWeight: "700" },
+  section: { marginBottom: spacing.sm },
+  notificationWrap: { marginBottom: spacing.sm },
+  notificationCard: { overflow: "hidden" },
+  notificationRow: { flexDirection: "row", gap: spacing.md },
+  iconCol: { alignItems: "center" },
+  notificationIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginLeft: 12,
-    alignSelf: "center",
+    marginTop: spacing.xs,
+  },
+  notificationBody: { flex: 1 },
+  notificationTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  notificationTitle: {
+    ...typography.label,
+    flex: 1,
+  },
+  timestamp: { ...typography.micro, fontWeight: "500" },
+  notificationMessage: {
+    ...typography.caption,
+    lineHeight: 18,
+    fontWeight: "400",
+    marginBottom: spacing.xs,
+  },
+  tripChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    marginTop: spacing.xs,
+    maxWidth: "100%",
+  },
+  tripName: {
+    ...typography.caption,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  loadingContainer: {
+    paddingVertical: spacing.xxxl,
+    alignItems: "center",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 32,
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
   },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  emptyMessage: {
-    fontSize: 16,
-    textAlign: "center",
-    paddingHorizontal: 32,
-    lineHeight: 24,
-  },
-  markAllReadButton: {
-    flexDirection: "row",
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: radii.xl,
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
-  markAllReadIcon: {
-    marginRight: 4,
-  },
-  markAllReadText: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  unreadBadge: {
-    marginLeft: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 18,
-    alignItems: "center",
-  },
-  unreadCount: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  loadingContainer: {
-    flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 32,
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: { ...typography.h3, textAlign: "center" },
+  emptyMessage: {
+    ...typography.body,
+    textAlign: "center",
+    fontWeight: "400",
+    lineHeight: 22,
+    maxWidth: 280,
   },
 });

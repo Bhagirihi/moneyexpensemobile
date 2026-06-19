@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { radii, spacing, typography } from "../../theme/tokens";
 
 const ListHeader = memo(
   ({
@@ -31,24 +32,27 @@ const ListHeader = memo(
             flex: 1,
           },
           title: {
-            fontSize: 20,
-            fontWeight: "600",
+            ...typography.h3,
             color: theme.text,
-            marginBottom: 4,
+            marginBottom: spacing.xs,
             ...titleStyle,
           },
           subtitle: {
-            fontSize: 14,
+            ...typography.caption,
+            fontWeight: "400",
             color: theme.textSecondary,
             ...subtitleStyle,
           },
           action: {
-            padding: 8,
+            paddingHorizontal: spacing.sm,
+            paddingVertical: spacing.xs,
+            borderRadius: radii.sm,
+            backgroundColor: theme.primaryMuted,
             ...actionStyle,
           },
           actionText: {
-            fontSize: 14,
-            fontWeight: "500",
+            ...typography.caption,
+            fontWeight: "700",
             color: theme.primary,
             ...actionTextStyle,
           },

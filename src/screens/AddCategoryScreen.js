@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
+  StyleSheet,  TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Platform,
@@ -12,6 +10,7 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { categoryService } from "../services/categoryService";
 import { showToast } from "../utils/toast";
@@ -20,6 +19,10 @@ import {
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useSubscription } from "../context/SubscriptionContext";
+import { subscriptionService } from "../services/subscriptionService";
+import { supabase } from "../config/supabase";
+import { FEATURES } from "../config/subscriptionPlans";
 
 // Constants
 const CATEGORY_COLORS = [
@@ -54,6 +57,7 @@ const MAX_DESCRIPTION_LENGTH = 200;
 export const AddCategoryScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { subscription, requireFeature } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -110,17 +114,11 @@ export const AddCategoryScreen = ({ navigation, route }) => {
       };
 
       if (route.params?.category) {
-        // Update existing category
-        const { error } = await categoryService.updateCategory(
+        await categoryService.updateCategory(
           route.params.category.id,
           categoryData
         );
-        if (error) {
-          showToast.error(error.message || "Failed to update category");
-          return;
-        }
 
-        // Send notification for category update
         await sendUpdateCategoryNotification({
           boardName: "Categories",
           icon: formData.icon.name,
@@ -129,15 +127,27 @@ export const AddCategoryScreen = ({ navigation, route }) => {
         });
 
         showToast.success("Category updated successfully");
+
+        if (route.params?.onCategoryCreated) {
+          route.params.onCategoryCreated(route.params.category.id);
+        }
       } else {
-        // Create new category
-        const { error } = await categoryService.createCategory(categoryData);
-        if (error) {
-          showToast.error(error.message || "Failed to create category");
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        const categoryCheck = await subscriptionService.canCreateCustomCategory(
+          subscription,
+          user.id
+        );
+        if (!categoryCheck.allowed) {
+          requireFeature(FEATURES.UNLIMITED_CATEGORIES, navigation);
           return;
         }
 
-        // Send notification for category creation
+        const created = await categoryService.createCategory(categoryData);
+
         await sendCreateCategoryNotification({
           boardName: "Categories",
           icon: formData.icon.name,
@@ -146,11 +156,12 @@ export const AddCategoryScreen = ({ navigation, route }) => {
         });
 
         showToast.success("Category created successfully");
+
+        if (route.params?.onCategoryCreated && created?.id) {
+          route.params.onCategoryCreated(created.id);
+        }
       }
 
-      if (route.params?.onCategoryCreated) {
-        route.params.onCategoryCreated(formData.id);
-      }
       navigation.goBack();
     } catch (error) {
       console.error("Error saving category:", error);
@@ -224,13 +235,10 @@ export const AddCategoryScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Header
+    <ScreenLayout header={<Header
         title={route.params?.category ? t("editCategory") : t("addCategory")}
         onBack={() => navigation.goBack()}
-      />
+      />}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.inputContainer}>
           <Text style={[styles.label, { color: theme.text }]}>
@@ -318,7 +326,7 @@ export const AddCategoryScreen = ({ navigation, route }) => {
           </Text>
         )}
       </TouchableOpacity>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 

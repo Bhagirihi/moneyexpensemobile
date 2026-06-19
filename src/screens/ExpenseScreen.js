@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
   Platform,
@@ -13,8 +13,8 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import FooterTab from "../components/FooterTab";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { CategoryList } from "../components/CategoryList";
 import ExpenseList from "../components/ExpenseList";
 import { expenseService } from "../services/expenseService";
@@ -340,31 +340,32 @@ export const ExpenseScreen = ({ navigation }) => {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+      <ScreenLayout
+        header={
+          <Header
+            title={t("expenses")}
+            onBack={() => navigation.goBack()}
+            rightComponent={renderAddButton()}
+          />
+        }
       >
-        <Header
-          title={t("expenses")}
-          onBack={() => navigation.goBack()}
-          rightComponent={renderAddButton()}
-          showBack={false}
-        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <ScreenLayout
+      header={
+        <Header
+          title={t("expenses")}
+          onBack={() => navigation.goBack()}
+          rightComponent={renderAddButton()}
+        />
+      }
     >
-      <Header
-        title={t("expenses")}
-        onBack={() => navigation.goBack()}
-        rightComponent={renderAddButton()}
-      />
       <View style={{ marginTop: 10 }}>{renderMonthlyStats()}</View>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -389,7 +390,7 @@ export const ExpenseScreen = ({ navigation }) => {
             expenses={expenses}
             onExpensePress={handleExpensePress}
             onDeletePress={handleDeletePress}
-            onSeeAllPress={() => navigation.navigate("AllExpenses")}
+            onSeeAllPress={() => {}}
             showHeader={true}
             showEmptyState={true}
             showAllButton={false}
@@ -399,8 +400,7 @@ export const ExpenseScreen = ({ navigation }) => {
           />
         )}
       </ScrollView>
-      <FooterTab navigation={navigation} activeRoute="Expense" />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   statsRow: {
     flexDirection: "row",

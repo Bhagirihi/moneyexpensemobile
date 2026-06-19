@@ -1,29 +1,32 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { StatusBar } from "expo-status-bar";
+import { radii } from "../theme/tokens";
 
-const ThemeToggle = () => {
+const ThemeToggle = ({ compact = false }) => {
   const { theme, isDarkMode, toggleTheme } = useTheme();
 
   return (
     <>
-      <StatusBar
-        style={isDarkMode ? "light" : "dark"}
-        backgroundColor="transparent"
-        translucent
-      />
-
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <TouchableOpacity
-        style={[styles.container, { borderColor: theme.border }]}
+        style={[
+          styles.container,
+          compact && styles.compact,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
         activeOpacity={0.8}
         onPress={toggleTheme}
       >
         <MaterialCommunityIcons
           name={isDarkMode ? "white-balance-sunny" : "moon-waning-crescent"}
-          size={20}
-          color={isDarkMode ? "#FFD700" : "#2C3E50"}
+          size={compact ? 18 : 20}
+          color={isDarkMode ? theme.warning : theme.primary}
         />
       </TouchableOpacity>
     </>
@@ -32,15 +35,23 @@ const ThemeToggle = () => {
 
 const styles = StyleSheet.create({
   container: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
     borderWidth: 1,
-
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: { elevation: 1 },
+    }),
   },
+  compact: { width: 36, height: 36 },
 });
 
 export default ThemeToggle;

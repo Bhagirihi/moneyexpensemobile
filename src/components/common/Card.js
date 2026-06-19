@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Platform } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { radii, spacing } from "../../theme/tokens";
 
 const Card = memo(({ children, style, variant, padding = "medium" }) => {
   const { theme } = useTheme();
@@ -9,21 +10,30 @@ const Card = memo(({ children, style, variant, padding = "medium" }) => {
     () =>
       StyleSheet.create({
         card: {
-          backgroundColor: theme.card,
-          borderRadius: 12,
-          padding: padding === "large" ? 20 : padding === "small" ? 12 : 16,
-          shadowColor: "#000",
-          shadowOffset: {
-            width: 0,
-            height: 2,
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: 3.84,
-          elevation: 5,
+          backgroundColor: theme.surface,
+          borderRadius: radii.lg,
+          padding:
+            padding === "large" ? spacing.xl : padding === "small" ? spacing.md : spacing.lg,
+          borderWidth: variant === "flat" ? 0 : 1,
+          borderColor: theme.border,
+          ...Platform.select({
+            ios: {
+              shadowColor: "#0F172A",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: variant === "flat" ? 0 : 0.05,
+              shadowRadius: 8,
+            },
+            android: { elevation: variant === "flat" ? 0 : 2 },
+          }),
           ...(variant === "outlined" && {
             backgroundColor: "transparent",
-            borderWidth: 1,
-            borderColor: theme.border,
+          }),
+          ...(variant === "elevated" && {
+            borderWidth: 0,
+            ...Platform.select({
+              ios: { shadowOpacity: 0.1, shadowRadius: 16 },
+              android: { elevation: 4 },
+            }),
           }),
         },
       }),

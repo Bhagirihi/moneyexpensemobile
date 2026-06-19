@@ -3,30 +3,34 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
-  Alert,
   Share,
-  Linking,
-  Clipboard,
-  Modal,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import ShareModal from "../components/ShareModal";
+import Card from "../components/common/Card";
+import { SectionLabel } from "../components/ui/UIKit";
 import { showToast } from "../utils/toast";
-import { formatNumber } from "../utils/formatters";
+import { copyToClipboard } from "../utils/clipboard";
+import { formatNumber, getCurrencySymbol } from "../utils/formatters";
+import { useAppSettings } from "../context/AppSettingsContext";
 import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useSubscription } from "../context/SubscriptionContext";
+import { subscriptionService } from "../services/subscriptionService";
+import { supabase } from "../config/supabase";
+import { FEATURES } from "../config/subscriptionPlans";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BOARD_COLORS = [
   { id: "red", value: "#FF6B6B" },
@@ -55,221 +59,78 @@ const BOARD_ICONS = [
 ];
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
+  keyboardAvoid: { flex: 1 },
   scrollContent: {
-    padding: 12,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.md,
   },
-  inputContainer: {
-    padding: 8,
-    marginBottom: 2,
+  previewCard: {
+    marginBottom: spacing.lg,
+    alignItems: "center",
+    paddingVertical: spacing.xl,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 6,
-    opacity: 0.8,
+  previewIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: radii.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
   },
-  input: {
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 15,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  descriptionInput: {
-    height: 60,
-    textAlignVertical: "top",
-  },
-  errorText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  colorList: {
-    paddingRight: 12,
-    flex: 1,
+  previewName: { ...typography.h3, textAlign: "center" },
+  previewBudget: { ...typography.caption, marginTop: spacing.xs, fontWeight: "500" },
+  section: { marginBottom: spacing.lg },
+  colorGrid: {
+    flexDirection: "row",
     flexWrap: "wrap",
+    gap: spacing.sm,
   },
   colorItem: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
     alignItems: "center",
-    marginRight: 6,
-    marginBottom: 6,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    justifyContent: "center",
   },
-  iconList: {
-    paddingRight: 12,
-    flex: 1,
+  iconGrid: {
+    flexDirection: "row",
     flexWrap: "wrap",
+    gap: spacing.sm,
   },
   iconItem: {
-    width: "auto",
-    height: 70,
-    borderRadius: 8,
-    justifyContent: "center",
+    width: "30%",
+    minWidth: 96,
     alignItems: "center",
-
-    marginRight: 6,
-    marginBottom: 6,
-    padding: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    gap: spacing.xs,
   },
-  iconLabel: {
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: "center",
-    fontWeight: "500",
-  },
-  createButton: {
-    margin: 12,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  createButtonDisabled: {
-    opacity: 0.7,
-  },
-  createButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  budgetContainer: {
+  iconLabel: { ...typography.micro, textAlign: "center", fontWeight: "500" },
+  shareRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
   },
-  budgetInput: {
-    flex: 1,
-    marginRight: 8,
+  shareRowText: { ...typography.bodyMedium, flex: 1 },
+  footer: {
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  shareContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  shareButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 10,
-    borderRadius: 8,
-    marginHorizontal: 4,
-  },
-  shareButtonText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  shareIcon: {
-    marginRight: 4,
-  },
-  sectionDivider: {
-    height: 1,
-    marginVertical: 8,
-    opacity: 0.1,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  shareContent: {
-    padding: 8,
-  },
-  boardInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  codeContainer: {
-    marginBottom: 24,
-  },
-  codeLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  codeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 8,
-  },
-  codeText: {
-    fontSize: 16,
-    fontFamily: "monospace",
-  },
-  shareOptions: {
-    gap: 12,
-  },
-  shareOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  shareOptionText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
+  createButton: { marginBottom: spacing.sm },
 });
 
-export const CreateExpenseBoardScreen = ({ navigation }) => {
+export const CreateExpenseBoardScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { currency } = useAppSettings();
+  const insets = useSafeAreaInsets();
+  const { subscription, requireFeature } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [boardName, setBoardName] = useState("");
   const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0]);
@@ -315,7 +176,7 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
 
   const handleCopyCode = () => {
     const code = shareCode || generateShareCode();
-    Clipboard.setString(code);
+    copyToClipboard(code);
     showToast.success("Success", "Board code copied to clipboard");
   };
 
@@ -350,6 +211,21 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const boardCheck = await subscriptionService.canCreateBoard(
+        subscription,
+        user.id
+      );
+      if (!boardCheck.allowed) {
+        setLoading(false);
+        requireFeature(FEATURES.UNLIMITED_BOARDS, navigation);
+        return;
+      }
+
       const boardData = {
         name: boardName.trim(),
         description: description.trim(),
@@ -380,6 +256,11 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       }
 
       showToast.success("Expense board created successfully");
+
+      if (createdBoard?.id && route.params?.onBoardCreated) {
+        route.params.onBoardCreated(createdBoard.id);
+      }
+
       navigation.goBack();
     } catch (error) {
       console.error("Error creating board:", error);
@@ -389,217 +270,137 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
       );
     } finally {
       setLoading(false);
-      navigation.goBack();
     }
   };
 
-  const getInputStyle = () => ({
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    color: theme.text,
-  });
-
-  const getInputErrorStyle = () => ({
-    borderColor: theme.error,
-  });
-
-  const getColorItemStyle = (color, isSelected) => ({
-    backgroundColor: color.value,
-    borderWidth: isSelected ? 2 : 1,
-    borderColor: isSelected ? theme.primary : theme.border,
-  });
-
-  const getIconItemStyle = (isSelected) => ({
-    backgroundColor: isSelected ? theme.primary : theme.card,
-    borderWidth: isSelected ? 2 : 1,
-    borderColor: isSelected ? theme.primary : theme.border,
-  });
-
-  const getIconColor = (isSelected) => (isSelected ? theme.white : theme.text);
-
-  const getIconLabelColor = (isSelected) =>
-    isSelected ? theme.white : theme.text;
-
-  const getCreateButtonStyle = () => ({
-    backgroundColor: theme.primary,
-  });
-
-  const getCreateButtonTextStyle = () => ({
-    color: theme.white,
-  });
-
-  const getShareCodeContainerStyle = () => ({
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.card,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: theme.border,
-  });
-
-  const getShareCodeTextStyle = () => ({
-    flex: 1,
-    fontSize: 15,
-    color: theme.text,
-  });
-
-  const getCopyButtonStyle = () => ({
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: theme.primary,
-  });
-
-  const renderBoardNameInput = () => (
-    <FormInput
-      label="Board Name"
-      value={boardName}
-      onChangeText={(text) => {
-        setBoardName(text);
-        if (errors.boardName) {
-          setErrors((prev) => ({ ...prev, boardName: undefined }));
-        }
-      }}
-      placeholder="Enter board name"
-      error={errors.boardName}
-      maxLength={50}
-    />
-  );
-
-  const renderDescriptionInput = () => (
-    <FormInput
-      label="Description"
-      value={description}
-      onChangeText={(text) => {
-        setDescription(text);
-        if (errors.description) {
-          setErrors((prev) => ({ ...prev, description: undefined }));
-        }
-      }}
-      placeholder="Enter board description"
-      multiline
-      numberOfLines={3}
-      error={errors.description}
-      maxLength={200}
-    />
-  );
-
-  const renderBudgetInput = () => (
-    <FormInput
-      label="Per Person Budget"
-      value={perPersonBudget}
-      onChangeText={(text) => {
-        var numericValue = text.replace(/[^0-9.]/g, "");
-
-        setPerPersonBudget(numericValue);
-        if (errors.perPersonBudget) {
-          setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
-        }
-      }}
-      placeholder="Enter budget amount"
-      keyboardType="numeric"
-      prefix="₹"
-      suffix={perPersonBudget ? formatNumber(parseFloat(perPersonBudget)) : ""}
-      error={errors.perPersonBudget}
-    />
+  const renderPreview = () => (
+    <Card style={styles.previewCard} variant="elevated">
+      <View
+        style={[
+          styles.previewIcon,
+          { backgroundColor: `${selectedColor.value}22` },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name={selectedIcon.name}
+          size={32}
+          color={selectedColor.value}
+        />
+      </View>
+      <Text style={[styles.previewName, { color: theme.text }]}>
+        {boardName.trim() || "Your board name"}
+      </Text>
+      <Text style={[styles.previewBudget, { color: theme.textSecondary }]}>
+        {perPersonBudget
+          ? `${getCurrencySymbol(currency)}${formatNumber(parseFloat(perPersonBudget))} per person`
+          : "Set a per-person budget"}
+      </Text>
+    </Card>
   );
 
   const renderColorPicker = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Choose Color</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.colorList}
-      >
-        {BOARD_COLORS.map((color) => (
-          <TouchableOpacity
-            key={color.id}
-            style={[
-              styles.colorItem,
-              getColorItemStyle(color, selectedColor.id === color.id),
-            ]}
-            onPress={() => setSelectedColor(color)}
-          >
-            {selectedColor.id === color.id && (
-              <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <View style={styles.section}>
+      <SectionLabel title="Color" style={{ marginTop: 0 }} />
+      <View style={styles.colorGrid}>
+        {BOARD_COLORS.map((color) => {
+          const selected = selectedColor.id === color.id;
+          return (
+            <TouchableOpacity
+              key={color.id}
+              style={[
+                styles.colorItem,
+                {
+                  backgroundColor: color.value,
+                  borderWidth: selected ? 3 : 0,
+                  borderColor: theme.text,
+                },
+              ]}
+              onPress={() => setSelectedColor(color)}
+            >
+              {selected ? (
+                <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
+              ) : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 
   const renderIconPicker = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Choose Icon</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.iconList}
-      >
-        {BOARD_ICONS.sort((a, b) => a.name.length - b.name.length).map(
-          (icon) => (
+    <View style={styles.section}>
+      <SectionLabel title="Icon" />
+      <View style={styles.iconGrid}>
+        {BOARD_ICONS.map((icon) => {
+          const selected = selectedIcon.id === icon.id;
+          return (
             <TouchableOpacity
               key={icon.id}
               style={[
                 styles.iconItem,
-                getIconItemStyle(selectedIcon.id === icon.id),
+                {
+                  backgroundColor: selected ? theme.primaryMuted : theme.surface,
+                  borderColor: selected ? theme.primary : theme.border,
+                },
               ]}
               onPress={() => setSelectedIcon(icon)}
             >
               <MaterialCommunityIcons
                 name={icon.name}
                 size={24}
-                color={getIconColor(selectedIcon.id === icon.id)}
+                color={selected ? theme.primary : theme.textSecondary}
               />
               <Text
                 style={[
                   styles.iconLabel,
-                  {
-                    color: getIconLabelColor(selectedIcon.id === icon.id),
-                  },
+                  { color: selected ? theme.primary : theme.textSecondary },
                 ]}
               >
                 {icon.label}
               </Text>
             </TouchableOpacity>
-          )
-        )}
-      </ScrollView>
+          );
+        })}
+      </View>
     </View>
   );
 
-  const renderShareOptions = () => (
-    <View style={styles.inputContainer}>
-      <Text style={[styles.label, { color: theme.text }]}>Share Board</Text>
+  const renderShareRow = () => (
+    <View style={styles.section}>
+      <SectionLabel title="Sharing" />
       <TouchableOpacity
-        style={[styles.shareButton, { backgroundColor: theme.primary }]}
+        style={[styles.shareRow, { borderColor: theme.border, backgroundColor: theme.surface }]}
         onPress={handleShareBoard}
       >
-        <MaterialCommunityIcons
-          name="share-variant"
-          size={20}
-          color={theme.white}
-          style={styles.shareIcon}
-        />
-        <Text style={[styles.shareButtonText, { color: theme.white }]}>
-          Share Board
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: radii.md,
+            backgroundColor: theme.primaryMuted,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <MaterialCommunityIcons name="share-variant" size={20} color={theme.primary} />
+        </View>
+        <Text style={[styles.shareRowText, { color: theme.text }]}>
+          Share after creating
         </Text>
+        <MaterialCommunityIcons name="chevron-right" size={22} color={theme.textMuted} />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <ScreenLayout
+      header={
+        <Header
+          title={t("createExpenseBoard")}
+          onBack={() => navigation.goBack()}
+        />
+      }
     >
-      <Header
-        title={t("createExpenseBoard")}
-        onBack={() => navigation.goBack()}
-      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}
@@ -608,29 +409,85 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
-            { backgroundColor: theme.background },
+            { paddingBottom: spacing.xxl + insets.bottom + 80 },
           ]}
+          keyboardShouldPersistTaps="handled"
         >
-          {renderBoardNameInput()}
-          {renderDescriptionInput()}
-          {renderBudgetInput()}
-          <View
-            style={[styles.sectionDivider, { backgroundColor: theme.border }]}
-          />
+          {renderPreview()}
+
+          <View style={styles.section}>
+            <SectionLabel title="Details" style={{ marginTop: 0 }} />
+            <FormInput
+              label="Board Name"
+              value={boardName}
+              onChangeText={(text) => {
+                setBoardName(text);
+                if (errors.boardName) {
+                  setErrors((prev) => ({ ...prev, boardName: undefined }));
+                }
+              }}
+              placeholder="e.g. Europe Trip 2025"
+              error={errors.boardName}
+              maxLength={50}
+            />
+            <FormInput
+              label="Description"
+              value={description}
+              onChangeText={(text) => {
+                setDescription(text);
+                if (errors.description) {
+                  setErrors((prev) => ({ ...prev, description: undefined }));
+                }
+              }}
+              placeholder="Optional note for members"
+              multiline
+              numberOfLines={3}
+              error={errors.description}
+              maxLength={200}
+            />
+            <FormInput
+              label="Per Person Budget"
+              value={perPersonBudget}
+              onChangeText={(text) => {
+                const numericValue = text.replace(/[^0-9.]/g, "");
+                setPerPersonBudget(numericValue);
+                if (errors.perPersonBudget) {
+                  setErrors((prev) => ({ ...prev, perPersonBudget: undefined }));
+                }
+              }}
+              placeholder="Enter budget amount"
+              keyboardType="numeric"
+              prefix={getCurrencySymbol(currency)}
+              suffix={perPersonBudget ? formatNumber(parseFloat(perPersonBudget)) : ""}
+              error={errors.perPersonBudget}
+            />
+          </View>
+
           {renderColorPicker()}
           {renderIconPicker()}
-          <View
-            style={[styles.sectionDivider, { backgroundColor: theme.border }]}
-          />
-          {renderShareOptions()}
+          {renderShareRow()}
         </ScrollView>
       </KeyboardAvoidingView>
-      <FormButton
-        title={t("createBoard")}
-        onPress={handleCreateBoard}
-        loading={loading}
-        style={styles.createButton}
-      />
+
+      <View
+        style={[
+          styles.footer,
+          {
+            borderTopColor: theme.border,
+            backgroundColor: theme.background,
+            paddingBottom: Math.max(insets.bottom, spacing.md),
+          },
+        ]}
+      >
+        <FormButton
+          title={t("createBoard")}
+          onPress={handleCreateBoard}
+          loading={loading}
+          size="large"
+          style={styles.createButton}
+        />
+      </View>
+
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -639,6 +496,6 @@ export const CreateExpenseBoardScreen = ({ navigation }) => {
         boardColor={selectedColor.value}
         boardIcon={selectedIcon.name}
       />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };

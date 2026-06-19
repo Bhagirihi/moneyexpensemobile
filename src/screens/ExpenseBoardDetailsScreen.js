@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
+  TouchableOpacity,  ScrollView,
   ActivityIndicator,
   RefreshControl,
   Platform,
@@ -13,15 +12,22 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import ShareModal from "../components/ShareModal";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
+import { supabase } from "../config/supabase";
 import { realTimeSync } from "../services/realTimeSync";
 import { showToast } from "../utils/toast";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { formatCurrency } from "../utils/formatters";
 import { devLog } from "../utils/logger";
 import ExpenseItem from "../components/ExpenseItem";
+import { FEATURES } from "../config/subscriptionPlans";
+import {
+  LockedActionButton,
+  LockedIconButton,
+} from "../components/LockedFeature";
 
 export const ExpenseBoardDetailsScreen = () => {
   const navigation = useNavigation();
@@ -38,6 +44,8 @@ export const ExpenseBoardDetailsScreen = () => {
   const [expenses, setExpenses] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCode, setShareCode] = useState("");
+  const [isBoardOwner, setIsBoardOwner] = useState(false);
 
   const ITEMS_PER_PAGE = 10;
 
@@ -66,43 +74,6 @@ export const ExpenseBoardDetailsScreen = () => {
         setExpenses((prev) => [...prev, ...(transactionsData || [])]);
       }
 
-      // Calculate budget usage and send notifications
-      const budgetUsage = (totalExpenses / (totalBudget || 1)) * 100;
-
-      if (budgetUsage >= 100) {
-        sendExpenseOverBudgetNotification({
-          boardName: boardName,
-          icon: "alert",
-          iconColor: "#F44336",
-          budgetAmount: totalBudget,
-          expenseAmount: totalExpenses,
-        });
-      } else if (budgetUsage >= 90) {
-        sendExpenseOverBudgetNotification({
-          boardName: boardName,
-          icon: "alert",
-          iconColor: "#F44336",
-          budgetAmount: totalBudget,
-          expenseAmount: totalExpenses,
-        });
-      } else if (budgetUsage >= 70) {
-        sendExpenseOverBudgetNotification({
-          boardName: boardName,
-          icon: "alert",
-          iconColor: "#FF9800",
-          budgetAmount: totalBudget,
-          expenseAmount: totalExpenses,
-        });
-      } else if (budgetUsage >= 50) {
-        sendExpenseOverBudgetNotification({
-          boardName: boardName,
-          icon: "alert",
-          iconColor: "#FFC107",
-          budgetAmount: totalBudget,
-          expenseAmount: totalExpenses,
-        });
-      }
-
       setHasMore((transactionsData?.length || 0) === ITEMS_PER_PAGE);
       setPage(pageNum);
     } catch (error) {
@@ -125,6 +96,30 @@ export const ExpenseBoardDetailsScreen = () => {
       "realtime-expenses-board-details"
     );
     return unsubscribe;
+  }, [boardId]);
+
+  useEffect(() => {
+    const loadBoardMeta = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const { data: board } = await supabase
+          .from("expense_boards")
+          .select("share_code, created_by")
+          .eq("id", boardId)
+          .maybeSingle();
+
+        if (board) {
+          setShareCode(board.share_code || boardId);
+          setIsBoardOwner(user?.id === board.created_by);
+        }
+      } catch (error) {
+        console.error("Error loading board metadata:", error);
+      }
+    };
+
+    loadBoardMeta();
   }, [boardId]);
 
   const onRefresh = React.useCallback(() => {
@@ -152,16 +147,17 @@ export const ExpenseBoardDetailsScreen = () => {
     setShowShareModal(true);
   };
 
+  const handleInviteByEmail = async (email) => {
+    await expenseBoardService.shareBoardWithEmail(boardId, email);
+  };
+
   if (loading && page === 1) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
-      >
-        <Header title="Loading..." onBack={() => navigation.goBack()} />
+      <ScreenLayout header={<Header title="Loading..." onBack={() => navigation.goBack()} />}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
@@ -227,37 +223,33 @@ export const ExpenseBoardDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Header
+    <ScreenLayout header={<Header
         title={boardName}
         onBack={() => navigation.goBack()}
         rightComponent={
-          <View style={styles.headerButtons}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleShareBoard}
-            >
-              <MaterialCommunityIcons
-                name="share-variant"
-                size={24}
-                color={theme.primary}
+          isBoardOwner ? (
+            <View style={styles.headerButtons}>
+              <LockedIconButton
+                feature={FEATURES.BOARD_SHARING}
+                navigation={navigation}
+                icon="share-variant"
+                style={styles.headerButton}
+                onPress={handleShareBoard}
               />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleDeleteBoard}
-            >
-              <MaterialCommunityIcons
-                name="delete-outline"
-                size={24}
-                color={theme.error}
-              />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleDeleteBoard}
+              >
+                <MaterialCommunityIcons
+                  name="delete-outline"
+                  size={24}
+                  color={theme.error}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : null
         }
-      />
+      />}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -477,19 +469,14 @@ export const ExpenseBoardDetailsScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          <LockedActionButton
+            feature={FEATURES.BOARD_SETTLEMENTS}
+            navigation={navigation}
             style={[styles.actionButton, { backgroundColor: theme.card }]}
+            icon="chart-bar"
+            label="Analysis"
             onPress={() => navigation.navigate("Analysis", { boardId })}
-          >
-            <MaterialCommunityIcons
-              name="chart-bar"
-              size={24}
-              color={theme.primary}
-            />
-            <Text style={[styles.actionButtonText, { color: theme.text }]}>
-              Analysis
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
       </View>
       <ShareModal
@@ -497,10 +484,12 @@ export const ExpenseBoardDetailsScreen = () => {
         onClose={() => setShowShareModal(false)}
         boardName={boardName}
         boardId={boardId}
+        shareCode={shareCode}
         boardColor={theme.primary}
         boardIcon="view-grid"
+        onInviteEmail={isBoardOwner ? handleInviteByEmail : undefined}
       />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -538,7 +527,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   statsMain: {
     marginBottom: 16,
@@ -644,7 +633,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   actionButtonText: {
     fontSize: 14,
@@ -664,7 +653,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   addButtonText: {
     fontSize: 16,
@@ -758,7 +747,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   loadMoreText: {
     fontSize: 14,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,78 +6,80 @@ import {
   TouchableOpacity,
   Modal,
   Share,
-  Clipboard,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { showToast } from "../utils/toast";
+import { copyToClipboard } from "../utils/clipboard";
+import { isValidEmail } from "../utils/validation";
 
 const ShareModal = ({
   visible,
   onClose,
   boardName,
   boardId,
+  shareCode,
   boardColor,
   boardIcon,
+  onInviteEmail,
 }) => {
   const { theme } = useTheme();
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
 
-  // const handleCopyCode = () => {
-  //   Clipboard.setString(boardId);
-  //   showToast.success("Success", "Board code copied to clipboard");
-  // };
-
-  // const handleShareViaEmail = async () => {
-  //   try {
-  //     const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
-  //     await Share.share({
-  //       message,
-  //       subject: `Join my expense board: ${boardName}`,
-  //     });
-  //   } catch (error) {
-  //     console.error("Error sharing via email:", error);
-  //   }
-  // };
-
-  // const handleShareViaSocial = async () => {
-  //   try {
-  //     const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
-  //     await Share.share({
-  //       message,
-  //     });
-  //   } catch (error) {
-  //     console.error("Error sharing via social:", error);
-  //   }
-  // };
+  const code = shareCode || boardId;
+  const joinUrl = `https://trivense.app/join/${code}`;
 
   const handleShareApp = async (method) => {
     try {
-      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${boardId}\n\nClick here to join: https://trivense.app/join/${boardId}`;
-
-      let result;
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: ${joinUrl}`;
 
       if (method === "email" || method === "social") {
-        result = await Share.share({
+        const result = await Share.share({
           message,
           ...(method === "email" && {
-            subject: "Join my expense board: ${boardName}",
+            subject: `Join my expense board: ${boardName}`,
           }),
         });
 
         if (result.action === Share.sharedAction) {
           showToast.success("Thanks for Sharing!", "Your invite was shared 🎉");
-          console.log("User shared the invite");
-        } else if (result.action === Share.dismissedAction) {
-          // Optional: silently ignore or log
-          console.log("User dismissed the share dialog.");
         }
       } else if (method === "copy") {
-        await Clipboard.setString(boardId);
+        await copyToClipboard(code);
         showToast.success("Copied!", "Board code copied to clipboard 📋");
       }
     } catch (error) {
       console.error("Error sharing:", error);
       showToast.error("Error", "Failed to share. Please try again.");
+    }
+  };
+
+  const handleInviteByEmail = async () => {
+    if (!onInviteEmail) return;
+
+    const email = inviteEmail.trim();
+    if (!email) {
+      showToast.error("Error", "Please enter an email address");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      showToast.error("Error", "Please enter a valid email");
+      return;
+    }
+
+    try {
+      setInviting(true);
+      await onInviteEmail(email);
+      setInviteEmail("");
+      showToast.success("Invitation sent", "They can accept from their invitations");
+      onClose();
+    } catch (error) {
+      showToast.error("Error", error.message || "Failed to send invitation");
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -130,9 +132,14 @@ const ShareModal = ({
               <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
                 Board Code
               </Text>
-              <View style={[styles.codeBox, { backgroundColor: theme.card }]}>
+              <View
+                style={[
+                  styles.codeBox,
+                  { backgroundColor: theme.background, borderColor: theme.border },
+                ]}
+              >
                 <Text style={[styles.codeText, { color: theme.text }]}>
-                  {boardId}
+                  {code}
                 </Text>
                 <TouchableOpacity onPress={() => handleShareApp("copy")}>
                   <MaterialCommunityIcons
@@ -144,9 +151,48 @@ const ShareModal = ({
               </View>
             </View>
 
+            {onInviteEmail ? (
+              <View style={styles.emailSection}>
+                <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
+                  Invite by Email
+                </Text>
+                <TextInput
+                  style={[
+                    styles.emailInput,
+                    {
+                      backgroundColor: theme.background,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  placeholder="friend@example.com"
+                  placeholderTextColor={theme.textSecondary}
+                  value={inviteEmail}
+                  onChangeText={setInviteEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.inviteButton,
+                    { backgroundColor: theme.primary },
+                  ]}
+                  onPress={handleInviteByEmail}
+                  disabled={inviting || !inviteEmail.trim()}
+                >
+                  {inviting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.inviteButtonText}>Send Invitation</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             <View style={styles.shareOptions}>
               <TouchableOpacity
-                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                style={[styles.shareOption, { backgroundColor: theme.background }]}
                 onPress={() => handleShareApp("email")}
               >
                 <MaterialCommunityIcons
@@ -160,7 +206,7 @@ const ShareModal = ({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.shareOption, { backgroundColor: theme.card }]}
+                style={[styles.shareOption, { backgroundColor: theme.background }]}
                 onPress={() => handleShareApp("social")}
               >
                 <MaterialCommunityIcons
@@ -189,7 +235,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 16,
-    maxHeight: "80%",
+    maxHeight: "85%",
   },
   modalHeader: {
     flexDirection: "row",
@@ -223,7 +269,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   codeContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   codeLabel: {
     fontSize: 14,
@@ -235,10 +281,35 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
   },
   codeText: {
     fontSize: 16,
     fontFamily: "monospace",
+    flex: 1,
+    marginRight: 8,
+  },
+  emailSection: {
+    marginBottom: 20,
+  },
+  emailInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  inviteButton: {
+    height: 48,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inviteButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   shareOptions: {
     gap: 12,

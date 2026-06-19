@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   Text,
@@ -14,7 +15,6 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { getSession, supabase, getUserProfile } from "../config/supabase";
@@ -23,8 +23,7 @@ import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
 import { dashboardService } from "../services/dashboardService";
 import ThemeToggle from "../components/ThemeToggle";
-import FooterTab from "../components/FooterTab";
-import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import ExpenseList from "../components/ExpenseList";
 import { showToast } from "../utils/toast";
 import { capitalizeFirstLetter, formatCurrency } from "../utils/formatters";
@@ -38,16 +37,21 @@ import {
   sendDeleteCategoryNotification,
   sendExpenseBoardDeletedNotification,
   sendExpenseBoardInviteNotification,
-  sendExpenseBoardUpdatedNotification,
   sendExpenseDeletedNotification,
   sendExpenseOverBudgetNotification,
   sendPushNotification,
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
 import { useFocusEffect } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchDashboardData } from "../fetcher";
 import { useTranslation } from "../hooks/useTranslation";
+import { useSubscription } from "../context/SubscriptionContext";
+import { PLAN_CATALOG } from "../config/subscriptionPlans";
 import { devLog } from "../utils/logger";
+import { LinearGradient } from "expo-linear-gradient";
+import { QuickActionTile } from "../components/ui/UIKit";
+import { layout, radii, spacing, typography, footerScrollPadding } from "../theme/tokens";
 
 const { width, height } = Dimensions.get("window");
 
@@ -55,6 +59,10 @@ export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { currency } = useAppSettings();
+  const { plan, isPremium } = useSubscription();
+  const insets = useSafeAreaInsets();
+  const recentLimit = Platform.OS === "android" ? 5 : 4;
+  const planName = t(PLAN_CATALOG[plan]?.nameKey || "planFree");
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,15 +175,6 @@ export const DashboardScreen = ({ navigation }) => {
       fetchDashboardDataState();
     }, [])
   );
-
-  // Real-time: refetch Recent Transactions when expenses change (unique channel to avoid double-subscribe)
-  useEffect(() => {
-    const unsubscribe = realTimeSync.subscribeToExpense(
-      () => fetchDashboardDataState(),
-      "realtime-expenses-dashboard"
-    );
-    return unsubscribe;
-  }, []);
 
   const fetchDashboardDataState = async () => {
     try {
@@ -326,168 +325,79 @@ export const DashboardScreen = ({ navigation }) => {
     }
   };
 
+  const budgetPercent = Math.min(
+    100,
+    Math.round((stats.totalExpenses / (stats.totalBudget || 1)) * 100)
+  );
+
   const renderBalanceCard = () => (
-    <View style={[styles.balanceCard, { backgroundColor: theme.primary }]}>
-      <View style={styles.balanceMain}>
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceLabelContainer}>
-            <MaterialCommunityIcons
-              name="wallet-outline"
-              size={20}
-              color={theme.white}
-              style={styles.balanceIcon}
-            />
-            <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              {t("totalBudget")}
-            </Text>
-          </View>
-          <Text style={[styles.balanceValue, { color: theme.white }]}>
-            {formatCurrency(stats.totalBudget)}
-          </Text>
+    <LinearGradient
+      colors={theme.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.balanceCard}
+    >
+      <View style={styles.balanceTopRow}>
+        <View>
+          <Text style={styles.balanceEyebrow}>{t("totalBudget")}</Text>
+          <Text style={styles.balanceHero}>{formatCurrency(stats.totalBudget)}</Text>
         </View>
-
-        <View style={styles.balanceRow}>
-          <View style={styles.balanceLabelContainer}>
-            <MaterialCommunityIcons
-              name="cash-remove"
-              size={20}
-              color={theme.white}
-              style={styles.balanceIcon}
-            />
-            <Text style={[styles.balanceLabel, { color: theme.white }]}>
-              {t("spent")}
-            </Text>
-          </View>
-          <Text style={[styles.balanceValue, { color: theme.white }]}>
-            {formatCurrency(stats.totalExpenses)}
-          </Text>
-        </View>
-
-        {/* <View style={[styles.balanceRow, styles.remainingRow]}>
-          <View style={styles.balanceLabelContainer}>
-            <MaterialCommunityIcons
-              name="cash-check"
-              size={20}
-              color={theme.success}
-              style={styles.balanceIcon}
-            />
-            <Text style={[styles.balanceLabel, { color: theme.success }]}>
-              Remaining
-            </Text>
-          </View>
-          <Text style={[styles.balanceValue, { color: theme.success }]}>
+        <View style={styles.balanceStatPill}>
+          <Text style={styles.balancePillLabel}>{t("remaining")}</Text>
+          <Text style={styles.balancePillValue}>
             {formatCurrency(stats.remainingBudget)}
           </Text>
-        </View> */}
+        </View>
       </View>
 
-      <View style={styles.combinedProgressContainer}>
-        <View style={styles.progressLabels}>
-          <Text style={[styles.progressLabel, { color: theme.white }]}>
-            {t("budgetUsage")}
-          </Text>
-
-          <View style={styles.progressLegend}>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: theme.error }]}
-              />
-              <Text style={[styles.legendText, { color: theme.white }]}>
-                {t("used")}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[styles.legendColor, { backgroundColor: theme.success }]}
-              />
-              <Text style={[styles.legendText, { color: theme.white }]}>
-                {t("remaining")}
-              </Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View
-                style={[
-                  styles.legendColor,
-                  {
-                    backgroundColor:
-                      stats.totalBudget >= 0 ? theme.success : theme.error,
-                  },
-                ]}
-              />
-              <Text style={[styles.progressLabel, { color: theme.white }]}>
-                {`${Math.round(
-                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-                )}%`}
-              </Text>
-            </View>
-          </View>
+      <View style={styles.balanceStatsRow}>
+        <View style={styles.balanceMiniStat}>
+          <MaterialCommunityIcons name="cash-minus" size={16} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.balanceMiniLabel}>{t("spent")}</Text>
+          <Text style={styles.balanceMiniValue}>{formatCurrency(stats.totalExpenses)}</Text>
         </View>
+        <View style={styles.balanceMiniStat}>
+          <MaterialCommunityIcons name="chart-donut" size={16} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.balanceMiniLabel}>{t("budgetUsage")}</Text>
+          <Text style={styles.balanceMiniValue}>{budgetPercent}%</Text>
+        </View>
+      </View>
+
+      <View style={styles.progressTrack}>
         <View
           style={[
-            styles.combinedProgressBar,
-            { backgroundColor: "rgba(255, 255, 255, 0.2)" },
+            styles.progressFill,
+            {
+              width: `${budgetPercent}%`,
+              backgroundColor:
+                budgetPercent >= 90 ? theme.coral || "#FB923C" : theme.white,
+            },
           ]}
-        >
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${Math.round(
-                  (stats.totalExpenses / (stats.totalBudget || 1)) * 100
-                )}%`,
-                backgroundColor: theme.error,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.remainingFill,
-              {
-                width: `100%`,
-                backgroundColor: theme.success,
-              },
-            ]}
-          />
-        </View>
+        />
       </View>
-    </View>
+    </LinearGradient>
   );
 
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: theme.card }]}
+      <QuickActionTile
+        icon="view-grid-outline"
+        label={t("boards")}
+        color={theme.accent}
         onPress={() => navigation.navigate("ExpenseBoard")}
-      >
-        <MaterialCommunityIcons
-          name="view-grid"
-          size={24}
-          color={theme.success}
-        />
-        <Text style={[styles.actionText, { color: theme.text }]}>{t("boards")}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: theme.card }]}
+      />
+      <QuickActionTile
+        icon="plus-circle-outline"
+        label={t("addExpense")}
+        color={theme.primary}
         onPress={() => navigation.navigate("AddExpense")}
-      >
-        <MaterialCommunityIcons
-          name="plus-circle-outline"
-          size={24}
-          color={theme.primary}
-        />
-        <Text style={[styles.actionText, { color: theme.text }]}>
-          {t("addExpense")}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: theme.card }]}
+      />
+      <QuickActionTile
+        icon="tag-outline"
+        label={t("categories")}
+        color={theme.coral || theme.warning}
         onPress={() => navigation.navigate("Categories")}
-      >
-        <MaterialCommunityIcons name="tag" size={24} color={theme.warning} />
-        <Text style={[styles.actionText, { color: theme.text }]}>
-          {t("categories")}
-        </Text>
-      </TouchableOpacity>
+      />
     </View>
   );
 
@@ -672,7 +582,7 @@ export const DashboardScreen = ({ navigation }) => {
   const renderTransactionsSection = () => (
     <View style={styles.transactionsSection}>
       <ExpenseList
-        expenses={expenses.slice(0, 3)}
+        expenses={expenses.slice(0, recentLimit)}
         title={t("recentTransactions")}
         onSeeAllPress={() => navigation.navigate("Expense")}
         onDeletePress={handleDeletePress}
@@ -681,18 +591,15 @@ export const DashboardScreen = ({ navigation }) => {
         showAllButton={true}
         showEmptyState={true}
         navigation={navigation}
-        maxItems={4}
-        containerStyle={styles.transactionsList}
         embedded={true}
+        compact={Platform.OS === "android"}
       />
     </View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: "transparent" }]}
-      >
+      <ScreenLayout navigation={navigation} footerRoute="Home">
         <Animated.View
           style={[
             styles.loadingContainer,
@@ -720,7 +627,7 @@ export const DashboardScreen = ({ navigation }) => {
             </Animated.Text> */}
           </View>
         </Animated.View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
@@ -734,7 +641,7 @@ export const DashboardScreen = ({ navigation }) => {
           <View
             style={[
               styles.profileIconContainer,
-              { backgroundColor: `${theme.primary}15` },
+              { backgroundColor: theme.primaryMuted, borderColor: theme.border },
             ]}
           >
             {userProfile?.avatar_url ? (
@@ -758,12 +665,44 @@ export const DashboardScreen = ({ navigation }) => {
             <Text style={[styles.nameText, { color: theme.text }]}>
               {capitalizeFirstLetter(userProfile?.full_name) || t("guest")}
             </Text>
+            <TouchableOpacity
+              style={[
+                styles.planBadge,
+                {
+                  backgroundColor: isPremium
+                    ? `${theme.primary}15`
+                    : theme.card,
+                  borderColor: isPremium ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => navigation.navigate("Paywall")}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name={isPremium ? "crown" : "ticket-outline"}
+                size={14}
+                color={isPremium ? theme.primary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.planBadgeText,
+                  { color: isPremium ? theme.primary : theme.textSecondary },
+                ]}
+              >
+                {t("currentPlanLabel")}: {planName}
+              </Text>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={14}
+                color={isPremium ? theme.primary : theme.textSecondary}
+              />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={() => navigation.navigate("Notification")}
-            style={styles.notificationButton}
+            style={[styles.notificationButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
           >
             {unreadCount > 0 && (
               <View
@@ -790,27 +729,26 @@ export const DashboardScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
+    <ScreenLayout navigation={navigation} footerRoute="Home">
       {renderHeader()}
-      {renderBalanceCard()}
-      {renderQuickActions()}
-      {renderNotificationTestButtons()}
-
       <ScrollView
+        style={styles.scroll}
         bounces={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: footerScrollPadding(insets.bottom) },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {renderBalanceCard()}
+        {renderQuickActions()}
+        {__DEV__ ? renderNotificationTestButtons() : null}
         {renderTransactionsSection()}
       </ScrollView>
-
-      <FooterTab navigation={navigation} activeRoute="Home" />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -837,9 +775,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  scroll: {
+    flex: 1,
+  },
   header: {
-    padding: Platform.OS === "android" ? 12 : 20,
-    paddingTop: Platform.OS === "android" ? 24 : 10,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: Platform.OS === "android" ? spacing.xs : spacing.sm,
+    paddingBottom: Platform.OS === "android" ? spacing.sm : spacing.md,
   },
   headerContent: {
     flexDirection: "row",
@@ -851,141 +793,121 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   welcomeText: {
-    fontSize: Platform.OS === "android" ? 14 : 16,
-    opacity: 0.7,
+    ...typography.caption,
+    color: undefined,
   },
   nameText: {
-    fontSize: Platform.OS === "android" ? 20 : 24,
-    fontWeight: "bold",
+    ...typography.h2,
+    fontSize: Platform.OS === "android" ? 20 : 22,
   },
-  notificationButton: {
-    padding: Platform.OS === "android" ? 6 : 8,
-    marginLeft: Platform.OS === "android" ? 6 : 8,
-  },
-  balanceCard: {
-    marginHorizontal: 20,
-    marginBottom: Platform.OS === "android" ? 16 : 20,
-    padding: Platform.OS === "android" ? 16 : 20,
+  planBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderWidth: 1,
   },
-  balanceMain: {
-    marginBottom: 5,
-  },
-  balanceRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  remainingRow: {
-    marginTop: 2,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.2)",
-  },
-  balanceLabelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  balanceIcon: {
-    marginRight: 8,
-  },
-  balanceLabel: {
-    fontSize: 16,
-    opacity: 0.9,
-  },
-  balanceValue: {
-    fontSize: 16,
+  planBadgeText: {
+    fontSize: 12,
     fontWeight: "600",
   },
-  combinedProgressContainer: {
-    width: "100%",
-    // marginTop: 8,
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.sm,
   },
-  progressLabels: {
+  balanceCard: {
+    marginHorizontal: layout.screenPadding,
+    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
+    padding: Platform.OS === "android" ? spacing.lg : spacing.xl,
+    borderRadius: radii.xl,
+    ...shadowStyle(6),
+  },
+  balanceTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
   },
-  progressLabel: {
-    fontSize: 12,
+  balanceEyebrow: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: spacing.xs,
+  },
+  balanceHero: {
+    color: "#FFFFFF",
+    fontSize: Platform.OS === "android" ? 26 : 30,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  balanceStatPill: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: "flex-end",
+  },
+  balancePillLabel: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  balancePillValue: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  balanceStatsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
+  },
+  balanceMiniStat: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: 4,
+  },
+  balanceMiniLabel: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 11,
     fontWeight: "500",
   },
-  combinedProgressBar: {
-    height: 12,
-    borderRadius: 6,
+  balanceMiniValue: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(255,255,255,0.2)",
     overflow: "hidden",
-    flexDirection: "row",
-    marginBottom: 8,
   },
   progressFill: {
     height: "100%",
-    borderTopLeftRadius: 6,
-    borderBottomLeftRadius: 6,
-  },
-  remainingFill: {
-    height: "100%",
-    borderTopRightRadius: 6,
-    borderBottomRightRadius: 6,
-  },
-  progressLegend: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 16,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  legendText: {
-    fontSize: 12,
-    fontWeight: "500",
+    borderRadius: radii.pill,
   },
   quickActions: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  actionButton: {
-    alignItems: "center",
-    padding: 15,
-    borderRadius: 15,
-    width: (width - 60) / 3,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  actionText: {
-    marginTop: 8,
-    fontSize: 12,
+    gap: spacing.sm,
+    paddingHorizontal: layout.screenPadding,
+    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
   },
   transactionsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 60,
-  },
-  transactionsList: {
-    maxHeight: 320, // Height to fit 4 transactions
-    marginTop: 12,
+    paddingHorizontal: layout.screenPadding,
+    marginTop: Platform.OS === "android" ? spacing.xs : spacing.sm,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -1010,9 +932,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   profileIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: radii.lg,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -1087,7 +1010,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   notificationButtonText: {
     marginLeft: 8,

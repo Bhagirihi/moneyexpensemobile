@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from "react";
 import { View, Text, TextInput, StyleSheet } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { radii, spacing, typography } from "../../theme/tokens";
 
 const FormInput = memo(
   ({
@@ -13,6 +14,7 @@ const FormInput = memo(
     keyboardType = "default",
     autoCapitalize = "none",
     autoCorrect = false,
+    leftIcon,
     style,
     inputStyle,
     labelStyle,
@@ -24,32 +26,35 @@ const FormInput = memo(
     const styles = useMemo(
       () =>
         StyleSheet.create({
-          container: {
-            marginBottom: 16,
-            ...style,
-          },
+          container: { marginBottom: spacing.lg, ...style },
           label: {
-            fontSize: 14,
-            fontWeight: "500",
-            marginBottom: 8,
+            ...typography.label,
+            marginBottom: spacing.sm,
             color: theme.text,
             ...labelStyle,
           },
-          input: {
-            height: 48,
-            borderWidth: 1,
+          inputWrap: {
+            flexDirection: "row",
+            alignItems: "center",
+            minHeight: 52,
+            borderWidth: 1.5,
             borderColor: error ? theme.error : theme.border,
-            borderRadius: 8,
-            paddingHorizontal: 16,
+            borderRadius: radii.md,
+            paddingHorizontal: spacing.md,
+            backgroundColor: theme.inputBackground,
+          },
+          input: {
+            flex: 1,
             fontSize: 16,
             color: theme.text,
-            backgroundColor: theme.card,
+            paddingVertical: spacing.md,
             ...inputStyle,
           },
+          leftIcon: { marginRight: spacing.sm },
           errorText: {
             fontSize: 12,
             color: theme.error,
-            marginTop: 4,
+            marginTop: spacing.xs,
             ...errorStyle,
           },
         }),
@@ -58,20 +63,23 @@ const FormInput = memo(
 
     return (
       <View style={styles.container}>
-        {label && <Text style={styles.label}>{label}</Text>}
-        <TextInput
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry={secureTextEntry}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoCorrect={autoCorrect}
-          {...props}
-        />
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {label ? <Text style={styles.label}>{label}</Text> : null}
+        <View style={styles.inputWrap}>
+          {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
+          <TextInput
+            style={styles.input}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={theme.textMuted}
+            secureTextEntry={secureTextEntry}
+            keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={autoCorrect}
+            {...props}
+          />
+        </View>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
     );
   }

@@ -14,6 +14,8 @@ import { supabase, updateUserProfile } from "../config/supabase";
 import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
 import { useAuth } from "../context/AuthContext";
+import FormButton from "../components/common/FormButton";
+import { radii, spacing, typography } from "../theme/tokens";
 
 const EmailVerificationScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
@@ -148,155 +150,123 @@ const EmailVerificationScreen = ({ navigation, route }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-      <View style={styles.content}>
-        <MaterialCommunityIcons
-          name="email-check"
-          size={80}
-          color={theme.primary}
-        />
-        <Text style={[styles.title, { color: theme.text }]}>
-          Verify Your Email
-        </Text>
-        <Text style={[styles.message, { color: theme.textSecondary }]}>
-          {email
-            ? `We have sent a verification link to ${email}. Please verify your email to continue.`
-            : "We have sent a verification link to your email. Please verify your email to continue."}
-        </Text>
-
-        <View style={styles.statusContainer}>
-          {verificationStatus === "pending" ? (
-            <ActivityIndicator size="large" color={theme.primary} />
-          ) : (
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.iconRing,
+              {
+                backgroundColor: theme.primaryMuted,
+                borderColor: theme.primary,
+              },
+            ]}
+          >
             <MaterialCommunityIcons
-              name="check-circle"
-              size={40}
-              color={theme.success}
+              name={verificationStatus === "verified" ? "check-circle" : "email-outline"}
+              size={48}
+              color={verificationStatus === "verified" ? theme.success : theme.primary}
             />
-          )}
-          <Text style={[styles.statusText, { color: theme.textSecondary }]}>
-            {verificationStatus === "pending"
-              ? "Waiting for verification..."
-              : "Email verified successfully!"}
+          </View>
+          <Text style={[styles.title, { color: theme.text }]}>Verify your email</Text>
+          <Text style={[styles.message, { color: theme.textSecondary }]}>
+            {email
+              ? `We sent a verification link to ${email}. Open your inbox to continue.`
+              : "We sent a verification link to your email. Open your inbox to continue."}
           </Text>
-        </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.primary }]}
-            onPress={handleOpenEmail}
-          >
-            <Text style={[styles.buttonText, { color: theme.white }]}>
-              Open Email App
+          <View style={styles.statusContainer}>
+            {verificationStatus === "pending" ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : null}
+            <Text style={[styles.statusText, { color: theme.textSecondary }]}>
+              {verificationStatus === "pending"
+                ? "Waiting for verification..."
+                : "Email verified successfully!"}
             </Text>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.card }]}
-            onPress={handleResendVerification}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.primary} />
+          <View style={styles.buttonContainer}>
+            <FormButton title="Open email app" onPress={handleOpenEmail} size="large" />
+            <FormButton
+              title="Resend verification"
+              variant="outline"
+              onPress={handleResendVerification}
+              loading={loading}
+            />
+            <FormButton
+              title="Re-check status"
+              variant="secondary"
+              onPress={handleReCheckVerification}
+              loading={recheckLoading}
+            />
+            {hasSession ? (
+              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                <MaterialCommunityIcons name="logout" size={18} color={theme.error} />
+                <Text style={[styles.logoutText, { color: theme.error }]}>Log out</Text>
+              </TouchableOpacity>
             ) : (
-              <Text style={[styles.buttonText, { color: theme.primary }]}>
-                Resend Verification
-              </Text>
+              <FormButton
+                title="Back to login"
+                variant="outline"
+                onPress={handleBackToLogin}
+              />
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.card }]}
-            onPress={handleReCheckVerification}
-            disabled={recheckLoading}
-          >
-            {recheckLoading ? (
-              <ActivityIndicator color={theme.primary} />
-            ) : (
-              <Text style={[styles.buttonText, { color: theme.primary }]}>
-                Re-Check Verification
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          {hasSession ? (
-            <TouchableOpacity
-              style={[styles.button, styles.logoutButton, { borderColor: theme.error, borderWidth: 1 }]}
-              onPress={handleLogout}
-            >
-              <MaterialCommunityIcons name="logout" size={20} color={theme.error} />
-              <Text style={[styles.buttonText, { color: theme.error }]}>
-                Log out
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: theme.card }]}
-              onPress={handleBackToLogin}
-            >
-              <Text style={[styles.buttonText, { color: theme.primary }]}>
-                Back to Login
-              </Text>
-            </TouchableOpacity>
-          )}
+          </View>
         </View>
-      </View>
       </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: "center",
+    padding: spacing.xl,
     paddingBottom: 40,
   },
-  content: {
-    flex: 1,
+  card: {
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    padding: spacing.xl,
+    alignItems: "center",
+  },
+  iconRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
-    minHeight: 400,
+    marginBottom: spacing.lg,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-  },
+  title: { ...typography.h2, textAlign: "center", marginBottom: spacing.sm },
   message: {
-    fontSize: 16,
+    ...typography.body,
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
   },
   statusContainer: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: spacing.xl,
+    gap: spacing.sm,
   },
-  statusText: {
-    fontSize: 16,
-    marginTop: 10,
-  },
-  buttonContainer: {
-    width: "100%",
-    gap: 10,
-  },
-  button: {
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  logoutButton: {
+  statusText: { ...typography.caption, fontWeight: "500" },
+  buttonContainer: { width: "100%", gap: spacing.md },
+  logoutBtn: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
   },
+  logoutText: { ...typography.label },
 });
 
 export default EmailVerificationScreen;

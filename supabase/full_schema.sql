@@ -163,6 +163,29 @@ CREATE POLICY "Allow read if related via shared_users" ON public.profiles FOR SE
     AND (su.shared_by = auth.uid() OR su.user_id = auth.uid())
   )
 );
+DROP POLICY IF EXISTS "Allow read board owner for shared members" ON public.profiles;
+CREATE POLICY "Allow read board owner for shared members" ON public.profiles FOR SELECT USING (
+  EXISTS (
+    SELECT 1
+    FROM public.expense_boards eb
+    JOIN public.shared_users su ON su.board_id = eb.id
+    WHERE eb.created_by = profiles.id
+      AND su.user_id = auth.uid()
+      AND su.is_accepted = true
+  )
+);
+DROP POLICY IF EXISTS "Allow read co-members on shared boards" ON public.profiles;
+CREATE POLICY "Allow read co-members on shared boards" ON public.profiles FOR SELECT USING (
+  EXISTS (
+    SELECT 1
+    FROM public.shared_users su_self
+    JOIN public.shared_users su_other ON su_other.board_id = su_self.board_id
+    WHERE su_self.user_id = auth.uid()
+      AND su_self.is_accepted = true
+      AND su_other.user_id = profiles.id
+      AND su_other.is_accepted = true
+  )
+);
 
 -- Expense boards: owner + shared (accepted) users
 DROP POLICY IF EXISTS "Allow owners to manage their boards" ON public.expense_boards;
@@ -181,6 +204,26 @@ CREATE POLICY "Allow access to shared boards" ON public.expense_boards FOR SELEC
 DROP POLICY IF EXISTS "Users can view their own categories" ON public.categories;
 CREATE POLICY "Users can view their own categories" ON public.categories FOR SELECT
   USING (user_id = auth.uid() OR user_id IS NULL);
+DROP POLICY IF EXISTS "Users can view categories on accessible boards" ON public.categories;
+CREATE POLICY "Users can view categories on accessible boards" ON public.categories FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.expenses e
+      JOIN public.expense_boards eb ON eb.id = e.board_id
+      WHERE e.category_id = categories.id
+        AND (
+          eb.created_by = auth.uid()
+          OR EXISTS (
+            SELECT 1
+            FROM public.shared_users su
+            WHERE su.board_id = eb.id
+              AND su.user_id = auth.uid()
+              AND su.is_accepted = true
+          )
+        )
+    )
+  );
 DROP POLICY IF EXISTS "Users can insert their own categories" ON public.categories;
 CREATE POLICY "Users can insert their own categories" ON public.categories FOR INSERT WITH CHECK (user_id = auth.uid());
 DROP POLICY IF EXISTS "Users can update their own categories" ON public.categories;
@@ -244,13 +287,23 @@ CREATE POLICY "Users can delete their own notifications" ON public.notifications
 -- Shared users: inviter or invitee
 DROP POLICY IF EXISTS "Can read shared items" ON public.shared_users;
 CREATE POLICY "Can read shared items" ON public.shared_users FOR SELECT
-  USING (shared_by = auth.uid() OR user_id = auth.uid());
+  USING (
+    shared_by = auth.uid()
+    OR user_id = auth.uid()
+    OR lower(shared_with) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
 DROP POLICY IF EXISTS "Allow read for authenticated users shared" ON public.shared_users;
-CREATE POLICY "Allow read for authenticated users shared" ON public.shared_users FOR SELECT USING (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Shared users insert by inviter" ON public.shared_users;
 CREATE POLICY "Shared users insert by inviter" ON public.shared_users FOR INSERT WITH CHECK (shared_by = auth.uid());
 DROP POLICY IF EXISTS "Shared users update by inviter or invitee" ON public.shared_users;
 CREATE POLICY "Shared users update by inviter or invitee" ON public.shared_users FOR UPDATE
+  USING (
+    shared_by = auth.uid()
+    OR user_id = auth.uid()
+    OR lower(shared_with) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+DROP POLICY IF EXISTS "Shared users delete by inviter or invitee" ON public.shared_users;
+CREATE POLICY "Shared users delete by inviter or invitee" ON public.shared_users FOR DELETE
   USING (shared_by = auth.uid() OR user_id = auth.uid());
 
 -- =============================================================================
@@ -309,26 +362,125 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION public.mark_notification_as_read(notification_id UUID)
 RETURNS void AS $$
 BEGIN
-  UPDATE public.notifications SET read = true WHERE id = notification_id;
+  UPDATE public.notifications SET "read" = true WHERE id = notification_id;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION public.mark_all_notifications_as_read(target_user_id UUID)
 RETURNS void AS $$
 BEGIN
-  UPDATE public.notifications SET read = true WHERE user_id = target_user_id;
+  UPDATE public.notifications SET "read" = true WHERE user_id = target_user_id;
 END;
 $$ LANGUAGE plpgsql;
 
+-- Single RETURN (subquery) — no DECLARE, so batch splitters in SQL Editor cannot break this.
+-- Quote "read" — reserved word; qualify with table alias.
 CREATE OR REPLACE FUNCTION public.get_unread_notifications_count(target_user_id UUID)
 RETURNS INTEGER AS $$
-DECLARE unread_count INTEGER;
 BEGIN
-  SELECT COUNT(*)::INTEGER INTO unread_count
-  FROM public.notifications WHERE user_id = target_user_id AND read = false;
-  RETURN unread_count;
+  RETURN (
+    SELECT COUNT(*)::INTEGER
+    FROM public.notifications AS n
+    WHERE n.user_id = target_user_id AND COALESCE(n."read", false) = false
+  );
 END;
 $$ LANGUAGE plpgsql;
+
+-- Join a board via share_code or board UUID (invite link flow)
+CREATE OR REPLACE FUNCTION public.join_expense_board(p_code TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_user_email TEXT;
+  v_board public.expense_boards%ROWTYPE;
+  v_existing public.shared_users%ROWTYPE;
+  v_code TEXT;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT email INTO v_user_email FROM auth.users WHERE id = v_user_id;
+  v_code := upper(trim(p_code));
+
+  SELECT * INTO v_board
+  FROM public.expense_boards
+  WHERE id::text = trim(p_code)
+     OR upper(trim(share_code)) = v_code
+  LIMIT 1;
+
+  IF v_board.id IS NULL THEN
+    RAISE EXCEPTION 'Board not found';
+  END IF;
+
+  IF v_board.created_by = v_user_id THEN
+    RAISE EXCEPTION 'You already own this board';
+  END IF;
+
+  SELECT * INTO v_existing
+  FROM public.shared_users
+  WHERE board_id = v_board.id
+    AND (user_id = v_user_id OR lower(shared_with) = lower(v_user_email))
+  LIMIT 1;
+
+  IF v_existing.id IS NOT NULL THEN
+    IF v_existing.is_accepted THEN
+      RETURN jsonb_build_object(
+        'board_id', v_board.id,
+        'board_name', v_board.name,
+        'already_member', true
+      );
+    END IF;
+
+    UPDATE public.shared_users
+    SET
+      user_id = v_user_id,
+      is_accepted = true,
+      status = 'accepted',
+      accepted_at = NOW()
+    WHERE id = v_existing.id;
+
+    RETURN jsonb_build_object(
+      'board_id', v_board.id,
+      'board_name', v_board.name,
+      'accepted', true
+    );
+  END IF;
+
+  INSERT INTO public.shared_users (
+    shared_by,
+    shared_with,
+    board_id,
+    user_id,
+    is_accepted,
+    status,
+    accepted_at
+  )
+  VALUES (
+    v_board.created_by,
+    v_user_email,
+    v_board.id,
+    v_user_id,
+    true,
+    'accepted',
+    NOW()
+  );
+
+  RETURN jsonb_build_object(
+    'board_id', v_board.id,
+    'board_name', v_board.name,
+    'joined', true
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.join_expense_board(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.join_expense_board(TEXT) TO authenticated;
 
 -- New user signup: create profile, default board, default categories
 -- Order matters: expense_boards.created_by REFERENCES profiles(id), so create profile first (board_id NULL), then board, then update profile.board_id
@@ -468,3 +620,153 @@ END $$;
 -- =============================================================================
 -- Next: In Authentication → URL Configuration add your app redirect URLs (e.g. trivense://verify-email, trivense://reset-password).
 -- Then set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your app .env from Project Settings → API.
+
+-- =============================================================================
+-- USER SUBSCRIPTIONS (from migrations 20250620000000 + 20250621000000)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.user_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL UNIQUE REFERENCES public.profiles(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'monthly', 'yearly')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'expired', 'trialing')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ,
+  store_product_id TEXT,
+  store_transaction_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON public.user_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_expires_at ON public.user_subscriptions(expires_at);
+
+ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own subscription" ON public.user_subscriptions;
+CREATE POLICY "Users can view own subscription" ON public.user_subscriptions
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP TRIGGER IF EXISTS trg_user_subscriptions_updated_at ON public.user_subscriptions;
+CREATE TRIGGER trg_user_subscriptions_updated_at
+  BEFORE UPDATE ON public.user_subscriptions
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE OR REPLACE FUNCTION public.activate_subscription_from_store(
+  p_user_id UUID,
+  p_plan TEXT,
+  p_store_product_id TEXT DEFAULT NULL,
+  p_store_transaction_id TEXT DEFAULT NULL,
+  p_expires_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_plan TEXT;
+  v_expires_at TIMESTAMPTZ;
+  v_profile_plan TEXT;
+BEGIN
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id is required';
+  END IF;
+
+  v_plan := lower(trim(p_plan));
+  IF v_plan NOT IN ('free', 'monthly', 'yearly') THEN
+    RAISE EXCEPTION 'Invalid plan: %', p_plan;
+  END IF;
+
+  IF v_plan = 'free' THEN
+    v_expires_at := NULL;
+    v_profile_plan := 'free';
+  ELSIF v_plan = 'monthly' THEN
+    v_expires_at := COALESCE(p_expires_at, NOW() + INTERVAL '1 month');
+    v_profile_plan := 'premium';
+  ELSE
+    v_expires_at := COALESCE(p_expires_at, NOW() + INTERVAL '1 year');
+    v_profile_plan := 'premium';
+  END IF;
+
+  INSERT INTO public.user_subscriptions (
+    user_id, plan, status, started_at, expires_at, cancelled_at,
+    store_product_id, store_transaction_id, updated_at
+  )
+  VALUES (
+    p_user_id, v_plan, 'active', NOW(), v_expires_at, NULL,
+    p_store_product_id, p_store_transaction_id, NOW()
+  )
+  ON CONFLICT (user_id) DO UPDATE SET
+    plan = EXCLUDED.plan,
+    status = 'active',
+    started_at = NOW(),
+    expires_at = EXCLUDED.expires_at,
+    cancelled_at = NULL,
+    store_product_id = EXCLUDED.store_product_id,
+    store_transaction_id = EXCLUDED.store_transaction_id,
+    updated_at = NOW();
+
+  UPDATE public.profiles
+  SET current_plan = v_profile_plan, updated_at = NOW()
+  WHERE id = p_user_id;
+
+  RETURN jsonb_build_object(
+    'plan', v_plan,
+    'status', 'active',
+    'expires_at', v_expires_at,
+    'current_plan', v_profile_plan
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.activate_subscription_from_store(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.activate_subscription_from_store(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.get_effective_subscription(p_user_id UUID DEFAULT auth.uid())
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_sub public.user_subscriptions%ROWTYPE;
+  v_effective_plan TEXT := 'free';
+BEGIN
+  IF p_user_id IS NULL THEN
+    RETURN jsonb_build_object('plan', 'free', 'status', 'active', 'is_premium', false);
+  END IF;
+
+  SELECT * INTO v_sub FROM public.user_subscriptions WHERE user_id = p_user_id;
+
+  IF v_sub.id IS NULL THEN
+    RETURN jsonb_build_object(
+      'plan', 'free',
+      'status', 'active',
+      'is_premium', false,
+      'expires_at', NULL
+    );
+  END IF;
+
+  IF v_sub.plan IN ('monthly', 'yearly')
+     AND v_sub.status = 'active'
+     AND (v_sub.expires_at IS NULL OR v_sub.expires_at > NOW()) THEN
+    v_effective_plan := v_sub.plan;
+  ELSE
+    v_effective_plan := 'free';
+  END IF;
+
+  RETURN jsonb_build_object(
+    'plan', v_effective_plan,
+    'status', v_sub.status,
+    'is_premium', v_effective_plan IN ('monthly', 'yearly'),
+    'expires_at', v_sub.expires_at,
+    'started_at', v_sub.started_at
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_effective_subscription(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_effective_subscription(UUID) TO authenticated;

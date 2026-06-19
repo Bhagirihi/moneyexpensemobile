@@ -25,7 +25,7 @@ const JoinBoardModal = ({ visible, onClose, onJoin }) => {
   const handleJoin = async () => {
     // Basic URL validation
     if (!url.trim()) {
-      setError("Please enter an invite URL");
+      setError("Please enter an invite code or URL");
       return;
     }
 
@@ -101,7 +101,7 @@ const JoinBoardModal = ({ visible, onClose, onJoin }) => {
                       borderColor: error ? theme.error : theme.border,
                     },
                   ]}
-                  placeholder="Enter invite URL"
+                  placeholder="Enter invite code or URL"
                   placeholderTextColor={theme.textSecondary}
                   value={url}
                   onChangeText={(text) => {

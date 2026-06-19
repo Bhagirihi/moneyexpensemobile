@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -13,13 +12,14 @@ import {
   FlatList,
   Alert,
   Share,
-  Clipboard,
   ActivityIndicator,
   Pressable,
+  Linking,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { supabase } from "../config/supabase";
@@ -28,16 +28,31 @@ import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { realTimeSync } from "../services/realTimeSync";
 import { expenseBoardService } from "../services/expenseBoardService";
+import { exportAndShare } from "../services/exportService";
+import {
+  backupExportToGoogleDrive,
+  isGoogleDriveConfigured,
+} from "../services/googleDriveService";
 import { useAuth } from "../context/AuthContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import { FEATURES, PLAN_CATALOG } from "../config/subscriptionPlans";
 import { useTranslation } from "../hooks/useTranslation";
+import { useFeatureLockModal } from "../hooks/useFeatureLockModal";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { footerScrollPadding, typography, spacing, radii } from "../theme/tokens";
 import { devLog } from "../utils/logger";
+import { copyToClipboard } from "../utils/clipboard";
+import { LEGAL_LINKS } from "../config/appLinks";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { openFeatureLock, featureLockModal } = useFeatureLockModal(navigation);
+  const insets = useSafeAreaInsets();
   const { language, currency, updateLanguage, updateCurrency } =
     useAppSettings();
   const { session } = useAuth();
+  const { requireFeature, hasFeature, plan, isPremium } = useSubscription();
   const [budget, setBudget] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -62,6 +77,7 @@ export const SettingsScreen = ({ navigation }) => {
   const [inviteeCount, setInviteeCount] = useState(0);
   const [inviteesList, setInviteesList] = useState([]);
   const [loadingInvitees, setLoadingInvitees] = useState(false);
+  const [dataActionLoading, setDataActionLoading] = useState(false);
 
   const languages = [
     { code: "en", name: "English" },
@@ -139,7 +155,7 @@ export const SettingsScreen = ({ navigation }) => {
       const isDefaultBoard = await boardsData.find((b) => b.is_default);
 
       if (isDefaultBoard) {
-        updateBoard(board.id);
+        updateBoard(isDefaultBoard.id);
       }
       if (board) {
         setBoardName(board.name);
@@ -192,7 +208,7 @@ export const SettingsScreen = ({ navigation }) => {
           devLog("User dismissed the share dialog.");
         }
       } else if (method === "copy") {
-        Clipboard.setString(referralCode);
+        copyToClipboard(referralCode);
         showToast.success(t("copied"), t("referralCodeCopied"));
       }
     } catch (error) {
@@ -237,10 +253,71 @@ export const SettingsScreen = ({ navigation }) => {
   const handleEdit = (item) => {
     setEditingItem(item);
     setEditValue(item.subtitle || "");
-    if (item.title === "Share With") {
+    if (item.modalKey === "ShareApp") {
       setShowShareAppModal(true);
-    } else {
-      setEditModalVisible(true);
+      return;
+    }
+    setEditModalVisible(true);
+  };
+
+  const handleExportLocal = () => {
+    if (!requireFeature(FEATURES.EXPORT_DATA, navigation)) return;
+
+    Alert.alert(t("exportToLocal"), t("chooseExportFormat"), [
+      {
+        text: t("exportJson"),
+        onPress: async () => {
+          try {
+            setDataActionLoading(true);
+            await exportAndShare("json", t("exportToLocal"));
+            showToast.success(t("exportSuccess"), t("exportSuccessMessage"));
+          } catch (error) {
+            console.error("Export error:", error);
+            showToast.error(t("exportFailed"), error.message);
+          } finally {
+            setDataActionLoading(false);
+          }
+        },
+      },
+      {
+        text: t("exportCsv"),
+        onPress: async () => {
+          try {
+            setDataActionLoading(true);
+            await exportAndShare("csv", t("exportToLocal"));
+            showToast.success(t("exportSuccess"), t("exportSuccessMessage"));
+          } catch (error) {
+            console.error("Export error:", error);
+            showToast.error(t("exportFailed"), error.message);
+          } finally {
+            setDataActionLoading(false);
+          }
+        },
+      },
+      { text: t("cancel"), style: "cancel" },
+    ]);
+  };
+
+  const handleBackupToGoogleDrive = async () => {
+    if (!requireFeature(FEATURES.GOOGLE_DRIVE_BACKUP, navigation)) return;
+
+    if (!isGoogleDriveConfigured()) {
+      showToast.error(t("backupFailed"), t("googleDriveNotConfigured"));
+      return;
+    }
+
+    try {
+      setDataActionLoading(true);
+      const result = await backupExportToGoogleDrive();
+      showToast.success(
+        t("backupSuccess"),
+        `${t("backupSuccessMessage")} (${result.fileName})`
+      );
+    } catch (error) {
+      console.error("Google Drive backup error:", error);
+      showToast.error(t("backupFailed"), error.message);
+    } finally {
+      setDataActionLoading(false);
     }
   };
 
@@ -836,7 +913,10 @@ export const SettingsScreen = ({ navigation }) => {
           styles.upgradePremiumButton,
           { backgroundColor: theme.primary },
         ]}
-        onPress={() => setEditModalVisible(false)}
+        onPress={() => {
+          setEditModalVisible(false);
+          navigation.navigate("Paywall");
+        }}
       >
         <Text style={styles.upgradePremiumText}>Upgrade Now</Text>
       </TouchableOpacity>
@@ -1220,7 +1300,7 @@ export const SettingsScreen = ({ navigation }) => {
         >
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
-              Share Trivense
+              {t("shareApp")}
             </Text>
             <TouchableOpacity onPress={() => setShowShareAppModal(false)}>
               <MaterialCommunityIcons
@@ -1314,7 +1394,11 @@ export const SettingsScreen = ({ navigation }) => {
     isSwitch = false,
     switchValue,
     onSwitchChange,
-  }) => (
+    lockedFeature,
+  }) => {
+    const isLocked = lockedFeature && !hasFeature(lockedFeature);
+
+    return (
     <TouchableOpacity
       style={[
         styles.settingItem,
@@ -1322,28 +1406,44 @@ export const SettingsScreen = ({ navigation }) => {
           borderBottomWidth: 1,
           borderBottomColor: theme.borderLight,
         },
+        isLocked && { opacity: 0.55 },
       ]}
-      onPress={onPress}
-      disabled={!editable && !onPress}
+      onPress={
+        isLocked
+          ? () => openFeatureLock(lockedFeature)
+          : onPress
+      }
+      disabled={!editable && !onPress && !isLocked}
     >
       <View style={styles.settingLeft}>
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: theme.primaryLight },
+            {
+              backgroundColor: isLocked ? theme.borderLight : theme.primaryLight,
+            },
           ]}
         >
-          <MaterialCommunityIcons name={icon} size={22} color={theme.primary} />
+          <MaterialCommunityIcons
+            name={isLocked ? "lock-outline" : icon}
+            size={22}
+            color={isLocked ? theme.textSecondary : theme.primary}
+          />
         </View>
         <View style={styles.settingTexts}>
-          <Text style={[styles.settingTitle, { color: theme.text }]}>
+          <Text
+            style={[
+              styles.settingTitle,
+              { color: isLocked ? theme.textSecondary : theme.text },
+            ]}
+          >
             {title}
           </Text>
-          {subtitle && (
+          {(isLocked || subtitle) && (
             <Text
               style={[styles.settingSubtitle, { color: theme.textSecondary }]}
             >
-              {subtitle}
+              {isLocked ? t("premiumFeature") : subtitle}
             </Text>
           )}
         </View>
@@ -1357,6 +1457,12 @@ export const SettingsScreen = ({ navigation }) => {
             trackColor={{ false: theme.borderLight, true: theme.primary }}
             thumbColor={theme.background}
             ios_backgroundColor={theme.borderLight}
+          />
+        ) : isLocked ? (
+          <MaterialCommunityIcons
+            name="lock-outline"
+            size={20}
+            color={theme.textSecondary}
           />
         ) : editable ? (
           <MaterialCommunityIcons
@@ -1376,6 +1482,7 @@ export const SettingsScreen = ({ navigation }) => {
       </View>
     </TouchableOpacity>
   );
+  };
 
   const renderSection = ({ title, children }) => (
     <View style={styles.section}>
@@ -1385,7 +1492,10 @@ export const SettingsScreen = ({ navigation }) => {
       <View
         style={[
           styles.sectionContent,
-          { backgroundColor: theme.cardBackground },
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
         ]}
       >
         {React.Children.map(children, (child, index) =>
@@ -1425,11 +1535,22 @@ export const SettingsScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <ScreenLayout
+      navigation={navigation}
+      footerRoute="Settings"
+      header={
+        <Header
+          title={t("settings")}
+          onBack={() => navigation.goBack()}
+          showBack={false}
+        />
+      }
     >
-      <Header title={t("settings")} onBack={() => navigation.goBack()} />
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: footerScrollPadding(insets.bottom) }}
+      >
         {renderSection({
           title: t("appearance"),
           children: [
@@ -1502,14 +1623,26 @@ export const SettingsScreen = ({ navigation }) => {
               icon: "account-group",
               title: t("invitees"),
               subtitle: `${inviteeCount} ${t("invited")}`,
-              onPress: () => navigation.navigate("Profile2"),
+              onPress: () => navigation.navigate("Invitations", { tab: "sent" }),
               editable: false,
+              lockedFeature: FEATURES.BOARD_SHARING,
+            }),
+            renderSettingItem({
+              icon: "email-outline",
+              title: t("invitations"),
+              subtitle: t("receivedInvites"),
+              onPress: () =>
+                navigation.navigate("Invitations", { tab: "received" }),
+              editable: false,
+              lockedFeature: FEATURES.BOARD_SHARING,
             }),
             renderSettingItem({
               icon: "crown",
               title: t("premiumAccess"),
-              subtitle: t("premiumAccessSubtitle"),
-              onPress: () => handleEdit({ modalKey: "Premium Access", title: t("premiumAccess") }),
+              subtitle: isPremium
+                ? t("currentPlanLabel") + ": " + t(PLAN_CATALOG[plan]?.nameKey || "planFree")
+                : t("premiumAccessSubtitle"),
+              onPress: () => navigation.navigate("Paywall"),
               showBorder: false,
               editable: false,
             }),
@@ -1536,21 +1669,59 @@ export const SettingsScreen = ({ navigation }) => {
               icon: "cloud-upload-outline",
               title: t("backupToGoogleDrive"),
               subtitle: t("backupSubtitle"),
-              onPress: () => {},
+              onPress: handleBackupToGoogleDrive,
               editable: false,
+              lockedFeature: FEATURES.GOOGLE_DRIVE_BACKUP,
+              rightComponent: dataActionLoading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : null,
             }),
             renderSettingItem({
               icon: "download-outline",
               title: t("exportToLocal"),
               subtitle: t("exportSubtitle"),
-              onPress: () => {},
+              onPress: handleExportLocal,
               editable: false,
+              lockedFeature: FEATURES.EXPORT_DATA,
+              rightComponent: dataActionLoading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : null,
             }),
             renderSettingItem({
               icon: "share-variant-outline",
-              title: t("shareWith"),
-              subtitle: t("shareSubtitle"),
-              onPress: () => handleEdit({ modalKey: "Share With", title: t("shareWith") }),
+              title: t("shareApp"),
+              subtitle: t("shareAppSubtitle"),
+              onPress: () =>
+                handleEdit({ modalKey: "ShareApp", title: t("shareApp") }),
+              editable: false,
+            }),
+            renderSettingItem({
+              icon: "account-group-outline",
+              title: t("shareExpenseData"),
+              subtitle: t("shareExpenseDataSubtitle"),
+              onPress: () => navigation.navigate("Invitations", { tab: "sent" }),
+              showBorder: false,
+              editable: false,
+              lockedFeature: FEATURES.BOARD_SHARING,
+            }),
+          ],
+        })}
+
+        {renderSection({
+          title: t("legal"),
+          children: [
+            renderSettingItem({
+              icon: "shield-lock-outline",
+              title: t("privacyPolicy"),
+              subtitle: t("privacyPolicySubtitle"),
+              onPress: () => Linking.openURL(LEGAL_LINKS.privacyPolicy),
+              editable: false,
+            }),
+            renderSettingItem({
+              icon: "file-document-outline",
+              title: t("termsOfService"),
+              subtitle: t("termsOfServiceSubtitle"),
+              onPress: () => Linking.openURL(LEGAL_LINKS.termsOfService),
               showBorder: false,
               editable: false,
             }),
@@ -1590,7 +1761,8 @@ export const SettingsScreen = ({ navigation }) => {
       </ScrollView>
       {renderEditModal()}
       {renderShareAppModal()}
-    </SafeAreaView>
+      {featureLockModal}
+    </ScreenLayout>
   );
 };
 const styles = StyleSheet.create({
@@ -1605,32 +1777,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginLeft: 4,
-    textTransform: "uppercase",
+    ...typography.micro,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
   },
   sectionContent: {
-    borderRadius: 16,
+    borderRadius: radii.lg,
     overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
   },
   settingLeft: {
     flexDirection: "row",
@@ -1639,9 +1801,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1655,6 +1817,17 @@ const styles = StyleSheet.create({
   settingSubtitle: {
     fontSize: 13,
     marginTop: 2,
+  },
+  settingBenefit: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  settingTapHint: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
   },
   settingRight: {
     flexDirection: "row",
@@ -1692,9 +1865,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
       },
-      android: {
-        elevation: 5,
-      },
+      android: {},
     }),
   },
   modalTitle: {

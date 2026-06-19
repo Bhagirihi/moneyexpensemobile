@@ -10,6 +10,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useTranslation } from "../hooks/useTranslation";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ExpenseItem from "./ExpenseItem";
+import { radii, spacing, typography } from "../theme/tokens";
 
 const ExpenseList = memo(
   ({
@@ -23,6 +24,8 @@ const ExpenseList = memo(
     showEmptyState = true,
     navigation,
     embedded = false,
+    compact = false,
+    containerStyle,
   }) => {
     const { theme } = useTheme();
     const { t } = useTranslation();
@@ -32,11 +35,12 @@ const ExpenseList = memo(
       ({ item }) => (
         <ExpenseItem
           expense={item}
+          compact={compact}
           onPress={() => onExpensePress(item)}
           onDelete={() => onDeletePress(item.id)}
         />
       ),
-      [onExpensePress, onDeletePress]
+      [onExpensePress, onDeletePress, compact]
     );
 
     // Memoize the keyExtractor callback
@@ -50,6 +54,9 @@ const ExpenseList = memo(
             flex: 1,
             backgroundColor: theme.background,
           },
+          embeddedContainer: {
+            flex: 0,
+          },
           list: {
             flex: 1,
           },
@@ -57,24 +64,23 @@ const ExpenseList = memo(
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            paddingHorizontal: 12,
-            paddingVertical: 10,
+            paddingHorizontal: compact ? 0 : 12,
+            paddingTop: compact ? 0 : 4,
+            paddingBottom: compact ? spacing.sm : 10,
             backgroundColor: theme.background,
           },
           headerTitle: {
-            fontSize: 18,
-            fontWeight: "600",
+            ...(compact ? typography.label : typography.h3),
             color: theme.text,
-            opacity: 0.8,
-            marginBottom: 8,
+            opacity: compact ? 1 : 0.9,
           },
           seeAllButton: {
-            padding: 8,
+            padding: compact ? 4 : 8,
           },
           seeAllText: {
             color: theme.primary,
-            fontSize: 16,
-            fontWeight: "500",
+            fontSize: compact ? 13 : 16,
+            fontWeight: "600",
           },
           emptyContainer: {
             alignItems: "center",
@@ -113,6 +119,7 @@ const ExpenseList = memo(
         theme.textSecondary,
         theme.card,
         theme.white,
+        compact,
       ]
     );
 
@@ -160,12 +167,12 @@ const ExpenseList = memo(
 
     if (embedded) {
       return (
-        <View style={styles.container}>
+        <View style={[styles.container, styles.embeddedContainer, containerStyle]}>
           {renderHeader()}
           {expenses.length === 0
             ? renderEmptyState()
             : expenses.map((item) => (
-                <View key={keyExtractor(item)} style={{ paddingBottom: 0 }}>
+                <View key={keyExtractor(item)}>
                   {renderItem({ item })}
                 </View>
               ))}

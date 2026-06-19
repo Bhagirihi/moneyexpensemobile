@@ -3,16 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
   Alert,
   Platform,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import ShareModal from "../components/ShareModal";
@@ -22,12 +21,22 @@ import { showToast } from "../utils/toast";
 import { realTimeSync } from "../services/realTimeSync";
 import { sendExpenseBoardDeletedNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
-
-const { width } = Dimensions.get("window");
+import { useSubscription } from "../context/SubscriptionContext";
+import { FEATURES } from "../config/subscriptionPlans";
+import { subscriptionService } from "../services/subscriptionService";
+import { supabase } from "../config/supabase";
+import { LockedIconButton } from "../components/LockedFeature";
+import { formatCurrency } from "../utils/formatters";
+import { QuickActionTile } from "../components/ui/UIKit";
+import Card from "../components/common/Card";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { subscription, requireFeature, hasFeature } = useSubscription();
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -38,27 +47,19 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   useEffect(() => {
     fetchExpenseBoards();
     const cleanup = realTimeSync.subscribeToExpenseBoard(fetchExpenseBoards);
-    return () => {
-      if (cleanup && typeof cleanup === "function") {
-        cleanup();
-      }
-    };
+    return () => cleanup?.();
   }, []);
 
   const fetchExpenseBoards = async () => {
     try {
       setLoading(true);
       const data = await expenseBoardService.getExpenseBoards();
-
       if (!data) {
-        console.error("No data received from service");
         showToast.error("Failed to fetch boards", "No data received");
         return;
       }
-
       setExpenseBoards(data);
     } catch (error) {
-      console.error("Error in fetchBoards:", error);
       showToast.error("Failed to fetch boards", error.message);
     } finally {
       setLoading(false);
@@ -66,256 +67,317 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   };
 
   const handleShareBoard = (board) => {
+    if (!requireFeature(FEATURES.BOARD_SHARING, navigation)) return;
     setSelectedBoard(board);
     setShowShareModal(true);
   };
 
   const handleDeleteBoard = async (board) => {
-    try {
-      // Show confirmation dialog
-      Alert.alert(
-        t("deleteBoard"),
-        `${t("deleteBoardConfirm")} "${board.name}"?`,
-        [
-          {
-            text: t("cancel"),
-            style: "cancel",
+    Alert.alert(
+      t("deleteBoard"),
+      `${t("deleteBoardConfirm")} "${board.name}"?`,
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await expenseBoardService.deleteExpenseBoard(board.id);
+              await sendExpenseBoardDeletedNotification({
+                boardName: board.name,
+                icon: board.icon || "view-grid",
+                iconColor: board.color || theme.primary,
+              });
+              showToast.success(t("boardDeletedSuccess"));
+              await fetchExpenseBoards();
+            } catch (error) {
+              showToast.error(t("failedToDeleteBoard"), error.message);
+            }
           },
-          {
-            text: t("delete"),
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await expenseBoardService.deleteExpenseBoard(board.id);
-
-                // Send notification after successful deletion
-                await sendExpenseBoardDeletedNotification({
-                  boardName: board.name,
-                  icon: board.icon || "view-grid",
-                  iconColor: board.color || theme.primary,
-                });
-
-                showToast.success(t("boardDeletedSuccess"));
-              } catch (error) {
-                console.error("Error in deleteBoard:", error);
-                showToast.error(t("failedToDeleteBoard"), error.message);
-              }
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error("Error in deleteBoard:", error);
-      showToast.error(t("failedToDeleteBoard"), error.message);
-    }
+        },
+      ]
+    );
   };
 
-  const handleJoinBoard = async (boardId) => {
+  const handleJoinBoard = async (codeOrUrl) => {
     try {
-      navigation.navigate("CreateExpenseBoard", { boardId });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const joinCheck = await subscriptionService.canJoinSharedBoard(
+        subscription,
+        user.id
+      );
+      if (!joinCheck.allowed) {
+        requireFeature(FEATURES.BOARD_SHARING, navigation);
+        throw new Error(t("joinBoardPremiumOnly"));
+      }
+
+      const result = await expenseBoardService.joinBoard(codeOrUrl);
+      await fetchExpenseBoards();
+      const boardName = result?.board_name || "Board";
+      if (result?.already_member) {
+        showToast.success("Already joined", `${boardName} is already in your list`);
+      } else {
+        showToast.success("Board joined", `You joined "${boardName}"`);
+      }
     } catch (error) {
       showToast.error("Error", error.message);
+      throw error;
     }
   };
 
-  const renderExpenseBoard = (board) => (
+  const handleInviteByEmail = async (email) => {
+    if (!selectedBoard?.id) throw new Error("No board selected");
+    await expenseBoardService.shareBoardWithEmail(selectedBoard.id, email);
+  };
+
+  const getBudgetPct = (board) => {
+    const budget = board?.total_budget || 0;
+    if (!budget) return 0;
+    return Math.min(((board?.totalExpenses || 0) / budget) * 100, 100);
+  };
+
+  const headerRight = (
     <TouchableOpacity
-      key={board.id}
-      style={[styles.boardCard, { backgroundColor: theme.card }]}
-      onPress={() =>
-        navigation.navigate("ExpenseBoardDetails", {
-          boardId: board.id,
-          boardName: board.name,
-          totalExpenses: board.totalExpenses,
-          totalBudget: board.total_budget,
-          totalTransactions: board.totalTransactions,
-        })
-      }
+      onPress={() => setShowAddModal(true)}
+      style={[styles.headerBtn, { backgroundColor: theme.primaryMuted }]}
     >
-      <View style={styles.boardHeader}>
-        <View
-          style={[
-            styles.boardIcon,
-            { backgroundColor: `${board.color || theme.primary}15` },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={board.icon || "view-grid"}
-            size={24}
-            color={board.color || theme.primary}
-          />
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.boardName, { color: theme.text }]}>
-            {board.name}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {`${t("byCreator")} ${board.created_by}`}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            handleShareBoard(board);
-          }}
-          style={styles.shareButton}
-        >
-          <MaterialCommunityIcons
-            name="share-variant"
-            size={20}
-            color={theme.primary}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            handleDeleteBoard(board);
-          }}
-          style={styles.deleteButton}
-        >
-          <MaterialCommunityIcons name="delete" size={20} color={theme.error} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.boardStats}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("totalExpenses")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            ₹{board?.totalExpenses?.toFixed(2)}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("budget")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            ₹{board?.total_budget?.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.boardStats}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("transactions")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.text }]}>
-            {board?.totalTransactions || 0}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("status")}
-          </Text>
-          <Text
-            style={[
-              styles.statValue,
-              { color: board?.is_default ? theme.success : theme.text },
-            ]}
-          >
-            {board?.is_default ? t("default") : t("custom")}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.progressContainer}>
-        <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                backgroundColor:
-                  board?.totalExpenses > board?.total_budget
-                    ? theme.error
-                    : theme.success,
-                width: `${Math.min(
-                  (board?.totalExpenses / board?.total_budget) * 100,
-                  100
-                )}%`,
-              },
-            ]}
-          />
-        </View>
-      </View>
+      <MaterialCommunityIcons name="plus" size={20} color={theme.primary} />
     </TouchableOpacity>
+  );
+
+  const renderQuickActions = () => (
+    <View style={styles.quickRow}>
+      <QuickActionTile
+        icon="plus-circle-outline"
+        label={t("createBoard") || "Create"}
+        color={theme.primary}
+        onPress={() => navigation.navigate("CreateExpenseBoard")}
+      />
+      <QuickActionTile
+        icon="account-multiple-plus-outline"
+        label={t("joinBoard") || "Join"}
+        color={theme.accent}
+        onPress={() => {
+          if (!hasFeature(FEATURES.BOARD_SHARING)) {
+            requireFeature(FEATURES.BOARD_SHARING, navigation);
+            return;
+          }
+          setShowJoinModal(true);
+        }}
+      />
+    </View>
+  );
+
+  const renderBoardCard = (board) => {
+    const color = board.color || theme.primary;
+    const pct = getBudgetPct(board);
+    const overBudget = (board?.totalExpenses || 0) > (board?.total_budget || 0);
+
+    return (
+      <TouchableOpacity
+        key={board.id}
+        activeOpacity={0.85}
+        onPress={() =>
+          navigation.navigate("ExpenseBoardDetails", {
+            boardId: board.id,
+            boardName: board.name,
+            totalExpenses: board.totalExpenses,
+            totalBudget: board.total_budget,
+            totalTransactions: board.totalTransactions,
+          })
+        }
+      >
+        <Card style={styles.boardCard} padding="medium">
+          <View style={styles.boardHeader}>
+            <View style={[styles.boardIcon, { backgroundColor: `${color}18` }]}>
+              <MaterialCommunityIcons
+                name={board.icon || "view-grid"}
+                size={22}
+                color={color}
+              />
+            </View>
+            <View style={styles.boardTitleCol}>
+              <Text style={[styles.boardName, { color: theme.text }]} numberOfLines={1}>
+                {board.name}
+              </Text>
+              <Text style={[styles.boardMeta, { color: theme.textSecondary }]} numberOfLines={1}>
+                {t("byCreator")} {board.created_by}
+                {board.is_default ? ` · ${t("default")}` : ""}
+              </Text>
+            </View>
+            <View style={styles.boardActions}>
+              {!board.isShared ? (
+                <LockedIconButton
+                  feature={FEATURES.BOARD_SHARING}
+                  navigation={navigation}
+                  icon="share-variant"
+                  size={18}
+                  style={styles.actionBtn}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleShareBoard(board);
+                  }}
+                />
+              ) : null}
+              {!board.isShared ? (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteBoard(board);
+                  }}
+                  style={styles.actionBtn}
+                >
+                  <MaterialCommunityIcons name="delete-outline" size={18} color={theme.error} />
+                </TouchableOpacity>
+              ) : null}
+              <MaterialCommunityIcons name="chevron-right" size={22} color={theme.textMuted} />
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statBlock}>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>
+                {t("totalExpenses")}
+              </Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {formatCurrency(board?.totalExpenses || 0)}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.statBlock}>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>
+                {t("budget")}
+              </Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {formatCurrency(board?.total_budget || 0)}
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.statBlock}>
+              <Text style={[styles.statLabel, { color: theme.textMuted }]}>
+                {t("transactions")}
+              </Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {board?.totalTransactions || 0}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.progressSection}>
+            <View style={styles.progressLabels}>
+              <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
+                Budget used
+              </Text>
+              <Text
+                style={[
+                  styles.progressPct,
+                  { color: overBudget ? theme.error : theme.success },
+                ]}
+              >
+                {pct.toFixed(0)}%
+              </Text>
+            </View>
+            <View style={[styles.progressTrack, { backgroundColor: theme.borderLight }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    backgroundColor: overBudget ? theme.error : color,
+                    width: `${pct}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View style={styles.emptyWrap}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.primaryMuted }]}>
+        <MaterialCommunityIcons
+          name="view-grid-plus-outline"
+          size={40}
+          color={theme.primary}
+        />
+      </View>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>
+        {t("noExpenseBoardsFound")}
+      </Text>
+      <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+        Create a board to organize trip or group expenses
+      </Text>
+      <TouchableOpacity
+        style={[styles.emptyCta, { backgroundColor: theme.primary }]}
+        onPress={() => navigation.navigate("CreateExpenseBoard")}
+      >
+        <MaterialCommunityIcons name="plus" size={20} color={theme.white} />
+        <Text style={styles.emptyCtaText}>{t("createBoard")}</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.background }]}
+      <ScreenLayout
+        header={
+          <Header
+            title={t("expenseBoard")}
+            onBack={() => navigation.goBack()}
+            rightComponent={headerRight}
+          />
+        }
       >
-        <Header
-          title={t("expenseBoard")}
-          onBack={() => navigation.goBack()}
-          rightComponent={
-            <TouchableOpacity
-              onPress={() => navigation.navigate("CreateExpenseBoard")}
-              style={styles.addButton}
-            >
-              <MaterialCommunityIcons
-                name="plus"
-                size={24}
-                color={theme.primary}
-              />
-            </TouchableOpacity>
-          }
-        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <ScreenLayout
+      header={
+        <Header
+          title={t("expenseBoard")}
+          onBack={() => navigation.goBack()}
+          rightComponent={headerRight}
+        />
+      }
     >
-      <Header
-        title={t("expenseBoard")}
-        onBack={() => navigation.goBack()}
-        rightComponent={
-          <TouchableOpacity
-            onPress={() => setShowAddModal(true)}
-            style={styles.addButton}
-          >
-            <MaterialCommunityIcons
-              name="plus"
-              size={24}
-              color={theme.primary}
-            />
-          </TouchableOpacity>
-        }
-      />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: spacing.xxl + insets.bottom },
+        ]}
       >
+        {renderQuickActions()}
         {expenseBoards.length > 0 ? (
-          expenseBoards.map(renderExpenseBoard)
+          expenseBoards.map(renderBoardCard)
         ) : (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons
-              name="view-grid-outline"
-              size={48}
-              color={theme.textSecondary}
-            />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              {t("noExpenseBoardsFound")}
-            </Text>
-          </View>
+          renderEmpty()
         )}
       </ScrollView>
+
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
         boardName={selectedBoard?.name || ""}
         boardId={selectedBoard?.id || ""}
-        boardColor={selectedBoard?.color || theme.primary}
-        boardIcon={selectedBoard?.icon || "view-grid"}
+        shareCode={selectedBoard?.share_code || ""}
+        boardColor={selectedBoard?.board_color || selectedBoard?.color || theme.primary}
+        boardIcon={selectedBoard?.board_icon || selectedBoard?.icon || "view-grid"}
+        onInviteEmail={
+          selectedBoard && !selectedBoard.isShared ? handleInviteByEmail : undefined
+        }
       />
       <AddBoardModal
         visible={showAddModal}
@@ -328,106 +390,111 @@ export const ExpenseBoardScreen = ({ navigation }) => {
           setShowAddModal(false);
           setShowJoinModal(true);
         }}
+        joinLocked={!hasFeature(FEATURES.BOARD_SHARING)}
+        navigation={navigation}
       />
       <JoinBoardModal
         visible={showJoinModal}
         onClose={() => setShowJoinModal(false)}
         onJoin={handleJoinBoard}
       />
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.md,
   },
-  addButton: {
-    padding: 8,
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   boardCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: spacing.md,
   },
   boardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing.md,
+    gap: spacing.md,
   },
   boardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
     alignItems: "center",
-    marginRight: 12,
+    justifyContent: "center",
   },
-  boardName: {
-    fontSize: 18,
-    fontWeight: "600",
-    flex: 1,
+  boardTitleCol: { flex: 1 },
+  boardName: { ...typography.bodyMedium, fontSize: 17 },
+  boardMeta: { ...typography.caption, marginTop: 2, fontWeight: "400" },
+  boardActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+  actionBtn: { padding: spacing.xs },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
   },
-  boardStats: {
+  statBlock: { flex: 1, alignItems: "center" },
+  statDivider: { width: 1, height: 32 },
+  statLabel: { ...typography.micro, marginBottom: 4 },
+  statValue: { ...typography.label, fontWeight: "700" },
+  progressSection: { gap: spacing.xs },
+  progressLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
+    alignItems: "center",
   },
-  statItem: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  progressContainer: {
-    height: 4,
-    borderRadius: 2,
+  progressLabel: { ...typography.caption, fontWeight: "500" },
+  progressPct: { ...typography.caption, fontWeight: "700" },
+  progressTrack: {
+    height: 6,
+    borderRadius: radii.pill,
     overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    borderRadius: 2,
   },
   progressFill: {
     height: "100%",
-    borderRadius: 2,
+    borderRadius: radii.pill,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
+  emptyWrap: {
     alignItems: "center",
-    padding: 20,
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 16,
-    textAlign: "center",
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: radii.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
   },
-  deleteButton: {
-    marginHorizontal: 12,
+  emptyTitle: { ...typography.h3, textAlign: "center" },
+  emptySub: { ...typography.body, textAlign: "center", fontWeight: "400" },
+  emptyCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
+    marginTop: spacing.sm,
   },
-  shareButton: {
-    marginHorizontal: 12,
-  },
+  emptyCtaText: { color: "#FFFFFF", ...typography.label },
 });

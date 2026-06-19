@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+
+export const HEADER_MIN_HEIGHT = layout.headerHeight;
 
 export const Header = ({
   title,
@@ -17,51 +19,52 @@ export const Header = ({
   showBack = true,
   titleStyle,
   containerStyle,
+  variant = "default",
 }) => {
   const { theme } = useTheme();
-
-  const renderRightSection = () => {
-    if (rightComponent) {
-      return rightComponent;
-    }
-    return null;
-  };
+  const isLarge = variant === "large";
 
   return (
     <View
       style={[
         styles.header,
-        { borderBottomColor: theme.border },
+        {
+          backgroundColor: theme.background,
+          borderBottomColor: theme.border,
+        },
         containerStyle,
       ]}
     >
       <View style={styles.leftSection}>
-        {showBack && (
+        {showBack ? (
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.iconBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={onBack}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MaterialCommunityIcons
-              name="arrow-left-circle"
-              size={28}
-              color={theme.text}
-            />
+            <MaterialCommunityIcons name="arrow-left" size={22} color={theme.text} />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.backPlaceholder} />
         )}
       </View>
+
       <View style={styles.titleSection}>
         <Text
           adjustsFontSizeToFit
           numberOfLines={1}
-          ellipsizeMode="middle"
-          style={[styles.title, { color: theme.text }, titleStyle]}
+          ellipsizeMode="tail"
+          style={[
+            isLarge ? styles.titleLarge : styles.title,
+            { color: theme.text },
+            titleStyle,
+          ]}
         >
           {title}
         </Text>
       </View>
 
-      <View style={styles.rightSection}>{renderRightSection()}</View>
+      <View style={styles.rightSection}>{rightComponent || null}</View>
     </View>
   );
 };
@@ -70,30 +73,35 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    height: Platform.OS == "ios" ? "auto" : "10%",
-    marginVertical: 15,
-    borderBottomWidth: 1,
-    paddingBottom: 15,
+    minHeight: HEADER_MIN_HEIGHT,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === "android" ? spacing.sm : spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  leftSection: {
-    width: "15%",
-    alignItems: "center",
-  },
+  leftSection: { width: 48, alignItems: "flex-start", justifyContent: "center" },
   rightSection: {
-    Width: "15%",
-    alignItems: "center",
+    minWidth: 48,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingRight: spacing.xs,
   },
   titleSection: {
-    width: "70%",
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
   },
-  backButton: {
-    padding: 4,
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    textAlign: "center",
-    width: "60%",
-  },
+  backPlaceholder: { width: 40, height: 40 },
+  title: { ...typography.h3, textAlign: "center", width: "100%" },
+  titleLarge: { ...typography.h2, textAlign: "center", width: "100%" },
 });
+
+export default Header;

@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
+  TouchableOpacity,  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -15,15 +14,18 @@ import { useTheme } from "../context/ThemeContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker, { useDefaultStyles } from "react-native-ui-datepicker";
 import { Header } from "../components/Header";
+import ScreenLayout from "../components/ScreenLayout";
 import { CategoryList } from "../components/CategoryList";
 import { ExpenseBoardList } from "../components/ExpenseBoardList";
 import FormInput from "../components/common/FormInput";
 import FormButton from "../components/common/FormButton";
 import { expenseService } from "../services/expenseService";
-import { expenseBoardService } from "../services/expenseBoardService";
+import { supabase } from "../config/supabase";
 import { showToast } from "../utils/toast";
 import { sendCreateExpenseNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useAppSettings } from "../context/AppSettingsContext";
+import { getCurrencySymbol } from "../utils/formatters";
 
 const paymentMethods = [
   { value: "cash", icon: "cash", color: "#4CAF50" },
@@ -39,9 +41,14 @@ const paymentMethodKeys = {
   net_banking: "netBanking",
 };
 
-export const AddExpenseScreen = ({ navigation }) => {
+export const AddExpenseScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
+  const { currency } = useAppSettings();
   const { t } = useTranslation();
+  const editingExpense = route.params?.expense;
+  const editingExpenseId = route.params?.expenseId || editingExpense?.id;
+  const isEditing = Boolean(editingExpenseId);
+  const presetBoardId = route.params?.boardId;
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const defaultStyles = useDefaultStyles();
@@ -51,8 +58,27 @@ export const AddExpenseScreen = ({ navigation }) => {
     category: null,
     paymentMethod: null,
     date: new Date(),
-    board: null,
+    board: presetBoardId || null,
   });
+
+  useEffect(() => {
+    if (presetBoardId) {
+      setFormData((prev) => ({ ...prev, board: presetBoardId }));
+    }
+  }, [presetBoardId]);
+
+  useEffect(() => {
+    if (!editingExpense) return;
+
+    setFormData({
+      amount: String(editingExpense.amount ?? ""),
+      description: editingExpense.description || "",
+      category: editingExpense.category_id || editingExpense.category?.id || null,
+      paymentMethod: editingExpense.payment_method || null,
+      date: new Date(editingExpense.date || editingExpense.created_at || Date.now()),
+      board: editingExpense.board_id || presetBoardId || null,
+    });
+  }, [editingExpense, presetBoardId]);
 
   const validateForm = () => {
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
@@ -83,7 +109,7 @@ export const AddExpenseScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      const expenseData = {
+      const expensePayload = {
         amount: parseFloat(formData.amount),
         description: formData.description.trim(),
         category_id: formData.category,
@@ -92,28 +118,31 @@ export const AddExpenseScreen = ({ navigation }) => {
         board_id: formData.board,
       };
 
-      // Create the expense first
-      const { data: createdExpense, error } =
-        await expenseService.createExpense(expenseData);
+      if (isEditing) {
+        await expenseService.updateExpense(editingExpenseId, expensePayload);
+        showToast.success("Expense updated successfully");
+      } else {
+        await expenseService.createExpense(expensePayload);
 
-      if (error) throw error;
+        const { data: boardRow } = await supabase
+          .from("expense_boards")
+          .select("name, board_icon, board_color")
+          .eq("id", formData.board)
+          .maybeSingle();
 
-      // Get board details for notification
-      const { data: boardData } =
-        await expenseBoardService.getExpenseBoardsByID(formData.board);
+        if (boardRow) {
+          await sendCreateExpenseNotification({
+            boardName: boardRow.name,
+            icon: boardRow.board_icon || "cash",
+            iconColor: boardRow.board_color || theme.primary,
+            expenseName: formData.description.trim(),
+            expenseAmount: parseFloat(formData.amount),
+          });
+        }
 
-      if (boardData && boardData.length > 0) {
-        // Send notification after successful expense creation
-        await sendCreateExpenseNotification({
-          boardName: boardData[0].name,
-          icon: boardData[0].icon || "cash",
-          iconColor: boardData[0].color || theme.primary,
-          expenseName: formData.description.trim(),
-          expenseAmount: parseFloat(formData.amount),
-        });
+        showToast.success("Expense added successfully");
       }
 
-      showToast.success("Expense added successfully");
       navigation.goBack();
     } catch (error) {
       console.error("Error saving expense:", error);
@@ -154,7 +183,7 @@ export const AddExpenseScreen = ({ navigation }) => {
         }}
         placeholder={t("enterAmount")}
         keyboardType="numeric"
-        prefix="$"
+        prefix={getCurrencySymbol(currency)}
       />
     </View>
   );
@@ -308,7 +337,7 @@ export const AddExpenseScreen = ({ navigation }) => {
 
   const renderSaveButton = () => (
     <FormButton
-      title={t("saveExpense")}
+      title={isEditing ? "Update Expense" : t("saveExpense")}
       onPress={handleSave}
       loading={loading}
       style={styles.saveButton}
@@ -316,10 +345,10 @@ export const AddExpenseScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Header title={t("addExpense")} onBack={() => navigation.goBack()} />
+    <ScreenLayout header={<Header
+        title={isEditing ? "Edit Expense" : t("addExpense")}
+        onBack={() => navigation.goBack()}
+      />}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoid}
@@ -349,7 +378,7 @@ export const AddExpenseScreen = ({ navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
       {renderSaveButton()}
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -385,7 +414,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
   },
   currency: {
     fontSize: 22,
@@ -410,7 +439,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
     fontSize: 15,
   },
   categoriesList: {
@@ -429,7 +458,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
     minWidth: 100,
   },
   categoryIcon: {
@@ -456,7 +485,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2,
+    ...shadowStyle(2),
   },
   dateText: {
     fontSize: 15,
@@ -475,7 +504,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 3,
+    ...shadowStyle(3),
   },
   saveButtonText: {
     fontSize: 15,
@@ -498,7 +527,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 5,
+    ...shadowStyle(5),
   },
   modalHeader: {
     flexDirection: "row",
