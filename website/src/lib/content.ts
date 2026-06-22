@@ -1,6 +1,6 @@
 export const site = {
   name: "Trivense",
-  tagline: "Track trips. Split expenses. Stay on budget.",
+  tagline: "Split expenses, made easy.",
   description:
     "Trivense helps travelers and groups manage shared expenses with boards, real-time sync, analytics, and smart budgets — built for India and beyond.",
   url: "https://trivense.app",

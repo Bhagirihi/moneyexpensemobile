@@ -1,4 +1,7 @@
 export default {
+  // Brand
+  brandTagline: "खर्च बाँटना, अब आसान।",
+
   // Settings (existing)
   settings: "सेटिंग्स",
   selectLanguage: "भाषा चुनें",

@@ -10,6 +10,9 @@
     "seed:demo": "node scripts/seed-demo-data.js",
     "seed:demo:reset": "node scripts/seed-demo-data.js --reset",
     "setup:revenuecat": "node scripts/setup-revenuecat-trivense.js",
+    "generate:promo": ".venv/bin/python scripts/generate-promo-banners.py",
+    "generate:assets": ".venv/bin/python scripts/refine-brand-assets.py",
+    "setup:status": "node scripts/print-setup-status.js",
     "push:github": "git push https://x-access-token:$(gh auth token)@github.com/Bhagirihi/moneyexpensemobile.git HEAD:main"
   },
   "dependencies": {

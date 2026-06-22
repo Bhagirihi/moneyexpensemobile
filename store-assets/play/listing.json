@@ -1,0 +1,46 @@
+{
+  "appName": "Trivense",
+  "packageName": "com.trivense.app",
+  "shortDescription": "Split trip & group expenses with boards, analytics, and real-time sync.",
+  "fullDescription": "Trivense helps travelers and groups manage shared expenses with boards, real-time sync, analytics, and smart budgets — built for India and beyond.\n\n• Expense boards — organize spending by trip, household, or project\n• Split & share — invite others with a share code or email\n• Smart analytics — category breakdowns, trends, and comparisons\n• Budget alerts — get notified before you overspend\n• Multi-currency — track in INR and other currencies\n• Secure cloud sync — backed by Supabase with row-level security\n\nDownload Trivense free and stop wondering who owes what.",
+  "category": "FINANCE",
+  "contactEmail": "support@trivense.app",
+  "website": "https://trivense.app",
+  "privacyPolicyUrl": "https://trivense.app/privacy",
+  "assets": {
+    "appIcon512": "store-assets/play/app_icon_512.png",
+    "featureGraphic1024x500": "store-assets/play/feature_graphic_1024x500.png",
+    "phoneScreenshots": [
+      "store-assets/play/phone_screenshot_1.png",
+      "store-assets/play/phone_screenshot_2.png",
+      "store-assets/play/phone_screenshot_3.png",
+      "store-assets/play/phone_screenshot_4.png"
+    ],
+    "promoBanners1024x682": [
+      "store-assets/promo/01-hook-never-wonder-who-owes-what.png",
+      "store-assets/promo/02-problem-confused-about-splitting.png",
+      "store-assets/promo/03-feature-track-shared-expenses.png",
+      "store-assets/promo/04-feature-expense-boards.png",
+      "store-assets/promo/05-feature-budget-insights.png",
+      "store-assets/promo/06-social-proof-travelers.png",
+      "store-assets/promo/07-lifestyle-less-guessing.png",
+      "store-assets/promo/08-lifestyle-travel-together.png",
+      "store-assets/promo/09-cta-download-today.png"
+    ]
+  },
+  "subscriptions": [
+    {
+      "productId": "trivense_monthly",
+      "basePlanId": "monthly",
+      "name": "Trivense Premium Monthly",
+      "billingPeriod": "P1M"
+    },
+    {
+      "productId": "trivense_yearly",
+      "basePlanId": "yearly",
+      "name": "Trivense Premium Yearly",
+      "billingPeriod": "P1Y"
+    }
+  ],
+  "playConsoleUrl": "https://play.google.com/console/u/3/developers/5766759369200444867/app/4976093803059142709/app-dashboard"
+}

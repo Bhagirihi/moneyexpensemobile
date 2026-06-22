@@ -189,7 +189,7 @@ export const SettingsScreen = ({ navigation }) => {
 
   const handleShareApp = async (method) => {
     try {
-      const message = `Join Trivense - The Smart Expense Tracking App!\n\nUse my referral code: ${referralCode}\n\nDownload now: https://trivense.app/download?invite=${referralCode}\n\nTrack your expenses smarter with Trivense!`;
+      const message = `Join Trivense — ${t("brandTagline")}\n\nUse my referral code: ${referralCode}\n\nDownload now: https://trivense.app/download?invite=${referralCode}`;
 
       let result;
 
@@ -197,7 +197,7 @@ export const SettingsScreen = ({ navigation }) => {
         result = await Share.share({
           message,
           ...(method === "email" && {
-            subject: "Join Trivense - Smart Expense Tracking",
+            subject: `Join Trivense — ${t("brandTagline")}`,
           }),
         });
 
@@ -1325,9 +1325,14 @@ export const SettingsScreen = ({ navigation }) => {
                   color={theme.primary}
                 />
               </View>
-              <Text style={[styles.appName, { color: theme.text }]}>
-                Trivense
-              </Text>
+              <View style={styles.appText}>
+                <Text style={[styles.appName, { color: theme.text }]}>
+                  Trivense
+                </Text>
+                <Text style={[styles.appTagline, { color: theme.textSecondary }]}>
+                  {t("brandTagline")}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.codeContainer}>
@@ -2052,9 +2057,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
+  appText: {
+    flex: 1,
+  },
   appName: {
     fontSize: 20,
     fontWeight: "600",
+  },
+  appTagline: {
+    fontSize: 14,
+    marginTop: 2,
   },
   codeContainer: {
     marginBottom: 24,

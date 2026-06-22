@@ -129,5 +129,8 @@ android/build/
 *.gz
 *.swp
 
+# Python venv (asset generation scripts)
+.venv/
+
 # Store submission credentials
 google-play-service-account.json

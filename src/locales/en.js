@@ -1,4 +1,7 @@
 export default {
+  // Brand
+  brandTagline: "Split expenses, made easy.",
+
   // Settings (existing)
   settings: "Settings",
   selectLanguage: "Select Language",

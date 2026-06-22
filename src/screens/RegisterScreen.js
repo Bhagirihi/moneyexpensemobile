@@ -13,10 +13,12 @@ import { isValidEmail } from "../utils/validation";
 import { showToast } from "../utils/toast";
 import AuthShell from "../components/ui/AuthShell";
 import FormButton from "../components/common/FormButton";
+import { useTranslation } from "../hooks/useTranslation";
 import { spacing, typography } from "../theme/tokens";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -192,7 +194,7 @@ const RegisterScreen = ({ navigation }) => {
   return (
     <AuthShell
       title="Create account"
-      subtitle="Join Trivense to track trips, split expenses, and stay on budget"
+      subtitle={t("brandTagline")}
       footer={
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>

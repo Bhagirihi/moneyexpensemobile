@@ -13,10 +13,12 @@ import { showToast } from "../utils/toast";
 import { isValidEmail } from "../utils/validation";
 import AuthShell from "../components/ui/AuthShell";
 import FormButton from "../components/common/FormButton";
+import { useTranslation } from "../hooks/useTranslation";
 import { spacing, typography } from "../theme/tokens";
 
 export const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -128,7 +130,7 @@ export const LoginScreen = ({ navigation }) => {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Sign in to track trips, split bills, and manage budgets"
+      subtitle={t("brandTagline")}
       footer={
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>

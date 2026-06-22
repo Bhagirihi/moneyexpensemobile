@@ -508,7 +508,7 @@ export const ProfileScreen = ({ navigation }) => {
         title: "About",
         subtitle: "Trivense v1.0.0",
         onPress: () => {
-          Alert.alert("About", "Trivense v1.0.0\n\nTrack your expenses with ease!");
+          Alert.alert("About", `Trivense v1.0.0\n\n${t("brandTagline")}`);
         },
         isLast: true,
       },
