@@ -2,12 +2,21 @@ import React, { useEffect, useState, useCallback } from "react";
 
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "./src/context/ThemeContext";
 import { AuthProvider } from "./src/context/AuthContext";
 import { SubscriptionProvider } from "./src/context/SubscriptionContext";
+import { AdPolicyProvider } from "./src/context/AdPolicyContext";
+import { AppCueProvider } from "./src/context/AppCueContext";
+import AppCueOverlay from "./src/components/AppCueOverlay";
+import ReferralBootstrap from "./src/components/ReferralBootstrap";
 import { supabase, createSessionFromUrl } from "./src/config/supabase";
 import * as Linking from "expo-linking";
+import {
+  extractReferralCodeFromUrl,
+  setPendingReferralCode,
+} from "./src/utils/referralStorage";
 import Toast from "react-native-toast-message";
 import { AppSettingsProvider } from "./src/context/AppSettingsContext";
 // import * as SplashScreen from "expo-splash-screen";
@@ -29,6 +38,7 @@ import { CreateExpenseBoardScreen } from "./src/screens/CreateExpenseBoardScreen
 import { CategoriesScreen } from "./src/screens/CategoriesScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { AnalysisScreen } from "./src/screens/AnalysisScreen";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 import { NotificationScreen } from "./src/screens/NotificationScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
@@ -40,12 +50,14 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { showToast } from "./src/utils/toast";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { useAdsBootstrap } from "./src/hooks/useAds";
 import {
   handleBackgroundNotifications,
   handleForegroundNotifications,
   registerForPushNotificationsAsync,
 } from "./src/services/pushNotificationService";
 import { expenseBoardService } from "./src/services/expenseBoardService";
+import { bootstrapPlayStoreReferralInvite } from "./src/services/installReferrerService";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -58,6 +70,11 @@ SplashScreen.setOptions({
 
 // Initialize native stack navigator
 const Stack = createNativeStackNavigator();
+
+function AdsBootstrap({ enabled }) {
+  useAdsBootstrap(enabled);
+  return null;
+}
 
 const config = {
   animation: "spring",
@@ -135,6 +152,16 @@ const AppContent = () => {
         return;
       }
 
+      const referralCode = extractReferralCodeFromUrl(url);
+      if (referralCode) {
+        await setPendingReferralCode(referralCode);
+        showToast.info(
+          "Referral code saved",
+          "Sign up to get 7 days of Premium for you and your friend"
+        );
+        return;
+      }
+
       if (url.includes("/join/")) {
         const code = url.split("/join/").pop()?.split("?")[0]?.trim();
         if (!code) return;
@@ -192,6 +219,7 @@ const AppContent = () => {
         } = await supabase.auth.getSession();
 
         setSession(session ?? null);
+        await bootstrapPlayStoreReferralInvite();
       } catch (e) {
         console.warn(e);
       } finally {
@@ -235,7 +263,11 @@ const AppContent = () => {
       /> */}
       <AuthProvider>
           <SubscriptionProvider>
+            <AdPolicyProvider>
+            <AdsBootstrap enabled={Boolean(session?.user?.email_confirmed_at)} />
             <AppSettingsProvider>
+            <ReferralBootstrap />
+            <AppCueProvider>
             <NavigationContainer>
               <Stack.Navigator
                 screenOptions={screenOptions}
@@ -253,6 +285,11 @@ const AppContent = () => {
                     <Stack.Screen
                       name="EmailVerification"
                       component={EmailVerificationScreen}
+                    />
+                    <Stack.Screen
+                      name="Onboarding"
+                      component={OnboardingScreen}
+                      options={{ gestureEnabled: false }}
                     />
                     <Stack.Screen
                       name="Dashboard"
@@ -321,9 +358,12 @@ const AppContent = () => {
                   </>
                 )}
               </Stack.Navigator>
+              <AppCueOverlay />
               <Toast />
             </NavigationContainer>
+            </AppCueProvider>
           </AppSettingsProvider>
+            </AdPolicyProvider>
           </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>
@@ -332,10 +372,12 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

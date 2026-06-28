@@ -10,6 +10,15 @@ import { useTheme } from "../context/ThemeContext";
 import { useTranslation } from "../hooks/useTranslation";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ExpenseItem from "./ExpenseItem";
+import InlineListAd from "./InlineListAd";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useAdPolicy } from "../context/AdPolicyContext";
+import {
+  interleaveListWithAds,
+  insertSingleListAd,
+  isAdListItem,
+} from "../utils/listWithAds";
+import { LIST_AD_INTERVAL_TRANSACTIONS } from "../config/admob";
 import { radii, spacing, typography } from "../theme/tokens";
 
 const ExpenseList = memo(
@@ -26,25 +35,54 @@ const ExpenseList = memo(
     embedded = false,
     compact = false,
     containerStyle,
+    showInlineAds = false,
+    inlineAdMode = "interval",
+    inlineAdInterval = LIST_AD_INTERVAL_TRANSACTIONS,
   }) => {
     const { theme } = useTheme();
     const { t } = useTranslation();
+    const { isPremium } = useSubscription();
+    const { showBannerAds } = useAdPolicy();
+
+    const listData = useMemo(() => {
+      if (!showInlineAds || !showBannerAds || isPremium || expenses.length === 0) {
+        return expenses;
+      }
+      if (inlineAdMode === "single") {
+        return insertSingleListAd(expenses, Math.min(1, expenses.length - 1));
+      }
+      return interleaveListWithAds(expenses, { interval: inlineAdInterval });
+    }, [
+      expenses,
+      showInlineAds,
+      showBannerAds,
+      isPremium,
+      inlineAdMode,
+      inlineAdInterval,
+    ]);
 
     // Memoize the renderItem callback
     const renderItem = useCallback(
-      ({ item }) => (
-        <ExpenseItem
-          expense={item}
-          compact={compact}
-          onPress={() => onExpensePress(item)}
-          onDelete={() => onDeletePress(item.id)}
-        />
-      ),
+      ({ item }) => {
+        if (isAdListItem(item)) {
+          return <InlineListAd />;
+        }
+        return (
+          <ExpenseItem
+            expense={item}
+            compact={compact}
+            onPress={() => onExpensePress(item)}
+            onDelete={() => onDeletePress(item.id)}
+          />
+        );
+      },
       [onExpensePress, onDeletePress, compact]
     );
 
-    // Memoize the keyExtractor callback
-    const keyExtractor = useCallback((item) => item.id.toString(), []);
+    const keyExtractor = useCallback(
+      (item) => (isAdListItem(item) ? item.id : item.id.toString()),
+      []
+    );
 
     // Memoize the styles
     const styles = useMemo(
@@ -169,9 +207,9 @@ const ExpenseList = memo(
       return (
         <View style={[styles.container, styles.embeddedContainer, containerStyle]}>
           {renderHeader()}
-          {expenses.length === 0
+          {listData.length === 0
             ? renderEmptyState()
-            : expenses.map((item) => (
+            : listData.map((item) => (
                 <View key={keyExtractor(item)}>
                   {renderItem({ item })}
                 </View>
@@ -185,7 +223,7 @@ const ExpenseList = memo(
         {renderHeader()}
 
         <FlatList
-          data={expenses}
+          data={listData}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           style={styles.list}

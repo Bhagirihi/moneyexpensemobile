@@ -14,19 +14,18 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import ScreenLayout from "../components/ScreenLayout";
+import Card from "../components/common/Card";
+import { SectionLabel } from "../components/ui/UIKit";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
 import { fetchExpenseTrends } from "../services/analyticsService";
-import { useSubscription } from "../context/SubscriptionContext";
-import { FEATURES } from "../config/subscriptionPlans";
-import { useFeatureLockModal } from "../hooks/useFeatureLockModal";
+import { useAdPolicy } from "../context/AdPolicyContext";
+import { FREE_AD_ANALYTICS_PERIODS } from "../config/admob";
 import { useTranslation } from "../hooks/useTranslation";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SectionLabel } from "../components/ui/UIKit";
-import Card from "../components/common/Card";
+import InlineListAd from "../components/InlineListAd";
+import { useFooterScrollPadding } from "../hooks/useFooterScrollPadding";
 import {
-  footerScrollPadding,
   layout,
   radii,
   spacing,
@@ -49,9 +48,8 @@ const TIME_PERIODS = [
 export const AnalyticsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { canUseAnalyticsPeriod } = useSubscription();
-  const { openFeatureLock, featureLockModal } = useFeatureLockModal(navigation);
-  const insets = useSafeAreaInsets();
+  const { showBannerAds } = useAdPolicy();
+  const scrollBottomPadding = useFooterScrollPadding(0, false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -168,6 +166,8 @@ export const AnalyticsScreen = ({ navigation }) => {
 
   const pctChange = analytics.stats.previousPeriod?.percentageChange || 0;
   const isUp = pctChange >= 0;
+  const showPeriodAd =
+    showBannerAds && FREE_AD_ANALYTICS_PERIODS.includes(selectedPeriod);
 
   const renderPeriodChips = () => (
     <ScrollView
@@ -176,7 +176,6 @@ export const AnalyticsScreen = ({ navigation }) => {
       contentContainerStyle={styles.periodRow}
     >
       {TIME_PERIODS.map((period) => {
-        const locked = !canUseAnalyticsPeriod(period.id);
         const active = selectedPeriod === period.id;
         return (
           <TouchableOpacity
@@ -187,18 +186,11 @@ export const AnalyticsScreen = ({ navigation }) => {
                 backgroundColor: active ? theme.primary : theme.surface,
                 borderColor: active ? theme.primary : theme.border,
               },
-              locked && { opacity: 0.55 },
             ]}
-            onPress={() => {
-              if (locked) {
-                openFeatureLock(FEATURES.ADVANCED_ANALYTICS);
-                return;
-              }
-              setSelectedPeriod(period.id);
-            }}
+            onPress={() => setSelectedPeriod(period.id)}
           >
             <MaterialCommunityIcons
-              name={locked ? "lock-outline" : period.icon}
+              name={period.icon}
               size={16}
               color={active ? theme.white : theme.textSecondary}
             />
@@ -233,9 +225,7 @@ export const AnalyticsScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
-          {TIME_PERIODS.map((period) => {
-            const periodLocked = !canUseAnalyticsPeriod(period.id);
-            return (
+          {TIME_PERIODS.map((period) => (
               <TouchableOpacity
                 key={period.id}
                 style={[
@@ -245,40 +235,28 @@ export const AnalyticsScreen = ({ navigation }) => {
                       selectedPeriod === period.id
                         ? theme.primaryMuted
                         : "transparent",
-                    opacity: periodLocked ? 0.55 : 1,
                   },
                 ]}
                 onPress={() => {
-                  if (periodLocked) {
-                    setShowPeriodDropdown(false);
-                    setTimeout(
-                      () => openFeatureLock(FEATURES.ADVANCED_ANALYTICS),
-                      200
-                    );
-                    return;
-                  }
                   setSelectedPeriod(period.id);
                   setShowPeriodDropdown(false);
                 }}
               >
                 <MaterialCommunityIcons
-                  name={periodLocked ? "lock-outline" : period.icon}
+                  name={period.icon}
                   size={22}
                   color={
-                    periodLocked
-                      ? theme.textSecondary
-                      : selectedPeriod === period.id
-                        ? theme.primary
-                        : theme.text
+                    selectedPeriod === period.id
+                      ? theme.primary
+                      : theme.text
                   }
                 />
                 <Text
                   style={[
                     styles.periodOptionText,
                     {
-                      color: periodLocked
-                        ? theme.textSecondary
-                        : selectedPeriod === period.id
+                      color:
+                        selectedPeriod === period.id
                           ? theme.primary
                           : theme.text,
                     },
@@ -286,16 +264,8 @@ export const AnalyticsScreen = ({ navigation }) => {
                 >
                   {t(TIME_PERIOD_KEYS[period.id] || period.id)}
                 </Text>
-                {periodLocked ? (
-                  <MaterialCommunityIcons
-                    name="lock-outline"
-                    size={18}
-                    color={theme.textMuted}
-                  />
-                ) : null}
               </TouchableOpacity>
-            );
-          })}
+            ))}
         </View>
       </View>
     </Modal>
@@ -430,6 +400,7 @@ export const AnalyticsScreen = ({ navigation }) => {
     <ScreenLayout
       navigation={navigation}
       footerRoute="Analytics"
+      showAdBanner={false}
       header={
         <Header
           title={t("analytics")}
@@ -443,7 +414,7 @@ export const AnalyticsScreen = ({ navigation }) => {
         contentContainerStyle={{
           paddingHorizontal: layout.screenPadding,
           paddingTop: spacing.md,
-          paddingBottom: footerScrollPadding(insets.bottom),
+          paddingBottom: scrollBottomPadding,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -451,6 +422,7 @@ export const AnalyticsScreen = ({ navigation }) => {
         }
       >
         {renderPeriodChips()}
+        {showPeriodAd ? <InlineListAd style={{ marginBottom: spacing.md }} /> : null}
         {loading && !refreshing ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={theme.primary} />
@@ -497,7 +469,6 @@ export const AnalyticsScreen = ({ navigation }) => {
         )}
       </ScrollView>
       {renderPeriodModal()}
-      {featureLockModal}
     </ScreenLayout>
   );
 };
@@ -527,7 +498,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...Platform.select({
       ios: {
-        shadowColor: "#4F46E5",
+        shadowColor: "#003D66",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
         shadowRadius: 16,

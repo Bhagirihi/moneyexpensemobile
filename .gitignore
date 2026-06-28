@@ -82,8 +82,8 @@ yarn-error.log
 # Testing
 coverage/
 __tests__/
-*.test.js
-*.spec.js
+!tests/
+!tests/**/*.test.js
 
 # IDE
 .idea/
@@ -131,6 +131,25 @@ android/build/
 
 # Python venv (asset generation scripts)
 .venv/
+
+# AdMob MCP (local)
+.cursor/mcp-servers/admob/.env
+.cursor/mcp-servers/admob/credentials/
+.cursor/mcp-servers/admob/.venv/
+
+# Build artifacts (local EAS downloads)
+build-artifacts/
+*.aab
+
+# Local archives
+assets/Archive.zip
+
+# QA debug output
+.qa/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # Store submission credentials
 google-play-service-account.json

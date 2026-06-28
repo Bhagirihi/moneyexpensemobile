@@ -1,12 +1,11 @@
 import { supabase } from "../config/supabase";
+import { getCurrentUser } from "../utils/supabaseAuth";
 
 export const notificationService = {
   // Get all notifications for the current user
   getNotifications: async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No user found");
 
       const { data, error } = await supabase
@@ -58,9 +57,7 @@ export const notificationService = {
   // Mark all notifications as read
   markAllAsRead: async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No user found");
 
       const { error } = await supabase
@@ -78,9 +75,7 @@ export const notificationService = {
   // Get unread notifications count
   getUnreadCount: async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No user found");
 
       const { count, error } = await supabase
@@ -100,9 +95,7 @@ export const notificationService = {
   // Create a new notification
   createNotification: async (notification) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No user found");
 
       const { data, error } = await supabase

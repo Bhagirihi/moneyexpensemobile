@@ -48,10 +48,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   return (
     <AuthShell
+      testID="screen-forgot-password"
       title="Reset password"
       subtitle="Enter your email and we'll send reset instructions"
       footer={
         <TouchableOpacity
+          testID="forgot-back-login"
           style={styles.backLink}
           onPress={() => navigation.navigate("Login")}
         >
@@ -72,6 +74,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       >
         <MaterialCommunityIcons name="email-outline" size={20} color={theme.textMuted} />
         <TextInput
+          testID="forgot-email-input"
           style={[styles.input, { color: theme.text }]}
           placeholder="you@example.com"
           placeholderTextColor={theme.textMuted}
@@ -86,7 +89,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
       </View>
       {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
       <View style={{ marginTop: spacing.xl }}>
-        <FormButton title="Send reset link" onPress={handleResetPassword} loading={loading} size="large" />
+        <FormButton
+          testID="forgot-submit-button"
+          title="Send reset link"
+          onPress={handleResetPassword}
+          loading={loading}
+          size="large"
+        />
       </View>
     </AuthShell>
   );

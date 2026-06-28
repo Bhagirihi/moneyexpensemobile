@@ -471,7 +471,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
   );
 
   const analysisHeader = (
-    <Header title={t("analysis")} onBack={() => navigation.goBack()} />
+    <Header title={t("settlements")} onBack={() => navigation.goBack()} />
   );
 
   if (!hasFeature(FEATURES.BOARD_SETTLEMENTS)) {
@@ -498,7 +498,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
             style={styles.loadingIcon}
           />
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            {t("loadingAnalysis")}
+            {t("loadingSettlements")}
           </Text>
         </View>
       </ScreenLayout>
@@ -516,7 +516,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
             style={styles.loadingIcon}
           />
           <Text style={[styles.loadingText, { color: theme.text }]}>
-            {t("openAnalysisFromBoard")}
+            {t("openSettlementsFromBoard")}
           </Text>
         </View>
       </ScreenLayout>
@@ -528,7 +528,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
       <ScreenLayout header={analysisHeader}>
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-            {t("noBoardsToAnalyze")}
+            {t("noBoardsToSettle")}
           </Text>
         </View>
       </ScreenLayout>

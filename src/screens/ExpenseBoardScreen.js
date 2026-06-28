@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -22,23 +22,32 @@ import { realTimeSync } from "../services/realTimeSync";
 import { sendExpenseBoardDeletedNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
 import { useSubscription } from "../context/SubscriptionContext";
+import { useAdPolicy } from "../context/AdPolicyContext";
 import { FEATURES } from "../config/subscriptionPlans";
 import { subscriptionService } from "../services/subscriptionService";
 import { supabase } from "../config/supabase";
-import { LockedIconButton } from "../components/LockedFeature";
 import { formatCurrency } from "../utils/formatters";
 import { QuickActionTile } from "../components/ui/UIKit";
 import Card from "../components/common/Card";
 import { layout, radii, spacing, typography } from "../theme/tokens";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import InlineListAd from "../components/InlineListAd";
+import {
+  interleaveListWithAds,
+  isAdListItem,
+} from "../utils/listWithAds";
+import { LIST_AD_INTERVAL_BOARDS } from "../config/admob";
+import { useFocusEffect } from "@react-navigation/native";
 
 export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { subscription, requireFeature, hasFeature } = useSubscription();
+  const { subscription, requireFeature, hasFeature, isPremium } = useSubscription();
+  const { showBannerAds } = useAdPolicy();
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [canJoinMore, setCanJoinMore] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -49,6 +58,38 @@ export const ExpenseBoardScreen = ({ navigation }) => {
     const cleanup = realTimeSync.subscribeToExpenseBoard(fetchExpenseBoards);
     return () => cleanup?.();
   }, []);
+
+  const refreshSharingLimits = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setCanJoinMore(false);
+        return;
+      }
+      const joinCheck = await subscriptionService.canJoinSharedBoard(
+        subscription,
+        user.id
+      );
+      setCanJoinMore(joinCheck.allowed);
+    } catch {
+      setCanJoinMore(false);
+    }
+  }, [subscription]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshSharingLimits();
+    }, [refreshSharingLimits])
+  );
+
+  const boardListData = useMemo(() => {
+    if (!showBannerAds || isPremium || expenseBoards.length === 0) return expenseBoards;
+    return interleaveListWithAds(expenseBoards, {
+      interval: LIST_AD_INTERVAL_BOARDS,
+    });
+  }, [expenseBoards, isPremium, showBannerAds]);
 
   const fetchExpenseBoards = async () => {
     try {
@@ -66,8 +107,22 @@ export const ExpenseBoardScreen = ({ navigation }) => {
     }
   };
 
-  const handleShareBoard = (board) => {
-    if (!requireFeature(FEATURES.BOARD_SHARING, navigation)) return;
+  const handleShareBoard = async (board) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const shareCheck = await subscriptionService.canShareBoardWithLimit(
+      subscription,
+      user.id,
+      board.id
+    );
+    if (!shareCheck.allowed) {
+      requireFeature(FEATURES.BOARD_SHARING, navigation);
+      return;
+    }
+
     setSelectedBoard(board);
     setShowShareModal(true);
   };
@@ -124,6 +179,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       } else {
         showToast.success("Board joined", `You joined "${boardName}"`);
       }
+      await refreshSharingLimits();
     } catch (error) {
       showToast.error("Error", error.message);
       throw error;
@@ -163,11 +219,11 @@ export const ExpenseBoardScreen = ({ navigation }) => {
         label={t("joinBoard") || "Join"}
         color={theme.accent}
         onPress={() => {
-          if (!hasFeature(FEATURES.BOARD_SHARING)) {
-            requireFeature(FEATURES.BOARD_SHARING, navigation);
+          if (hasFeature(FEATURES.BOARD_SHARING) || canJoinMore) {
+            setShowJoinModal(true);
             return;
           }
-          setShowJoinModal(true);
+          requireFeature(FEATURES.BOARD_SHARING, navigation);
         }}
       />
     </View>
@@ -212,17 +268,19 @@ export const ExpenseBoardScreen = ({ navigation }) => {
             </View>
             <View style={styles.boardActions}>
               {!board.isShared ? (
-                <LockedIconButton
-                  feature={FEATURES.BOARD_SHARING}
-                  navigation={navigation}
-                  icon="share-variant"
-                  size={18}
+                <TouchableOpacity
                   style={styles.actionBtn}
                   onPress={(e) => {
                     e.stopPropagation();
                     handleShareBoard(board);
                   }}
-                />
+                >
+                  <MaterialCommunityIcons
+                    name="share-variant"
+                    size={18}
+                    color={theme.primary}
+                  />
+                </TouchableOpacity>
               ) : null}
               {!board.isShared ? (
                 <TouchableOpacity
@@ -361,7 +419,13 @@ export const ExpenseBoardScreen = ({ navigation }) => {
       >
         {renderQuickActions()}
         {expenseBoards.length > 0 ? (
-          expenseBoards.map(renderBoardCard)
+          boardListData.map((item) =>
+            isAdListItem(item) ? (
+              <InlineListAd key={item.id} />
+            ) : (
+              renderBoardCard(item)
+            )
+          )
         ) : (
           renderEmpty()
         )}
@@ -390,7 +454,7 @@ export const ExpenseBoardScreen = ({ navigation }) => {
           setShowAddModal(false);
           setShowJoinModal(true);
         }}
-        joinLocked={!hasFeature(FEATURES.BOARD_SHARING)}
+        joinLocked={!hasFeature(FEATURES.BOARD_SHARING) && !canJoinMore}
         navigation={navigation}
       />
       <JoinBoardModal

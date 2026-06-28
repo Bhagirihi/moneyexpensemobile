@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "265290976146",
+    "project_id": "trivense-app-prod",
+    "storage_bucket": "trivense-app-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265290976146:android:3a532a2acc6284bba9cf4b",
+        "android_client_info": {
+          "package_name": "com.trivense.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAT_P4BjE-h2g-p7a5lb7olzzRbzc9TCWE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

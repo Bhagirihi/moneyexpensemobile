@@ -1,27 +1,43 @@
 import { Platform } from "react-native";
-import Purchases, { LOG_LEVEL } from "react-native-purchases";
 import { PLANS } from "../config/subscriptionPlans";
 import {
   REVENUECAT_ENTITLEMENT_ID,
   REVENUECAT_OFFERING_ID,
   getPackageLookupKey,
-  getStoreProductId,
   productIdMatchesPlan,
 } from "../config/revenueCat";
 import { devLog, devWarn } from "../utils/logger";
+import { loadNativeModule } from "../utils/lazyNativeModule";
+import { hasCustomNativeModules, isExpoGo } from "../utils/nativeRuntime";
 
 const iosKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
 const androidKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
 const testKey = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 
 let configuredUserId = null;
+let purchasesModule = null;
+let purchasesReady = false;
 
 const EMPTY_PLAN_PRICES = {
   [PLANS.MONTHLY]: null,
   [PLANS.YEARLY]: null,
 };
 
+async function getPurchasesModule() {
+  if (purchasesModule) return purchasesModule;
+  purchasesModule = await loadNativeModule(
+    () => import("react-native-purchases"),
+    "react-native-purchases"
+  );
+  return purchasesModule;
+}
+
 function getApiKey() {
+  // Expo Go has no Play/App Store billing — RevenueCat Test Store key only.
+  if (isExpoGo()) {
+    return testKey || null;
+  }
+
   if (Platform.OS === "ios") {
     return iosKey || (__DEV__ ? testKey : null);
   }
@@ -117,27 +133,62 @@ function buildPlanPrices(offering) {
 
 export const purchaseService = {
   isConfigured() {
-    return Boolean(getApiKey());
+    const apiKey = getApiKey();
+    if (!apiKey) return false;
+    return isExpoGo() || hasCustomNativeModules();
+  },
+
+  isReady() {
+    return purchasesReady && Boolean(configuredUserId);
   },
 
   async configure(userId) {
     const apiKey = getApiKey();
-    if (!apiKey || !userId) return false;
-
-    if (configuredUserId === userId) return true;
-
-    if (__DEV__) {
-      Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+    if (!apiKey || !userId) {
+      purchasesReady = false;
+      return false;
     }
 
-    Purchases.configure({ apiKey, appUserID: userId });
-    configuredUserId = userId;
-    devLog("RevenueCat configured for user", userId);
-    return true;
+    if (!isExpoGo() && !hasCustomNativeModules()) {
+      purchasesReady = false;
+      return false;
+    }
+
+    if (configuredUserId === userId && purchasesReady) return true;
+
+    try {
+      const mod = await getPurchasesModule();
+      const Purchases = mod?.default;
+      if (!Purchases) {
+        purchasesReady = false;
+        return false;
+      }
+
+      if (__DEV__ && mod.LOG_LEVEL) {
+        Purchases.setLogLevel(mod.LOG_LEVEL.DEBUG);
+      }
+
+      Purchases.configure({ apiKey, appUserID: userId });
+      configuredUserId = userId;
+      purchasesReady = true;
+      devLog("RevenueCat configured for user", userId);
+      return true;
+    } catch (error) {
+      purchasesReady = false;
+      configuredUserId = null;
+      devWarn("RevenueCat configure failed:", error?.message || error);
+      return false;
+    }
   },
 
   async getOfferings() {
     if (!this.isConfigured()) {
+      return { offering: null, planPrices: { ...EMPTY_PLAN_PRICES } };
+    }
+
+    const mod = await getPurchasesModule();
+    const Purchases = mod?.default;
+    if (!Purchases) {
       return { offering: null, planPrices: { ...EMPTY_PLAN_PRICES } };
     }
 
@@ -151,6 +202,9 @@ export const purchaseService = {
 
   async getActivePlan() {
     if (!this.isConfigured()) return PLANS.FREE;
+    const mod = await getPurchasesModule();
+    const Purchases = mod?.default;
+    if (!Purchases) return PLANS.FREE;
     const customerInfo = await Purchases.getCustomerInfo();
     return planFromCustomerInfo(customerInfo);
   },
@@ -160,6 +214,12 @@ export const purchaseService = {
       throw new Error(
         "In-app purchases are not configured. Set RevenueCat API keys for this build."
       );
+    }
+
+    const mod = await getPurchasesModule();
+    const Purchases = mod?.default;
+    if (!Purchases) {
+      throw new Error("In-app purchases native module is not available in this build.");
     }
 
     const offerings = await Purchases.getOfferings();
@@ -189,12 +249,21 @@ export const purchaseService = {
       );
     }
 
+    const mod = await getPurchasesModule();
+    const Purchases = mod?.default;
+    if (!Purchases) {
+      throw new Error("In-app purchases native module is not available in this build.");
+    }
+
     const customerInfo = await Purchases.restorePurchases();
     return planFromCustomerInfo(customerInfo);
   },
 
   async syncPurchases() {
-    if (!this.isConfigured()) return PLANS.FREE;
+    if (!this.isReady()) return PLANS.FREE;
+    const mod = await getPurchasesModule();
+    const Purchases = mod?.default;
+    if (!Purchases) return PLANS.FREE;
     try {
       await Purchases.syncPurchases();
     } catch (error) {

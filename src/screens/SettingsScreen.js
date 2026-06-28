@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { Header } from "../components/Header";
 import ScreenLayout from "../components/ScreenLayout";
+import RewardedAdOffer from "../components/RewardedAdOffer";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ThemeToggle from "../components/ThemeToggle";
 import { supabase } from "../config/supabase";
@@ -38,21 +39,23 @@ import { useSubscription } from "../context/SubscriptionContext";
 import { FEATURES, PLAN_CATALOG } from "../config/subscriptionPlans";
 import { useTranslation } from "../hooks/useTranslation";
 import { useFeatureLockModal } from "../hooks/useFeatureLockModal";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { footerScrollPadding, typography, spacing, radii } from "../theme/tokens";
+import { useFooterScrollPadding } from "../hooks/useFooterScrollPadding";
+import { typography, spacing, radii } from "../theme/tokens";
 import { devLog } from "../utils/logger";
 import { copyToClipboard } from "../utils/clipboard";
-import { LEGAL_LINKS } from "../config/appLinks";
+import { LEGAL_LINKS, buildReferralShareUrl } from "../config/appLinks";
+import { referralService } from "../services/referralService";
+import BrandLogo from "../components/BrandLogo";
 
 export const SettingsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { openFeatureLock, featureLockModal } = useFeatureLockModal(navigation);
-  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useFooterScrollPadding();
   const { language, currency, updateLanguage, updateCurrency } =
     useAppSettings();
   const { session } = useAuth();
-  const { requireFeature, hasFeature, plan, isPremium } = useSubscription();
+  const { requireFeature, hasFeature, plan, isPremium, paymentsEnabled } = useSubscription();
   const [budget, setBudget] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -63,6 +66,8 @@ export const SettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [showShareAppModal, setShowShareAppModal] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+  const [referralInvitees, setReferralInvitees] = useState([]);
+  const [loadingReferrals, setLoadingReferrals] = useState(false);
   const [selectedBoard, setSelectedBoard] = useState(null);
   const [boardName, setBoardName] = useState("");
   const [showBoardDropdown, setShowBoardDropdown] = useState(false);
@@ -121,7 +126,6 @@ export const SettingsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchData();
-    generateReferralCode();
   }, []);
 
   useEffect(() => {
@@ -173,23 +177,10 @@ export const SettingsScreen = ({ navigation }) => {
     }
   };
 
-  const generateReferralCode = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const code = user.id.substring(0, 8).toUpperCase();
-        setReferralCode(code);
-      }
-    } catch (error) {
-      console.error("Error generating referral code:", error);
-    }
-  };
-
   const handleShareApp = async (method) => {
     try {
-      const message = `Join Trivense — ${t("brandTagline")}\n\nUse my referral code: ${referralCode}\n\nDownload now: https://trivense.app/download?invite=${referralCode}`;
+      const downloadUrl = buildReferralShareUrl(referralCode);
+      const message = `Join Trivense — ${t("brandTagline")}\n\nUse my referral code: ${referralCode}\n\nDownload on Google Play: ${downloadUrl}`;
 
       let result;
 
@@ -216,6 +207,25 @@ export const SettingsScreen = ({ navigation }) => {
       showToast.error(t("error"), t("failedToShare"));
     }
   };
+
+  const fetchReferralInvitees = async () => {
+    try {
+      setLoadingReferrals(true);
+      const rows = await referralService.getMyReferrals();
+      setReferralInvitees(rows || []);
+    } catch (error) {
+      console.error("Error fetching referral invitees:", error);
+      setReferralInvitees([]);
+    } finally {
+      setLoadingReferrals(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showShareAppModal) {
+      fetchReferralInvitees();
+    }
+  }, [showShareAppModal]);
 
   const handleUpdateBudget = async () => {
     try {
@@ -1313,18 +1323,7 @@ export const SettingsScreen = ({ navigation }) => {
 
           <View style={styles.shareContent}>
             <View style={styles.appInfo}>
-              <View
-                style={[
-                  styles.appIcon,
-                  { backgroundColor: theme.primaryLight },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="wallet-outline"
-                  size={32}
-                  color={theme.primary}
-                />
-              </View>
+              <BrandLogo size={44} backgroundColor={theme.primary} style={styles.appIcon} />
               <View style={styles.appText}>
                 <Text style={[styles.appName, { color: theme.text }]}>
                   Trivense
@@ -1352,6 +1351,10 @@ export const SettingsScreen = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             </View>
+
+            <Text style={[styles.referralRewardBanner, { color: theme.primary }]}>
+              {t("referralRewardHint")}
+            </Text>
 
             <View style={styles.shareOptions}>
               <TouchableOpacity
@@ -1381,6 +1384,48 @@ export const SettingsScreen = ({ navigation }) => {
                   Share via Social Apps
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.referralInviteesSection}>
+              <Text style={[styles.codeLabel, { color: theme.textSecondary }]}>
+                {t("referralSignups")}
+              </Text>
+              {loadingReferrals ? (
+                <ActivityIndicator color={theme.primary} style={{ marginVertical: 12 }} />
+              ) : referralInvitees.length === 0 ? (
+                <Text style={[styles.referralEmptyText, { color: theme.textSecondary }]}>
+                  {t("noReferralSignups")}
+                </Text>
+              ) : (
+                referralInvitees.map((invitee) => (
+                  <View
+                    key={invitee.id}
+                    style={[
+                      styles.referralInviteeRow,
+                      { borderColor: theme.border, backgroundColor: theme.card },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="account-check-outline"
+                      size={22}
+                      color={theme.primary}
+                    />
+                    <View style={styles.referralInviteeText}>
+                      <Text style={[styles.referralInviteeName, { color: theme.text }]}>
+                        {invitee.full_name || invitee.email || t("invited")}
+                      </Text>
+                      {invitee.email ? (
+                        <Text style={[styles.referralInviteeEmail, { color: theme.textSecondary }]}>
+                          {invitee.email}
+                        </Text>
+                      ) : null}
+                      <Text style={[styles.referralInviteeDate, { color: theme.textSecondary }]}>
+                        {new Date(invitee.joined_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
             </View>
           </View>
         </View>
@@ -1554,7 +1599,7 @@ export const SettingsScreen = ({ navigation }) => {
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: footerScrollPadding(insets.bottom) }}
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
       >
         {renderSection({
           title: t("appearance"),
@@ -1614,6 +1659,27 @@ export const SettingsScreen = ({ navigation }) => {
           ],
         })}
 
+        {!isPremium ? (
+          <View style={styles.rewardedWrap}>
+            <RewardedAdOffer navigation={navigation} />
+          </View>
+        ) : null}
+
+        {renderSection({
+          title: t("boardSharingSection"),
+          children: [
+            renderSettingItem({
+              icon: "account-group-outline",
+              title: t("boardSharingTitle"),
+              subtitle: t("boardSharingSubtitle"),
+              onPress: () => navigation.navigate("Invitations", { tab: "sent" }),
+              editable: false,
+              lockedFeature: FEATURES.BOARD_SHARING,
+              showBorder: false,
+            }),
+          ],
+        })}
+
         {renderSection({
           title: t("account"),
           children: [
@@ -1624,33 +1690,22 @@ export const SettingsScreen = ({ navigation }) => {
               editable: false,
             }),
 
-            renderSettingItem({
-              icon: "account-group",
-              title: t("invitees"),
-              subtitle: `${inviteeCount} ${t("invited")}`,
-              onPress: () => navigation.navigate("Invitations", { tab: "sent" }),
-              editable: false,
-              lockedFeature: FEATURES.BOARD_SHARING,
-            }),
-            renderSettingItem({
-              icon: "email-outline",
-              title: t("invitations"),
-              subtitle: t("receivedInvites"),
-              onPress: () =>
-                navigation.navigate("Invitations", { tab: "received" }),
-              editable: false,
-              lockedFeature: FEATURES.BOARD_SHARING,
-            }),
-            renderSettingItem({
-              icon: "crown",
-              title: t("premiumAccess"),
-              subtitle: isPremium
-                ? t("currentPlanLabel") + ": " + t(PLAN_CATALOG[plan]?.nameKey || "planFree")
-                : t("premiumAccessSubtitle"),
-              onPress: () => navigation.navigate("Paywall"),
-              showBorder: false,
-              editable: false,
-            }),
+            ...(paymentsEnabled
+              ? [
+                  renderSettingItem({
+                    icon: "crown",
+                    title: t("premiumAccess"),
+                    subtitle: isPremium
+                      ? t("currentPlanLabel") +
+                        ": " +
+                        t(PLAN_CATALOG[plan]?.nameKey || "planFree")
+                      : t("premiumAccessSubtitle"),
+                    onPress: () => navigation.navigate("Paywall"),
+                    showBorder: false,
+                    editable: false,
+                  }),
+                ]
+              : []),
           ],
         })}
 
@@ -1698,16 +1753,8 @@ export const SettingsScreen = ({ navigation }) => {
               subtitle: t("shareAppSubtitle"),
               onPress: () =>
                 handleEdit({ modalKey: "ShareApp", title: t("shareApp") }),
-              editable: false,
-            }),
-            renderSettingItem({
-              icon: "account-group-outline",
-              title: t("shareExpenseData"),
-              subtitle: t("shareExpenseDataSubtitle"),
-              onPress: () => navigation.navigate("Invitations", { tab: "sent" }),
               showBorder: false,
               editable: false,
-              lockedFeature: FEATURES.BOARD_SHARING,
             }),
           ],
         })}
@@ -1727,6 +1774,13 @@ export const SettingsScreen = ({ navigation }) => {
               title: t("termsOfService"),
               subtitle: t("termsOfServiceSubtitle"),
               onPress: () => Linking.openURL(LEGAL_LINKS.termsOfService),
+              editable: false,
+            }),
+            renderSettingItem({
+              icon: "advertisements",
+              title: t("advertisingPolicy"),
+              subtitle: t("advertisingPolicySubtitle"),
+              onPress: () => Linking.openURL(LEGAL_LINKS.advertisingPolicy),
               showBorder: false,
               editable: false,
             }),
@@ -1755,6 +1809,7 @@ export const SettingsScreen = ({ navigation }) => {
         })}
 
         <TouchableOpacity
+          testID="settings-logout-button"
           style={[styles.logoutButton, { backgroundColor: theme.errorLight }]}
           onPress={handleLogout}
         >
@@ -1777,6 +1832,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  rewardedWrap: {
+    marginBottom: 16,
   },
   section: {
     marginBottom: 24,
@@ -2050,11 +2108,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   appIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
     marginRight: 12,
   },
   appText: {
@@ -2099,6 +2152,43 @@ const styles = StyleSheet.create({
   shareOptionText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+  referralRewardBanner: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  referralInviteesSection: {
+    marginTop: 20,
+  },
+  referralEmptyText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  referralInviteeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  referralInviteeText: {
+    flex: 1,
+  },
+  referralInviteeName: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  referralInviteeEmail: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  referralInviteeDate: {
+    fontSize: 12,
+    marginTop: 4,
   },
   dropdownContainer: {
     marginBottom: 20,

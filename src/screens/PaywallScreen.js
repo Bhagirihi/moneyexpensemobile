@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -41,7 +41,15 @@ export const PaywallScreen = ({ navigation, route }) => {
     getPlanPriceLabel,
     getPlanMonthlyPriceLabel,
     offeringsLoading,
+    paymentsEnabled,
+    loading: subscriptionLoading,
   } = useSubscription();
+
+  useEffect(() => {
+    if (!subscriptionLoading && !paymentsEnabled) {
+      navigation.goBack();
+    }
+  }, [subscriptionLoading, paymentsEnabled, navigation]);
 
   const lockedFeature = route.params?.feature;
   const [selectedPlan, setSelectedPlan] = useState(
@@ -52,6 +60,10 @@ export const PaywallScreen = ({ navigation, route }) => {
     () => (lockedFeature ? getFeatureLockInfo(lockedFeature) : null),
     [lockedFeature]
   );
+
+  if (!paymentsEnabled) {
+    return null;
+  }
 
   const handleSubscribe = async () => {
     try {
@@ -254,6 +266,12 @@ export const PaywallScreen = ({ navigation, route }) => {
           <TouchableOpacity onPress={() => openLegalLink(LEGAL_LINKS.privacyPolicy)}>
             <Text style={[styles.legalLink, { color: theme.primary }]}>
               {t("privacyPolicy")}
+            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.legalDivider, { color: theme.textSecondary }]}>·</Text>
+          <TouchableOpacity onPress={() => openLegalLink(LEGAL_LINKS.advertisingPolicy)}>
+            <Text style={[styles.legalLink, { color: theme.primary }]}>
+              {t("advertisingPolicy")}
             </Text>
           </TouchableOpacity>
         </View>

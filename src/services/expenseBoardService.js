@@ -1,21 +1,21 @@
 import { Platform } from "react-native";
 import { supabase } from "../config/supabase";
+import { getCurrentUser } from "../utils/supabaseAuth";
+import {
+  getExpenseCountsByBoard,
+  invalidateBoardCache,
+} from "./boardAccessService";
+
+export { invalidateBoardCache };
 
 export const expenseBoardService = {
   async getExpenseBoards() {
     try {
-      // Step 0: Get authenticated user
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user)
-        throw new Error(authError?.message || "No authenticated user");
+      const user = await getCurrentUser();
+      if (!user) throw new Error("No authenticated user");
 
       const userId = user.id;
 
-      // Step 1 & 2: Fetch owned boards and shared board links in parallel
       const [ownedBoardsRes, sharedLinksRes] = await Promise.all([
         supabase
           .from("expense_boards")
@@ -49,30 +49,16 @@ export const expenseBoardService = {
       }
 
       const allBoards = [...ownedBoards, ...sharedBoardsData];
-
       if (allBoards.length === 0) return [];
 
-      // Step 4: Fetch all expenses for owned + shared boards
       const boardIds = allBoards.map((b) => b.id);
-      const { data: expenses, error: expensesError } = await supabase
-        .from("expenses")
-        .select("*")
-        .in("board_id", boardIds);
+      const expenseCounts = await getExpenseCountsByBoard(boardIds);
 
-      if (expensesError) throw expensesError;
-
-      // Step 5: Group expenses by board
-      const expensesMap = expenses.reduce((map, exp) => {
-        if (!map[exp.board_id]) map[exp.board_id] = [];
-        map[exp.board_id].push(exp);
-        return map;
-      }, {});
-
-      // Step 6: Format final result
       const boardsWithExpenses = allBoards
         .map((board) => {
           const ownerId = board.created_by;
           const ownerProfile = board.profiles;
+          const totalExpenses = Number(board.total_expense) || 0;
 
           return {
             ...board,
@@ -80,19 +66,15 @@ export const expenseBoardService = {
               ownerProfile?.id === user.id
                 ? "You"
                 : ownerProfile?.full_name || "Shared board",
-            expenses: expensesMap[board.id] || [],
-            totalExpenses:
-              expensesMap[board.id]?.reduce((sum, e) => sum + e.amount, 0) || 0,
-            totalTransactions: expensesMap[board.id]?.length || 0,
+            expenses: [],
+            totalExpenses,
+            totalTransactions: expenseCounts[board.id] || 0,
             isShared: ownerId !== userId,
           };
         })
         .sort((a, b) => {
-          // Default board goes first
           if (a.is_default) return -1;
           if (b.is_default) return 1;
-
-          // Then sort by created_at descending
           return new Date(b.created_at) - new Date(a.created_at);
         });
 
@@ -105,12 +87,9 @@ export const expenseBoardService = {
 
   async getExpenseBoardsByID(id) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No authenticated user");
 
-      // Fetch board info and expenses in parallel
       const [expensesRes, boardRes, sharedUsersRes] = await Promise.all([
         supabase.from("expenses").select("*").eq("board_id", id),
         supabase.from("expense_boards").select("*").eq("id", id),
@@ -127,9 +106,6 @@ export const expenseBoardService = {
           .eq("board_id", id),
       ]);
 
-      const { data, error } = await supabase.from("shared_users").select("*");
-      console.log("Raw shared_users:", id, data);
-      console.log("sharedUsersRes", user);
       const boardUsers = [];
       const seenUserIds = new Set();
 
@@ -159,31 +135,25 @@ export const expenseBoardService = {
           email_address: user.email,
         });
       }
-      console.log("boardUsers", boardUsers);
 
-      // 2. Calculate total per user
       const userExpenseMap = {};
-      expensesRes.data.forEach((expense) => {
-        console.log("expense", expense);
+      (expensesRes.data || []).forEach((expense) => {
         if (!userExpenseMap[expense.created_by]) {
           userExpenseMap[expense.created_by] = 0;
         }
         userExpenseMap[expense.created_by] += expense.amount;
       });
 
-      console.log("userExpenseMap", userExpenseMap);
-
       if (expensesRes.error || boardRes.error || sharedUsersRes.error) {
         throw expensesRes.error || boardRes.error || sharedUsersRes.error;
       }
 
-      const expenses = expensesRes.data;
-      const board = boardRes.data[0];
+      const expenses = expensesRes.data || [];
+      const board = boardRes.data?.[0];
 
       if (!board) return [];
 
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-      console.log("totalExpenses", totalExpenses, "sharedUsersRes");
       const perPersonBudget = totalExpenses / boardUsers.length;
 
       // 3. Map to boardUsers with percentage
@@ -200,48 +170,37 @@ export const expenseBoardService = {
           percentage: percent,
         };
       });
-      console.log("boardUsersWithStats", boardUsersWithStats);
 
-      // 4. Calculate fair share per user
       const fairShare = totalExpenses / boardUsersWithStats.length;
-
       const creditors = [];
       const debtors = [];
 
-      // Split users into creditors and debtors
-      boardUsersWithStats.forEach((user) => {
-        const difference = user.spent - fairShare;
+      boardUsersWithStats.forEach((member) => {
+        const difference = member.spent - fairShare;
         if (difference > 0) {
-          creditors.push({ ...user, amount: difference });
+          creditors.push({ ...member, amount: difference });
         } else if (difference < 0) {
-          debtors.push({ ...user, amount: -difference }); // positive amount to settle
+          debtors.push({ ...member, amount: -difference });
         }
       });
 
       const settlements = [];
-
-      // Simple greedy algorithm to settle debts
-      for (let debtor of debtors) {
+      for (const debtor of debtors) {
         let amountToSettle = debtor.amount;
-
-        for (let creditor of creditors) {
+        for (const creditor of creditors) {
           if (amountToSettle === 0) break;
           if (creditor.amount === 0) continue;
-
           const settleAmount = Math.min(amountToSettle, creditor.amount);
-
           settlements.push({
             from: debtor.name,
             to: creditor.name,
             amount: Number(settleAmount.toFixed(2)),
           });
-
           amountToSettle -= settleAmount;
           creditor.amount -= settleAmount;
         }
       }
-      console.log("settlements", settlements);
-      console.log("perPersonBudget", perPersonBudget);
+
       return {
         totalBudget: board.total_budget,
         perPersonBudget: perPersonBudget || "0", // fallback
@@ -257,9 +216,7 @@ export const expenseBoardService = {
 
   async createExpenseBoard(boardData) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No authenticated user");
 
       const { data, error } = await supabase
@@ -280,6 +237,7 @@ export const expenseBoardService = {
         .single();
 
       if (error) return { data: null, error };
+      invalidateBoardCache();
       return { data, error: null };
     } catch (error) {
       console.error("Error creating expense board:", error);
@@ -314,6 +272,7 @@ export const expenseBoardService = {
         .single();
 
       if (error) throw error;
+      invalidateBoardCache();
       return data;
     } catch (error) {
       console.error("Error updating expense board:", error);
@@ -335,6 +294,7 @@ export const expenseBoardService = {
         .eq("created_by", user.id);
 
       if (error) throw error;
+      invalidateBoardCache();
       return true;
     } catch (error) {
       console.error("Error deleting expense board:", error);

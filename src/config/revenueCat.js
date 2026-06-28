@@ -1,4 +1,4 @@
-import { PLANS } from "./subscriptionPlans";
+import { Platform } from "react-native";
 
 /**
  * RevenueCat configuration for Trivense.
@@ -13,11 +13,11 @@ export const REVENUECAT_OFFERING_ID = "default";
 
 /**
  * Package lookup_keys inside the offering.
- * @see https://www.revenuecat.com/docs/tools/mcp/usage-examples
+ * Keys match PLANS.MONTHLY / PLANS.YEARLY in subscriptionPlans.js
  */
 export const REVENUECAT_PACKAGE_LOOKUP_KEYS = {
-  [PLANS.MONTHLY]: "monthly",
-  [PLANS.YEARLY]: "annual",
+  monthly: "monthly",
+  yearly: "annual",
 };
 
 /**
@@ -25,12 +25,12 @@ export const REVENUECAT_PACKAGE_LOOKUP_KEYS = {
  * Android Play subscriptions use `subscriptionId:basePlanId`.
  */
 export const STORE_PRODUCT_IDS = {
-  [PLANS.MONTHLY]: {
+  monthly: {
     ios: "trivense_monthly",
     android: "trivense_monthly:monthly",
     test: "trivense_monthly",
   },
-  [PLANS.YEARLY]: {
+  yearly: {
     ios: "trivense_yearly",
     android: "trivense_yearly:yearly",
     test: "trivense_yearly",
@@ -56,21 +56,23 @@ export const TRIVENSE_APP = {
 
 export const REVENUECAT_PRODUCTS = [
   {
-    plan: PLANS.MONTHLY,
+    plan: "monthly",
     displayName: "Trivense Premium Monthly",
-    storeIdentifier: STORE_PRODUCT_IDS[PLANS.MONTHLY].ios,
+    storeIdentifier: STORE_PRODUCT_IDS.monthly.ios,
     duration: "P1M",
   },
   {
-    plan: PLANS.YEARLY,
+    plan: "yearly",
     displayName: "Trivense Premium Yearly",
-    storeIdentifier: STORE_PRODUCT_IDS[PLANS.YEARLY].ios,
+    storeIdentifier: STORE_PRODUCT_IDS.yearly.ios,
     duration: "P1Y",
   },
 ];
 
 export function getStorePlatform() {
-  return "ios"; // default for non-RN contexts
+  if (Platform.OS === "android") return "android";
+  if (Platform.OS === "ios") return "ios";
+  return "test";
 }
 
 export function getStoreProductId(planId, platform) {

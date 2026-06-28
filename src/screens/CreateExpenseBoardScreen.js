@@ -26,9 +26,13 @@ import { useAppSettings } from "../context/AppSettingsContext";
 import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
 import { useSubscription } from "../context/SubscriptionContext";
-import { subscriptionService } from "../services/subscriptionService";
 import { supabase } from "../config/supabase";
-import { FEATURES } from "../config/subscriptionPlans";
+import {
+  showInterstitialAfterBoardCreate,
+  shouldShowBoardCreateInterstitial,
+  getSessionInterstitialCount,
+} from "../services/adService";
+import { subscriptionService } from "../services/subscriptionService";
 import { layout, radii, spacing, typography } from "../theme/tokens";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -130,7 +134,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { currency } = useAppSettings();
   const insets = useSafeAreaInsets();
-  const { subscription, requireFeature } = useSubscription();
+  const { isPremium } = useSubscription();
   const [loading, setLoading] = useState(false);
   const [boardName, setBoardName] = useState("");
   const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0]);
@@ -216,15 +220,9 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const boardCheck = await subscriptionService.canCreateBoard(
-        subscription,
-        user.id
-      );
-      if (!boardCheck.allowed) {
-        setLoading(false);
-        requireFeature(FEATURES.UNLIMITED_BOARDS, navigation);
-        return;
-      }
+      const ownedBoardsBeforeCreate = !isPremium
+        ? await subscriptionService.countOwnedBoards(user.id)
+        : 0;
 
       const boardData = {
         name: boardName.trim(),
@@ -257,11 +255,34 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
 
       showToast.success("Expense board created successfully");
 
+      let showBoardAd = false;
+      if (!isPremium) {
+        showBoardAd = await shouldShowBoardCreateInterstitial(
+          isPremium,
+          ownedBoardsBeforeCreate,
+        );
+      }
+
       if (createdBoard?.id && route.params?.onBoardCreated) {
         route.params.onBoardCreated(createdBoard.id);
       }
 
       navigation.goBack();
+
+      if (showBoardAd) {
+        setTimeout(async () => {
+          await showInterstitialAfterBoardCreate(
+            isPremium,
+            ownedBoardsBeforeCreate,
+          );
+          if (getSessionInterstitialCount() >= 2) {
+            showToast.info(
+              "Go ad-free",
+              "Upgrade to Premium for an uninterrupted experience.",
+            );
+          }
+        }, 450);
+      }
     } catch (error) {
       console.error("Error creating board:", error);
       showToast.error(

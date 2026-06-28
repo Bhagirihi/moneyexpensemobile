@@ -1,5 +1,12 @@
 import "dotenv/config";
 
+const admobAndroidAppId =
+  process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID ||
+  "ca-app-pub-3940256099942544~3347511713";
+const admobIosAppId =
+  process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID ||
+  "ca-app-pub-3940256099942544~1458002511";
+
 export default {
   expo: {
     name: "Trivense",
@@ -27,11 +34,11 @@ export default {
     android: {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive_icon.png",
-        backgroundColor: "#31356e",
+        backgroundColor: "#003D66",
       },
       package: "com.trivense.app",
-      versionCode: 1,
-      permissions: ["INTERNET"],
+      googleServicesFile: "./firebase/google-services.json",
+      permissions: ["INTERNET", "POST_NOTIFICATIONS"],
     },
     web: {
       favicon: "./assets/icon.png",
@@ -62,24 +69,48 @@ export default {
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#31356e",
+          backgroundColor: "#003D66",
           image: "./assets/splash_icon.png",
           dark: {
             image: "./assets/splash_icon.png",
-            backgroundColor: "#31356e",
+            backgroundColor: "#003D66",
           },
-          imageWidth: 200,
+          imageWidth: 220,
         },
       ],
       [
         "expo-notifications",
         {
           icon: "./assets/icon.png",
-          color: "#31356e",
+          color: "#003D66",
         },
       ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          photosPermission:
+            "Trivense needs photo library access to attach receipt images to expenses.",
+          cameraPermission:
+            "Trivense needs camera access to attach receipt photos to expenses.",
+        },
+      ],
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            useFrameworks: "static",
+          },
+        },
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          androidAppId: admobAndroidAppId,
+          iosAppId: admobIosAppId,
+        },
+      ],
       ...(process.env.EXPO_PUBLIC_SENTRY_DSN ? ["@sentry/react-native"] : []),
     ],
     extra: {

@@ -1,0 +1,9 @@
+# Expo dev client: pick Metro server before app UI loads
+appId: com.trivense.app
+---
+- runFlow:
+    when:
+      visible: "Development Build"
+    commands:
+      - tapOn: "http://localhost:8081"
+      - waitForAnimationToEnd

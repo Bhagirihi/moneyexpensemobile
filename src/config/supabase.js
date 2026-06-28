@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 //Live
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -28,6 +29,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    flowType: "pkce",
   },
   realtime: {
     // (since v2.47) explicitly tell Realtime which WS implementation to use
@@ -133,34 +135,57 @@ export const signOut = async () => {
   }
 };
 
-/**
- * Parse OAuth callback URL and return access_token and refresh_token.
- * Supabase redirects with hash fragment: #access_token=...&refresh_token=...
- */
-const getTokensFromUrl = (url) => {
-  if (!url) return {};
+const parseOAuthCallbackUrl = (url) => {
+  if (!url) return { params: {}, errorCode: null, errorDescription: null };
+
+  const { params, errorCode } = QueryParams.getQueryParams(url);
+
+  if (params.access_token || params.code) {
+    return { params, errorCode: errorCode || params.error || null, errorDescription: params.error_description || null };
+  }
+
   const hash = url.includes("#") ? url.split("#")[1] : "";
   const query = url.includes("?") ? url.split("?").pop().split("#")[0] : "";
-  const params = new URLSearchParams(hash || query);
+  const legacy = Object.fromEntries(new URLSearchParams(hash || query));
   return {
-    access_token: params.get("access_token"),
-    refresh_token: params.get("refresh_token"),
+    params: legacy,
+    errorCode: legacy.error || errorCode || null,
+    errorDescription: legacy.error_description || null,
   };
 };
 
 /**
- * Create a session from OAuth redirect URL (e.g. after Google sign-in).
+ * Create a session from OAuth redirect URL (PKCE code or implicit tokens).
  * Call this when the app is opened via deep link from the OAuth callback.
  */
 export const createSessionFromUrl = async (url) => {
-  const { access_token, refresh_token } = getTokensFromUrl(url);
-  if (!access_token) return { data: null, error: new Error("No access token in URL") };
-  const { data, error } = await supabase.auth.setSession({
-    access_token,
-    refresh_token: refresh_token || "",
-  });
-  if (error) return { data: null, error };
-  return { data: data.session, error: null };
+  const { params, errorCode, errorDescription } = parseOAuthCallbackUrl(url);
+
+  if (errorCode) {
+    const message =
+      errorDescription ||
+      (errorCode === "provider is not enabled"
+        ? "Google sign-in is not enabled yet. Enable Google in Supabase Auth providers."
+        : errorCode);
+    return { data: null, error: new Error(message) };
+  }
+
+  if (params.code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
+    if (error) return { data: null, error };
+    return { data: data.session, error: null };
+  }
+
+  if (params.access_token) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: params.access_token,
+      refresh_token: params.refresh_token || "",
+    });
+    if (error) return { data: null, error };
+    return { data: data.session, error: null };
+  }
+
+  return { data: null, error: new Error("No auth code or token in callback URL") };
 };
 
 /**
@@ -168,14 +193,17 @@ export const createSessionFromUrl = async (url) => {
  * Requires: Supabase Dashboard > Auth > Providers > Google enabled,
  * and redirect URL (e.g. trivense://**) added in Auth > URL Configuration.
  */
+export const getGoogleOAuthRedirectUri = () =>
+  AuthSession.makeRedirectUri({
+    scheme: "trivense",
+    path: "auth/callback",
+  });
+
 export const signInWithGoogle = async () => {
   try {
     WebBrowser.maybeCompleteAuthSession();
 
-    const redirectTo = AuthSession.makeRedirectUri({
-      scheme: "trivense",
-      path: "auth/callback",
-    });
+    const redirectTo = getGoogleOAuthRedirectUri();
 
     const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -186,12 +214,17 @@ export const signInWithGoogle = async () => {
     });
 
     if (oauthError) throw oauthError;
-    if (!data?.url) throw new Error("No OAuth URL returned");
+    if (!data?.url) {
+      throw new Error(
+        "Google sign-in is unavailable. Enable Google in Supabase Auth → Providers."
+      );
+    }
 
-    const result = await WebBrowser.openAuthSessionAsync(
-      data.url,
-      redirectTo
-    );
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+    if (result.type === "cancel" || result.type === "dismiss") {
+      return { data: null, error: new Error("OAuth cancelled") };
+    }
 
     if (result.type !== "success" || !result.url) {
       return { data: null, error: new Error("OAuth cancelled or failed") };

@@ -136,6 +136,74 @@ export const subscriptionService = {
     return this.hasFeature(subscription, FEATURES.BOARD_SHARING);
   },
 
+  async countJoinedSharedBoards(userId) {
+    const { count, error } = await supabase
+      .from("shared_users")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_accepted", true);
+
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async countOwnedBoardsWithMembers(userId) {
+    const { data: ownedBoards, error: boardsError } = await supabase
+      .from("expense_boards")
+      .select("id")
+      .eq("created_by", userId);
+
+    if (boardsError) throw boardsError;
+    if (!ownedBoards?.length) return 0;
+
+    const boardIds = ownedBoards.map((board) => board.id);
+    const { count, error } = await supabase
+      .from("shared_users")
+      .select("id", { count: "exact", head: true })
+      .in("board_id", boardIds);
+
+    if (error) throw error;
+    return count || 0;
+  },
+
+  async getSharedBoardUsage(userId) {
+    const [joined, sharedOut] = await Promise.all([
+      this.countJoinedSharedBoards(userId),
+      this.countOwnedBoardsWithMembers(userId),
+    ]);
+    return joined + sharedOut;
+  },
+
+  async boardHasSharedMembers(boardId) {
+    const { count, error } = await supabase
+      .from("shared_users")
+      .select("id", { count: "exact", head: true })
+      .eq("board_id", boardId);
+
+    if (error) throw error;
+    return (count || 0) > 0;
+  },
+
+  async canShareBoardWithLimit(subscription, userId, boardId) {
+    if (this.hasFeature(subscription, FEATURES.BOARD_SHARING)) {
+      return { allowed: true };
+    }
+
+    const limits = this.getLimits(subscription);
+    if (limits.maxSharedBoards == null) return { allowed: true };
+
+    if (boardId && (await this.boardHasSharedMembers(boardId))) {
+      return { allowed: true };
+    }
+
+    const usage = await this.getSharedBoardUsage(userId);
+    return {
+      allowed: usage < limits.maxSharedBoards,
+      count: usage,
+      max: limits.maxSharedBoards,
+    };
+  },
+
   async canJoinSharedBoard(subscription, userId) {
     if (this.hasFeature(subscription, FEATURES.BOARD_SHARING)) {
       return { allowed: true };

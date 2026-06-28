@@ -1,17 +1,11 @@
 import { supabase } from "../config/supabase";
+import { getCurrentUser } from "../utils/supabaseAuth";
 
 export const categoryService = {
   async getCategories() {
     try {
-      console.log("Fetching categories...");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        console.log("No user found");
-        return [];
-      }
+      const user = await getCurrentUser();
+      if (!user) return [];
 
       const { data, error } = await supabase
         .from("categories")
@@ -80,9 +74,7 @@ export const categoryService = {
 
   async createCategory(categoryData) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No authenticated user");
 
       const processedData = {
@@ -114,9 +106,7 @@ export const categoryService = {
 
   async updateCategory(id, categoryData) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No authenticated user");
 
       const processedData = {
@@ -149,9 +139,7 @@ export const categoryService = {
 
   async deleteCategory(id) {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (!user) throw new Error("No authenticated user");
 
       const { error } = await supabase

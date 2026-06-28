@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,14 @@ import { AddCategoryScreen } from "./AddCategoryScreen";
 import { realTimeSync } from "../services/realTimeSync";
 import { sendDeleteCategoryNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useAdPolicy } from "../context/AdPolicyContext";
+import InlineListAd from "../components/InlineListAd";
+import {
+  interleaveListWithAds,
+  isAdListItem,
+} from "../utils/listWithAds";
+import { LIST_AD_INTERVAL_CATEGORIES } from "../config/admob";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -310,8 +318,18 @@ const styles = StyleSheet.create({
 export const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { isPremium } = useSubscription();
+  const { showBannerAds } = useAdPolicy();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const categoryListData = useMemo(() => {
+    if (!showBannerAds || isPremium || categories.length === 0) return categories;
+    return interleaveListWithAds(categories, {
+      interval: LIST_AD_INTERVAL_CATEGORIES,
+      adKeyPrefix: "category-ad",
+    });
+  }, [categories, isPremium, showBannerAds]);
 
   const fetchCategories = useCallback(async () => {
     console.log("🔄 Starting to fetch categories...");
@@ -437,9 +455,17 @@ export const CategoriesScreen = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={categories}
-          renderItem={renderCategoryItem}
-          keyExtractor={(item) => item.id}
+          data={categoryListData}
+          renderItem={({ item }) =>
+            isAdListItem(item) ? (
+              <InlineListAd />
+            ) : (
+              renderCategoryItem({ item })
+            )
+          }
+          keyExtractor={(item) =>
+            isAdListItem(item) ? item.id : item.id
+          }
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <ListHeader

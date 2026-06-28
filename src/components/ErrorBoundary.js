@@ -1,6 +1,5 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import * as Sentry from "@sentry/react-native";
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -13,7 +12,17 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    Sentry.captureException(error, { extra: { componentStack: info?.componentStack } });
+    import("@sentry/react-native")
+      .then((Sentry) => {
+        Sentry.captureException(error, {
+          extra: { componentStack: info?.componentStack },
+        });
+      })
+      .catch(() => {
+        if (__DEV__) {
+          console.error("ErrorBoundary caught:", error, info?.componentStack);
+        }
+      });
   }
 
   handleRetry = () => {
@@ -61,7 +70,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   button: {
-    backgroundColor: "#31356e",
+    backgroundColor: "#003D66",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,

@@ -15,17 +15,6 @@
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "@EXPO_PUBLIC_SUPABASE_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "@EXPO_PUBLIC_SUPABASE_ANON_KEY",
-        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "@EXPO_PUBLIC_REVENUECAT_IOS_API_KEY",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "@EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY",
-        "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "@EXPO_PUBLIC_REVENUECAT_TEST_API_KEY",
-        "EXPO_PUBLIC_SENTRY_DSN": "@EXPO_PUBLIC_SENTRY_DSN",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "@EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "@EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "@EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID"
       }
     }
   },
@@ -38,7 +27,8 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "internal"
+        "track": "beta",
+        "releaseStatus": "draft"
       }
     }
   }

@@ -9,7 +9,8 @@ import React, {
 import { useAuth } from "./AuthContext";
 import { subscriptionService } from "../services/subscriptionService";
 import { purchaseService } from "../services/purchaseService";
-import { FEATURES, PLANS, PLAN_CATALOG } from "../config/subscriptionPlans";
+import { appConfigService } from "../services/appConfigService";
+import { FEATURES, PLANS, PLAN_CATALOG, getPlanLimits } from "../config/subscriptionPlans";
 import { devError } from "../utils/logger";
 
 const SubscriptionContext = createContext(null);
@@ -17,6 +18,14 @@ const SubscriptionContext = createContext(null);
 const DEFAULT_PLAN_PRICES = {
   [PLANS.MONTHLY]: null,
   [PLANS.YEARLY]: null,
+};
+
+const UNLOCKED_SUBSCRIPTION = {
+  plan: PLANS.MONTHLY,
+  status: "active",
+  isPremium: false,
+  expiresAt: null,
+  startedAt: null,
 };
 
 export const SubscriptionProvider = ({ children }) => {
@@ -28,14 +37,27 @@ export const SubscriptionProvider = ({ children }) => {
     expiresAt: null,
     startedAt: null,
   });
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true);
+  const [configLoading, setConfigLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [planPrices, setPlanPrices] = useState(DEFAULT_PLAN_PRICES);
   const [offeringsLoading, setOfferingsLoading] = useState(false);
 
+  const refreshAppConfig = useCallback(async () => {
+    try {
+      const config = await appConfigService.fetchConfig();
+      setPaymentsEnabled(config.paymentsEnabled);
+    } catch (error) {
+      devError("refreshAppConfig error:", error);
+    } finally {
+      setConfigLoading(false);
+    }
+  }, []);
+
   const refreshOfferings = useCallback(async () => {
-    if (!purchaseService.isConfigured()) {
+    if (!paymentsEnabled || !purchaseService.isConfigured()) {
       setPlanPrices(DEFAULT_PLAN_PRICES);
       return;
     }
@@ -49,9 +71,20 @@ export const SubscriptionProvider = ({ children }) => {
     } finally {
       setOfferingsLoading(false);
     }
-  }, []);
+  }, [paymentsEnabled]);
 
   const refreshSubscription = useCallback(async () => {
+    let paymentsOn = true;
+    try {
+      const config = await appConfigService.fetchConfig();
+      paymentsOn = config.paymentsEnabled;
+      setPaymentsEnabled(config.paymentsEnabled);
+    } catch (error) {
+      devError("refreshAppConfig error:", error);
+    } finally {
+      setConfigLoading(false);
+    }
+
     if (!user?.id) {
       setSubscription({
         plan: PLANS.FREE,
@@ -67,16 +100,30 @@ export const SubscriptionProvider = ({ children }) => {
 
     try {
       setLoading(true);
-      await purchaseService.syncPurchases();
+      if (paymentsOn) {
+        await purchaseService.syncPurchases();
+      }
       const next = await subscriptionService.getEffectiveSubscription(user.id);
       setSubscription(next);
-      await refreshOfferings();
+      if (paymentsOn && purchaseService.isConfigured()) {
+        try {
+          setOfferingsLoading(true);
+          const { planPrices: nextPrices } = await purchaseService.getOfferings();
+          setPlanPrices(nextPrices);
+        } catch (error) {
+          devError("refreshOfferings error:", error);
+        } finally {
+          setOfferingsLoading(false);
+        }
+      } else {
+        setPlanPrices(DEFAULT_PLAN_PRICES);
+      }
     } catch (error) {
       devError("refreshSubscription error:", error);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, refreshOfferings]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -84,10 +131,22 @@ export const SubscriptionProvider = ({ children }) => {
       return;
     }
 
+    if (!paymentsEnabled) {
+      refreshSubscription();
+      return;
+    }
+
     purchaseService.configure(user.id).finally(() => {
       refreshSubscription();
     });
-  }, [user?.id, refreshSubscription]);
+  }, [user?.id, paymentsEnabled, refreshSubscription]);
+
+  const effectiveSubscription = useMemo(() => {
+    if (!paymentsEnabled) {
+      return { ...UNLOCKED_SUBSCRIPTION };
+    }
+    return subscription;
+  }, [subscription, paymentsEnabled]);
 
   const getPlanPriceLabel = useCallback(
     (planId) => {
@@ -110,6 +169,9 @@ export const SubscriptionProvider = ({ children }) => {
 
   const purchasePlan = useCallback(
     async (planId) => {
+      if (!paymentsEnabled) {
+        throw new Error("Subscriptions are not available right now.");
+      }
       if (!user?.id) throw new Error("Sign in to subscribe");
       if (planId === PLANS.FREE) {
         throw new Error("Use the app store to manage or cancel your subscription.");
@@ -128,10 +190,13 @@ export const SubscriptionProvider = ({ children }) => {
         setPurchasing(false);
       }
     },
-    [user?.id]
+    [user?.id, paymentsEnabled]
   );
 
   const restorePurchases = useCallback(async () => {
+    if (!paymentsEnabled) {
+      throw new Error("Subscriptions are not available right now.");
+    }
     if (!user?.id) throw new Error("Sign in to restore purchases");
 
     try {
@@ -146,70 +211,89 @@ export const SubscriptionProvider = ({ children }) => {
     } finally {
       setRestoring(false);
     }
-  }, [user?.id]);
+  }, [user?.id, paymentsEnabled]);
 
   const hasFeature = useCallback(
-    (featureKey) => subscriptionService.hasFeature(subscription, featureKey),
-    [subscription]
+    (featureKey) => {
+      if (!paymentsEnabled) return true;
+      return subscriptionService.hasFeature(subscription, featureKey);
+    },
+    [subscription, paymentsEnabled]
   );
 
   const canUseAnalyticsPeriod = useCallback(
-    (period) => subscriptionService.canUsePeriod(subscription, period),
-    [subscription]
+    (period) => {
+      if (!paymentsEnabled) return true;
+      return subscriptionService.canUsePeriod(subscription, period);
+    },
+    [subscription, paymentsEnabled]
   );
 
   const requireFeature = useCallback(
     (featureKey, navigation, options = {}) => {
-      if (hasFeature(featureKey)) return true;
+      if (!paymentsEnabled || hasFeature(featureKey)) return true;
       navigation.navigate("Paywall", {
         feature: featureKey,
         ...options,
       });
       return false;
     },
-    [hasFeature]
+    [hasFeature, paymentsEnabled]
   );
+
+  const limits = useMemo(() => {
+    if (!paymentsEnabled) {
+      return getPlanLimits(PLANS.MONTHLY);
+    }
+    return subscriptionService.getLimits(subscription);
+  }, [subscription, paymentsEnabled]);
 
   const value = useMemo(
     () => ({
-      subscription,
-      loading,
+      subscription: effectiveSubscription,
+      loading: loading || configLoading,
       purchasing,
       restoring,
       offeringsLoading,
       planPrices,
+      paymentsEnabled,
       getPlanPriceLabel,
       getPlanMonthlyPriceLabel,
       refreshSubscription,
       refreshOfferings,
+      refreshAppConfig,
       purchasePlan,
       restorePurchases,
       hasFeature,
       canUseAnalyticsPeriod,
       requireFeature,
-      isPremium: subscription.isPremium,
-      plan: subscription.plan,
-      limits: subscriptionService.getLimits(subscription),
-      purchasesConfigured: purchaseService.isConfigured(),
+      isPremium: effectiveSubscription.isPremium,
+      plan: effectiveSubscription.plan,
+      limits,
+      purchasesConfigured: paymentsEnabled && purchaseService.isConfigured(),
       FEATURES,
       PLANS,
     }),
     [
-      subscription,
+      effectiveSubscription,
       loading,
+      configLoading,
       purchasing,
       restoring,
       offeringsLoading,
       planPrices,
+      paymentsEnabled,
       getPlanPriceLabel,
       getPlanMonthlyPriceLabel,
       refreshSubscription,
       refreshOfferings,
+      refreshAppConfig,
       purchasePlan,
       restorePurchases,
       hasFeature,
       canUseAnalyticsPeriod,
       requireFeature,
+      limits,
     ]
   );
 

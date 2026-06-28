@@ -25,6 +25,12 @@ import { showToast } from "../utils/toast";
 import { sendCreateExpenseNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAppSettings } from "../context/AppSettingsContext";
+import { useSubscription } from "../context/SubscriptionContext";
+import {
+  registerExpenseSaveForAd,
+  showExpenseInterstitialAfterLeave,
+  getSessionInterstitialCount,
+} from "../services/adService";
 import { getCurrencySymbol } from "../utils/formatters";
 
 const paymentMethods = [
@@ -45,6 +51,7 @@ export const AddExpenseScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { currency } = useAppSettings();
   const { t } = useTranslation();
+  const { isPremium } = useSubscription();
   const editingExpense = route.params?.expense;
   const editingExpenseId = route.params?.expenseId || editingExpense?.id;
   const isEditing = Boolean(editingExpenseId);
@@ -143,7 +150,24 @@ export const AddExpenseScreen = ({ navigation, route }) => {
         showToast.success("Expense added successfully");
       }
 
+      let showAdAfterLeave = false;
+      if (!isEditing && !isPremium) {
+        showAdAfterLeave = await registerExpenseSaveForAd(isPremium);
+      }
+
       navigation.goBack();
+
+      if (showAdAfterLeave) {
+        setTimeout(async () => {
+          const shown = await showExpenseInterstitialAfterLeave(isPremium);
+          if (shown && getSessionInterstitialCount() >= 2) {
+            showToast.info(
+              "Go ad-free",
+              "Upgrade to Premium for an uninterrupted experience.",
+            );
+          }
+        }, 450);
+      }
     } catch (error) {
       console.error("Error saving expense:", error);
       showToast.error("Failed to save expense");
@@ -161,7 +185,7 @@ export const AddExpenseScreen = ({ navigation, route }) => {
   };
 
   const handleCreateCategory = () => {
-    navigation.navigate("CreateCategory", {
+    navigation.navigate("AddCategory", {
       onCategoryCreated: (newCategoryId) => {
         setFormData({ ...formData, category: newCategoryId });
       },

@@ -73,7 +73,7 @@ export const SettingsRow = memo(
   }
 );
 
-export const QuickActionTile = memo(({ icon, label, color, bg, onPress }) => {
+export const QuickActionTile = memo(({ icon, label, color, bg, onPress, highlighted }) => {
   const { theme } = useTheme();
   return (
     <TouchableOpacity
@@ -81,8 +81,10 @@ export const QuickActionTile = memo(({ icon, label, color, bg, onPress }) => {
         styles.actionTile,
         {
           backgroundColor: theme.surface,
-          borderColor: theme.border,
+          borderColor: highlighted ? theme.primary : theme.border,
+          borderWidth: highlighted ? 2 : 1,
         },
+        highlighted && { backgroundColor: theme.primaryMuted },
       ]}
       onPress={onPress}
       activeOpacity={0.85}

@@ -1,6 +1,6 @@
 import { dashboardService } from "../services/dashboardService";
+import { getBoardSummaries } from "../services/boardAccessService";
 import { devLog } from "../utils/logger";
-import { expenseBoardService } from "../services/expenseBoardService";
 import { showToast } from "../utils/toast";
 
 const fetchDashboardData = async () => {
@@ -11,29 +11,28 @@ const fetchDashboardData = async () => {
       remainingBudget: 0,
     },
     recentTransactions: [],
-    hasBoard: 0,
+    hasBoard: false,
   };
-  try {
-    const expenseBoards = await expenseBoardService.getExpenseBoards();
-    dashboard.hasBoard = expenseBoards.length > 0;
 
-    // Calculate total budget and expenses from boards
-    const totalBudget = expenseBoards.reduce(
-      (sum, board) => sum + (board.total_budget || 0),
+  try {
+    const summaries = await getBoardSummaries();
+    dashboard.hasBoard = summaries.length > 0;
+
+    const totalBudget = summaries.reduce(
+      (sum, board) => sum + (Number(board.total_budget) || 0),
       0
     );
-    const totalExpenses = expenseBoards.reduce(
-      (sum, board) => sum + (board.totalExpenses || 0),
+    const totalExpenses = summaries.reduce(
+      (sum, board) => sum + (Number(board.totalExpenses) || 0),
       0
     );
-    const remainingBudget = totalBudget - totalExpenses;
 
     dashboard.stats.totalBudget = totalBudget;
     dashboard.stats.totalExpenses = totalExpenses;
-    dashboard.stats.remainingBudget = remainingBudget;
+    dashboard.stats.remainingBudget = totalBudget - totalExpenses;
 
-    // Fetch recent transactions (request enough for dashboard + buffer)
-    const result = await dashboardService.getRecentTransactions(20);
+    const boardIds = summaries.map((b) => b.id);
+    const result = await dashboardService.getRecentTransactions(20, boardIds);
     if (result.error) {
       devLog("Error fetching transactions:", result.error);
     }

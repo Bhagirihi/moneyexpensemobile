@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Dimensions,
   ActivityIndicator,
   Alert,
@@ -17,7 +16,9 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { getSession, supabase, getUserProfile } from "../config/supabase";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useAuth } from "../context/AuthContext";
+import { getUserProfile } from "../config/supabase";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { expenseBoardService } from "../services/expenseBoardService";
 import { expenseService } from "../services/expenseService";
@@ -25,8 +26,15 @@ import { dashboardService } from "../services/dashboardService";
 import ThemeToggle from "../components/ThemeToggle";
 import ScreenLayout from "../components/ScreenLayout";
 import ExpenseList from "../components/ExpenseList";
+import BrandLogo from "../components/BrandLogo";
+import { AppTabHeader } from "../components/ui/AppTabHeader";
+import { PlanBadge } from "../components/ui/PlanBadge";
+import { HomeSectionHeader } from "../components/home/HomeSectionHeader";
+import { HomeBrowseLink } from "../components/home/HomeBrowseLink";
+import { HomeInlineAd } from "../components/home/HomeInlineAd";
 import { showToast } from "../utils/toast";
-import { capitalizeFirstLetter, formatCurrency } from "../utils/formatters";
+import { formatCurrency } from "../utils/formatters";
+import { getLocalizedGreeting, getFirstName } from "../utils/greeting";
 import { notificationService } from "../services/notificationService";
 import BalloonIllustration from "../components/BalloonIllustration";
 import { realTimeSync } from "../services/realTimeSync";
@@ -43,26 +51,29 @@ import {
   sendUpdateCategoryNotification,
 } from "../services/pushNotificationService";
 import { useFocusEffect } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchDashboardData } from "../fetcher";
+import { isOnboardingComplete } from "../utils/onboardingStorage";
+import { isTourCompleted } from "../utils/appCueStorage";
+import { useAppCue } from "../context/AppCueContext";
 import { useTranslation } from "../hooks/useTranslation";
-import { useSubscription } from "../context/SubscriptionContext";
-import { PLAN_CATALOG } from "../config/subscriptionPlans";
 import { devLog } from "../utils/logger";
 import { LinearGradient } from "expo-linear-gradient";
 import { QuickActionTile } from "../components/ui/UIKit";
-import { layout, radii, spacing, typography, footerScrollPadding } from "../theme/tokens";
+import { layout, radii, spacing, typography } from "../theme/tokens";
+import { useFooterScrollPadding } from "../hooks/useFooterScrollPadding";
 
 const { width, height } = Dimensions.get("window");
+const HOME_SECTION_GAP = spacing.xl;
 
 export const DashboardScreen = ({ navigation }) => {
+  const { startTour, activeHighlight, isActive: cueActive } = useAppCue();
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { currency } = useAppSettings();
-  const { plan, isPremium } = useSubscription();
-  const insets = useSafeAreaInsets();
+  const { paymentsEnabled } = useSubscription();
+  const scrollBottomPadding = useFooterScrollPadding(0, false);
   const recentLimit = Platform.OS === "android" ? 5 : 4;
-  const planName = t(PLAN_CATALOG[plan]?.nameKey || "planFree");
+  const { user: authUser } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,6 +85,12 @@ export const DashboardScreen = ({ navigation }) => {
     remainingBudget: 0,
   });
   const [unreadCount, setUnreadCount] = useState(0);
+  const { greeting, subtitle: dashboardSubtitle } = getLocalizedGreeting(t);
+  const firstName = getFirstName(userProfile?.full_name, t("guest"));
+  const headerTitle = userProfile?.full_name
+    ? `${greeting.replace("!", "")}, ${firstName}!`
+    : greeting;
+  const moreExpenseCount = Math.max(expenses.length - recentLimit, 0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -82,17 +99,33 @@ export const DashboardScreen = ({ navigation }) => {
   const message = "Hello, you have a new notification!";
 
   const loadProfile = useCallback(async () => {
+    if (!authUser?.id) return;
     try {
-      const { session } = await getSession();
-      if (!session?.user) return;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-      if (!error) setUserProfile(data);
+      const { data } = await getUserProfile(authUser.id);
+      if (data) setUserProfile(data);
     } catch (err) {
       console.error("Error loading profile:", err);
+    }
+  }, [authUser?.id]);
+
+  const fetchDashboardDataState = useCallback(async () => {
+    try {
+      const data = await fetchDashboardData();
+      setExpenses(data.recentTransactions);
+      setHasBoards(data.hasBoard);
+      setStats(data.stats);
+      devLog(data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
     }
   }, []);
 
@@ -148,46 +181,56 @@ export const DashboardScreen = ({ navigation }) => {
     [stats.totalBudget]
   );
 
-  // Set up real-time subscriptions
   useEffect(() => {
-    const stop = realTimeSync(async (payload) => {
-      console.log("📥", payload);
-      await loadProfile();
-      await fetchDashboardDataState(); // or React Query invalidateQueries
+    const stop = realTimeSync(async () => {
+      await fetchDashboardDataState();
       await fetchUnreadCount();
     });
+    return stop;
+  }, [fetchDashboardDataState, fetchUnreadCount]);
 
-    return stop; // unsubscribe on unmount
-  }, []);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
-
-  useEffect(() => {
-    fetchDashboardDataState();
-    fetchUnreadCount();
-  }, []);
-
-  // Refetch Recent Transactions when screen comes into focus (e.g. after adding an expense)
   useFocusEffect(
     useCallback(() => {
-      fetchDashboardDataState();
-    }, [])
+      let active = true;
+      (async () => {
+        const done = await isOnboardingComplete();
+        if (active && !done) {
+          navigation.navigate("Onboarding");
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [navigation])
   );
 
-  const fetchDashboardDataState = async () => {
-    try {
-      const data = await fetchDashboardData();
-      setExpenses(data.recentTransactions);
-      setHasBoards(data.hasBoard);
-      setStats(data.stats);
-      memoizedCalculateMonthlyStats(data.recentTransactions);
-      devLog(data);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+      fetchDashboardDataState();
+      fetchUnreadCount();
+    }, [loadProfile, fetchDashboardDataState, fetchUnreadCount])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      let timer;
+      (async () => {
+        const onboardingDone = await isOnboardingComplete();
+        if (!active || !onboardingDone || cueActive) return;
+        const tourDone = await isTourCompleted("dashboard");
+        if (!active || tourDone) return;
+        timer = setTimeout(() => {
+          if (active) startTour("dashboard", { hasBoards });
+        }, 700);
+      })();
+      return () => {
+        active = false;
+        if (timer) clearTimeout(timer);
+      };
+    }, [hasBoards, startTour, cueActive])
+  );
 
   // useEffect(() => {
   //   const subscription = realTimeSync.subscribeToNotifications(() => {
@@ -248,9 +291,13 @@ export const DashboardScreen = ({ navigation }) => {
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadProfile(), fetchDashboardDataState()]);
+    await Promise.all([
+      loadProfile(),
+      fetchDashboardDataState(),
+      fetchUnreadCount(),
+    ]);
     setRefreshing(false);
-  }, [loadProfile]);
+  }, [loadProfile, fetchDashboardDataState, fetchUnreadCount]);
 
   const handleDeletePress = async (expenseId) => {
     try {
@@ -316,15 +363,6 @@ export const DashboardScreen = ({ navigation }) => {
   //   }
   // };
 
-  const fetchUnreadCount = async () => {
-    try {
-      const count = await notificationService.getUnreadCount();
-      setUnreadCount(count);
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
-  };
-
   const budgetPercent = Math.min(
     100,
     Math.round((stats.totalExpenses / (stats.totalBudget || 1)) * 100)
@@ -378,24 +416,70 @@ export const DashboardScreen = ({ navigation }) => {
     </LinearGradient>
   );
 
+  const renderFirstBoardPrompt = () => {
+    if (hasBoards) return null;
+
+    return (
+      <View
+        style={[
+          styles.firstBoardCard,
+          { backgroundColor: theme.card, borderColor: theme.border },
+        ]}
+      >
+        <View style={[styles.firstBoardIcon, { backgroundColor: theme.primaryMuted }]}>
+          <MaterialCommunityIcons name="view-grid-plus" size={32} color={theme.primary} />
+        </View>
+        <Text style={[styles.firstBoardTitle, { color: theme.text }]}>
+          {t("firstBoardTitle")}
+        </Text>
+        <Text style={[styles.firstBoardSubtitle, { color: theme.textSecondary }]}>
+          {t("firstBoardSubtitle")}
+        </Text>
+        <TouchableOpacity
+          style={[styles.firstBoardButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("CreateExpenseBoard")}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="plus" size={20} color={theme.white} />
+          <Text style={[styles.firstBoardButtonText, { color: theme.white }]}>
+            {t("createFirstBoard")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("ExpenseBoard")}
+          style={styles.firstBoardLink}
+        >
+          <Text style={[styles.firstBoardLinkText, { color: theme.primary }]}>
+            {t("joinWithCode")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const isCueHighlight = (index) => activeHighlight === `quickAction:${index}`;
+
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
       <QuickActionTile
         icon="view-grid-outline"
         label={t("boards")}
         color={theme.accent}
+        highlighted={isCueHighlight(0)}
         onPress={() => navigation.navigate("ExpenseBoard")}
       />
       <QuickActionTile
         icon="plus-circle-outline"
         label={t("addExpense")}
         color={theme.primary}
+        highlighted={isCueHighlight(1)}
         onPress={() => navigation.navigate("AddExpense")}
       />
       <QuickActionTile
         icon="tag-outline"
         label={t("categories")}
         color={theme.coral || theme.warning}
+        highlighted={isCueHighlight(2)}
         onPress={() => navigation.navigate("Categories")}
       />
     </View>
@@ -412,7 +496,7 @@ export const DashboardScreen = ({ navigation }) => {
         style={styles.notificationButtonsScroll}
       >
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendPushNotification(
               "Test Notification",
@@ -427,7 +511,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendCreateExpenseBoardNotification({
               boardName: "Test Board",
@@ -447,7 +531,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendExpenseBoardInviteNotification({
               boardName: "Test Board",
@@ -468,7 +552,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendCreateExpenseNotification({
               boardName: "Test Board",
@@ -486,7 +570,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendCreateCategoryNotification({
               boardName: "Test Board",
@@ -503,7 +587,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendDeleteCategoryNotification({
               boardName: "Test Board",
@@ -520,7 +604,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendUpdateCategoryNotification({
               boardName: "Test Board",
@@ -541,7 +625,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendExpenseOverBudgetNotification({
               boardName: "Test Board",
@@ -559,7 +643,7 @@ export const DashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.notificationButton, { backgroundColor: theme.card }]}
+          style={[styles.devNotificationButton, { backgroundColor: theme.card }]}
           onPress={() =>
             sendExpenseDeletedNotification({
               boardName: "Test Board",
@@ -580,26 +664,70 @@ export const DashboardScreen = ({ navigation }) => {
   );
 
   const renderTransactionsSection = () => (
-    <View style={styles.transactionsSection}>
+    <View style={styles.transactionsBlock}>
+      <HomeSectionHeader
+        title={t("recentTransactions")}
+        subtitle={t("recentTransactionsSubtitle")}
+        trailing={
+          expenses.length > 0 ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Expense")}
+              style={styles.seeAllButton}
+            >
+              <Text style={[styles.seeAllText, { color: theme.primary }]}>
+                {t("seeAll")}
+              </Text>
+            </TouchableOpacity>
+          ) : null
+        }
+      />
       <ExpenseList
         expenses={expenses.slice(0, recentLimit)}
-        title={t("recentTransactions")}
         onSeeAllPress={() => navigation.navigate("Expense")}
         onDeletePress={handleDeletePress}
         onExpensePress={(expense) => navigation.navigate("ExpenseDetails", { expense })}
-        showHeader={true}
-        showAllButton={true}
+        showHeader={false}
+        showAllButton={false}
         showEmptyState={true}
         navigation={navigation}
         embedded={true}
         compact={Platform.OS === "android"}
+        showInlineAds={true}
+        inlineAdMode="single"
+      />
+    </View>
+  );
+
+  const renderHeaderTrailing = () => (
+    <View style={styles.headerTrailing}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate("Notification")}
+        style={[styles.headerIconButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      >
+        {unreadCount > 0 && (
+          <View
+            style={[
+              styles.notificationBadge,
+              { backgroundColor: theme.error },
+            ]}
+          >
+            <Text style={styles.notificationCount}>
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </Text>
+          </View>
+        )}
+        <MaterialCommunityIcons name="bell-outline" size={22} color={theme.text} />
+      </TouchableOpacity>
+      <ThemeToggle />
+      <PlanBadge
+        onPress={paymentsEnabled ? () => navigation.navigate("Paywall") : undefined}
       />
     </View>
   );
 
   if (loading) {
     return (
-      <ScreenLayout navigation={navigation} footerRoute="Home">
+      <ScreenLayout navigation={navigation} footerRoute="Home" showAdBanner={false}>
         <Animated.View
           style={[
             styles.loadingContainer,
@@ -610,11 +738,7 @@ export const DashboardScreen = ({ navigation }) => {
           ]}
         >
           <View style={styles.illustrationContainer}>
-            <Image
-              source={require("../../assets/icon.png")}
-              resizeMode="cover"
-              style={styles.logo}
-            />
+            <BrandLogo size={120} />
             {/* <Animated.Text
               style={[
                 styles.exploreText,
@@ -631,122 +755,40 @@ export const DashboardScreen = ({ navigation }) => {
     );
   }
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerContent}>
-        <TouchableOpacity
-          style={styles.profileSection}
-          onPress={() => navigation.navigate("Profile")}
-        >
-          <View
-            style={[
-              styles.profileIconContainer,
-              { backgroundColor: theme.primaryMuted, borderColor: theme.border },
-            ]}
-          >
-            {userProfile?.avatar_url ? (
-              <Image
-                source={{ uri: userProfile.avatar_url }}
-                style={styles.smallProfileImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <MaterialCommunityIcons
-                name="account"
-                size={24}
-                color={theme.primary}
-              />
-            )}
-          </View>
-          <View>
-            <Text style={[styles.welcomeText, { color: theme.textSecondary }]}>
-              {t("welcomeBack")}
-            </Text>
-            <Text style={[styles.nameText, { color: theme.text }]}>
-              {capitalizeFirstLetter(userProfile?.full_name) || t("guest")}
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.planBadge,
-                {
-                  backgroundColor: isPremium
-                    ? `${theme.primary}15`
-                    : theme.card,
-                  borderColor: isPremium ? theme.primary : theme.border,
-                },
-              ]}
-              onPress={() => navigation.navigate("Paywall")}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons
-                name={isPremium ? "crown" : "ticket-outline"}
-                size={14}
-                color={isPremium ? theme.primary : theme.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.planBadgeText,
-                  { color: isPremium ? theme.primary : theme.textSecondary },
-                ]}
-              >
-                {t("currentPlanLabel")}: {planName}
-              </Text>
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={14}
-                color={isPremium ? theme.primary : theme.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Notification")}
-            style={[styles.notificationButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          >
-            {unreadCount > 0 && (
-              <View
-                style={[
-                  styles.notificationBadge,
-                  { backgroundColor: theme.error },
-                ]}
-              >
-                <Text style={styles.notificationCount}>
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </Text>
-              </View>
-            )}
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={24}
-              color={theme.text}
-            />
-          </TouchableOpacity>
-          <ThemeToggle />
-        </View>
-      </View>
-    </View>
-  );
-
   return (
-    <ScreenLayout navigation={navigation} footerRoute="Home">
-      {renderHeader()}
+    <ScreenLayout navigation={navigation} footerRoute="Home" showAdBanner={false}>
       <ScrollView
         style={styles.scroll}
         bounces={false}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: footerScrollPadding(insets.bottom) },
+          { paddingBottom: scrollBottomPadding },
         ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {renderBalanceCard()}
-        {renderQuickActions()}
-        {__DEV__ ? renderNotificationTestButtons() : null}
-        {renderTransactionsSection()}
+        <AppTabHeader
+          compact
+          title={headerTitle}
+          subtitle={dashboardSubtitle}
+          onTitlePress={() => navigation.navigate("Profile")}
+          trailing={renderHeaderTrailing()}
+        />
+
+        <View style={styles.sections}>
+          {renderFirstBoardPrompt()}
+          {hasBoards ? renderBalanceCard() : null}
+          <HomeInlineAd />
+          {renderQuickActions()}
+          {__DEV__ ? renderNotificationTestButtons() : null}
+          {renderTransactionsSection()}
+          <HomeBrowseLink
+            count={moreExpenseCount}
+            onPress={() => navigation.navigate("Expense")}
+          />
+        </View>
       </ScrollView>
     </ScreenLayout>
   );
@@ -774,59 +816,81 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: layout.screenPadding,
+    paddingTop: spacing.xs,
+  },
+  sections: {
+    gap: HOME_SECTION_GAP,
+    marginTop: spacing.sm,
+  },
+  transactionsBlock: {
+    gap: spacing.sm,
+  },
+  firstBoardCard: {
+    marginTop: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+  },
+  firstBoardIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  firstBoardTitle: {
+    ...typography.h3,
+    textAlign: "center",
+    marginBottom: spacing.xs,
+  },
+  firstBoardSubtitle: {
+    ...typography.body,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  firstBoardButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.lg,
+    width: "100%",
+    justifyContent: "center",
+  },
+  firstBoardButtonText: {
+    ...typography.bodyMedium,
+    fontWeight: "700",
+  },
+  firstBoardLink: {
+    marginTop: spacing.md,
+    padding: spacing.xs,
+  },
+  firstBoardLinkText: {
+    ...typography.caption,
+    fontWeight: "600",
   },
   scroll: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: Platform.OS === "android" ? spacing.xs : spacing.sm,
-    paddingBottom: Platform.OS === "android" ? spacing.sm : spacing.md,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerRight: {
+  headerTrailing: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.xs,
   },
-  welcomeText: {
-    ...typography.caption,
-    color: undefined,
-  },
-  nameText: {
-    ...typography.h2,
-    fontSize: Platform.OS === "android" ? 20 : 22,
-  },
-  planBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 4,
-    marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  planBadgeText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
+  headerIconButton: {
+    width: 36,
+    height: 36,
     borderRadius: radii.md,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: spacing.sm,
   },
   balanceCard: {
-    marginHorizontal: layout.screenPadding,
-    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
     padding: Platform.OS === "android" ? spacing.lg : spacing.xl,
     borderRadius: radii.xl,
     ...shadowStyle(6),
@@ -902,12 +966,6 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: "row",
     gap: spacing.sm,
-    paddingHorizontal: layout.screenPadding,
-    marginBottom: Platform.OS === "android" ? spacing.md : spacing.lg,
-  },
-  transactionsSection: {
-    paddingHorizontal: layout.screenPadding,
-    marginTop: Platform.OS === "android" ? spacing.xs : spacing.sm,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -930,20 +988,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-  profileIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  smallProfileImage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 20,
   },
   notificationBadge: {
     position: "absolute",
@@ -985,19 +1029,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 8,
   },
-  logo: {
-    width: width * 0.8,
-    height: height * 0.8,
-    resizeMode: "contain",
-  },
   notificationTestContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: spacing.sm,
   },
   notificationButtonsScroll: {
     marginTop: 10,
   },
-  notificationButton: {
+  devNotificationButton: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,

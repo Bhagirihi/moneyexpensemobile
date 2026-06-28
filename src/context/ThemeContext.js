@@ -11,7 +11,7 @@ const buildTheme = (palette, isDark) => ({
   primaryLight: palette.primaryMuted,
   textLight: palette.textMuted,
   borderLight: palette.borderLight,
-  inputBackground: isDark ? palette.surfaceElevated : "#F8FAFC",
+  inputBackground: isDark ? palette.surfaceElevated : palette.borderLight,
   shadow: shadowStyle(3),
   overlay: palette.overlay,
   inviteCard: {

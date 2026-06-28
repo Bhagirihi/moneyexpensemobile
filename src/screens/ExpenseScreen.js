@@ -104,13 +104,9 @@ export const ExpenseScreen = ({ navigation }) => {
   );
 
   useEffect(() => {
-    fetchExpenses();
-  }, [selectedCategory]);
-
-  useEffect(() => {
-    fetchExpenses();
+    fetchExpenses(1);
     const EnpenseRealTimeSync = realTimeSync.subscribeToExpense(
-      fetchExpenses,
+      () => fetchExpenses(1),
       "realtime-expenses-list"
     );
     return () => {
@@ -118,7 +114,7 @@ export const ExpenseScreen = ({ navigation }) => {
         EnpenseRealTimeSync();
       }
     };
-  }, []);
+  }, [selectedCategory]);
 
   const fetchExpenses = async (pageNum = 1) => {
     try {
@@ -397,6 +393,8 @@ export const ExpenseScreen = ({ navigation }) => {
             navigation={navigation}
             title={t("transactions")}
             embedded={true}
+            showInlineAds={true}
+            inlineAdMode="interval"
           />
         )}
       </ScrollView>

@@ -5,7 +5,16 @@ export const site = {
     "Trivense helps travelers and groups manage shared expenses with boards, real-time sync, analytics, and smart budgets — built for India and beyond.",
   url: "https://trivense.app",
   supportEmail: "support@trivense.app",
+  playStoreUrl:
+    "https://play.google.com/store/apps/details?id=com.trivense.app",
 };
+
+export const trustBadges = [
+  "Real-time sync",
+  "Group boards",
+  "INR & multi-currency",
+  "Bank-grade security",
+];
 
 export const features = [
   {
@@ -69,6 +78,34 @@ export const steps = [
   },
 ];
 
+export const planFeatures = {
+  free: [
+    "1 expense board",
+    "Weekly analytics",
+    "Up to 3 custom categories",
+    "Email sign-in",
+    "Ads displayed in the app",
+  ],
+  premium: [
+    "Ad-free experience",
+    "Unlimited boards",
+    "Board sharing & invites",
+    "Advanced analytics (all periods)",
+    "Unlimited categories",
+    "Export & backup",
+    "Priority support",
+  ],
+  yearly: [
+    "Everything in Premium",
+    "Save vs monthly billing",
+    "Ideal for annual trip planning",
+  ],
+};
+
+/** Free-plan ads bullet — links to /ads from the pricing card */
+export const FREE_PLAN_ADS_FEATURE = "Ads displayed in the app";
+export const ADS_POLICY_PATH = "/ads";
+
 export const plans = [
   {
     name: "Free",
@@ -80,6 +117,7 @@ export const plans = [
       "Weekly analytics",
       "Up to 3 custom categories",
       "Email sign-in",
+      "Ads displayed in the app",
     ],
     cta: "Get started",
     highlighted: false,
@@ -90,6 +128,7 @@ export const plans = [
     period: "/month",
     description: "For frequent travelers and groups who need more.",
     features: [
+      "Ad-free experience",
       "Unlimited boards",
       "Board sharing & invites",
       "Advanced analytics (all periods)",
@@ -115,6 +154,9 @@ export const plans = [
   },
 ];
 
+export const pricingNote =
+  "India pricing shown. Premium markets (US, UK, EU, etc.) are billed at local premium rates in the app — from $9.99/month.";
+
 export const faqs = [
   {
     q: "What is Trivense?",
@@ -126,7 +168,7 @@ export const faqs = [
   },
   {
     q: "Can I use Trivense for free?",
-    a: "Yes. The free plan includes one expense board, weekly analytics, and up to three custom categories. Upgrade when you need sharing and unlimited boards.",
+    a: "Yes. The free plan includes one expense board, weekly analytics, and up to three custom categories. Free users see ads in the app (see our Advertising Policy). Upgrade to Premium for an ad-free experience, sharing, and unlimited boards.",
   },
   {
     q: "How do I join a shared board?",
@@ -134,6 +176,6 @@ export const faqs = [
   },
   {
     q: "When is the app available?",
-    a: "Trivense is in active development. Join the waitlist below and we'll notify you when the next release is ready on iOS and Android.",
+    a: "Trivense is available on Android via Google Play Open Testing. Join the waitlist for iOS launch updates and early access invites.",
   },
 ];

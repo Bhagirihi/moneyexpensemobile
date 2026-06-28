@@ -19,6 +19,7 @@ const FormButton = memo(
     size = "medium",
     style,
     textStyle,
+    testID,
     ...props
   }) => {
     const { theme } = useTheme();
@@ -72,6 +73,7 @@ const FormButton = memo(
 
     return (
       <TouchableOpacity
+        testID={testID}
         style={styles.button}
         onPress={onPress}
         disabled={disabled || loading}

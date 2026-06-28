@@ -135,6 +135,23 @@ def make_dashboard_screen(glyph: Image.Image) -> Image.Image:
         draw.text((76, y + 24), label, fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 18))
         draw.text((76, y + 56), val, fill=BRAND, font=load_font("Poppins-Bold.ttf", 32))
         y += 150
+
+    y += 12
+    draw.text((48, y), "Recent expenses", fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 26))
+    y += 48
+    recent = [
+        ("Dinner · Goa trip", "₹2,400", "Food"),
+        ("Uber · Airport", "₹680", "Travel"),
+        ("Hotel share", "₹4,200", "Stay"),
+    ]
+    for title, amt, cat in recent:
+        rounded_rect(draw, (48, y, w - 48, y + 108), 16, WHITE, outline=(225, 228, 238), width=2)
+        rounded_rect(draw, (64, y + 24, 92, y + 84), 10, ACCENT)
+        draw.text((108, y + 22), title, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 22))
+        draw.text((108, y + 52), cat, fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 16))
+        tw, _ = text_size(draw, amt, load_font("Poppins-Bold.ttf", 24))
+        draw.text((w - 64 - tw, y + 36), amt, fill=BRAND, font=load_font("Poppins-Bold.ttf", 24))
+        y += 124
     return img
 
 
@@ -185,7 +202,7 @@ def make_split_screen(glyph: Image.Image) -> Image.Image:
     rounded_rect(draw, (0, 0, w, 200), 0, BRAND)
     draw.text((48, 80), "Who owes whom", fill=WHITE, font=load_font("Poppins-Bold.ttf", 32))
     y = 260
-    splits = [("Rahul → You", "₹1,200"), ("You → Priya", "₹850"), ("Amit → Rahul", "₹400")]
+    splits = [("Rahul owes You", "₹1,200"), ("You owe Priya", "₹850"), ("Amit owes Rahul", "₹400")]
     for pair, amt in splits:
         rounded_rect(draw, (48, y, w - 48, y + 110), 16, WHITE, outline=(225, 228, 238), width=2)
         draw.text((76, y + 28), pair, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))

@@ -1,5 +1,3 @@
-export { REVENUECAT_ENTITLEMENT_ID, STORE_PRODUCT_IDS } from "./revenueCat";
-
 export const PLANS = {
   FREE: "free",
   MONTHLY: "monthly",
@@ -7,6 +5,7 @@ export const PLANS = {
 };
 
 export const FEATURES = {
+  AD_FREE: "ad_free",
   UNLIMITED_BOARDS: "unlimited_boards",
   BOARD_SHARING: "board_sharing",
   BOARD_SETTLEMENTS: "board_settlements",
@@ -50,12 +49,13 @@ export const PLAN_CATALOG = {
 
 export const PLAN_LIMITS = {
   [PLANS.FREE]: {
-    maxBoards: 1,
-    maxSharedBoards: 0,
+    maxBoards: null,
+    maxSharedBoards: 1,
     maxCustomCategories: 3,
-    analyticsPeriods: ["week"],
+    analyticsPeriods: ["week", "month", "year", "all"],
     features: {
-      [FEATURES.UNLIMITED_BOARDS]: false,
+      [FEATURES.AD_FREE]: false,
+      [FEATURES.UNLIMITED_BOARDS]: true,
       [FEATURES.BOARD_SHARING]: false,
       [FEATURES.BOARD_SETTLEMENTS]: false,
       [FEATURES.EXPORT_DATA]: false,
@@ -72,6 +72,7 @@ export const PLAN_LIMITS = {
     maxCustomCategories: null,
     analyticsPeriods: ["week", "month", "year", "all"],
     features: {
+      [FEATURES.AD_FREE]: true,
       [FEATURES.UNLIMITED_BOARDS]: true,
       [FEATURES.BOARD_SHARING]: true,
       [FEATURES.BOARD_SETTLEMENTS]: true,
@@ -89,6 +90,7 @@ export const PLAN_LIMITS = {
     maxCustomCategories: null,
     analyticsPeriods: ["week", "month", "year", "all"],
     features: {
+      [FEATURES.AD_FREE]: true,
       [FEATURES.UNLIMITED_BOARDS]: true,
       [FEATURES.BOARD_SHARING]: true,
       [FEATURES.BOARD_SETTLEMENTS]: true,
@@ -104,11 +106,11 @@ export const PLAN_LIMITS = {
 
 export const PAYWALL_FEATURE_LIST = [
   {
-    feature: FEATURES.UNLIMITED_BOARDS,
-    icon: "view-grid-plus",
-    titleKey: "featureUnlimitedBoards",
-    descKey: "featureUnlimitedBoardsDesc",
-    benefitKey: "featureUnlimitedBoardsBenefit",
+    feature: FEATURES.AD_FREE,
+    icon: "advertisements-off",
+    titleKey: "featureAdFree",
+    descKey: "featureAdFreeDesc",
+    benefitKey: "featureAdFreeBenefit",
   },
   {
     feature: FEATURES.BOARD_SHARING,
@@ -175,3 +177,5 @@ export function canUseAnalyticsPeriod(planId, period) {
   const limits = getPlanLimits(planId);
   return limits.analyticsPeriods.includes(period);
 }
+
+export { REVENUECAT_ENTITLEMENT_ID, STORE_PRODUCT_IDS } from "./revenueCat";

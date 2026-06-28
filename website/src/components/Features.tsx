@@ -34,34 +34,62 @@ const icons: Record<string, ReactNode> = {
   ),
 };
 
+const highlights = new Set(["Expense boards", "Split & share", "Smart analytics"]);
+
 export function Features() {
   return (
-    <section id="features" className="py-20 md:py-28">
-      <div className="mx-auto max-w-6xl px-5">
-        <div className="max-w-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wider text-primary">
-            Features
-          </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Everything you need for shared spending
+    <section id="features" className="scroll-mt-24 relative overflow-hidden py-24 md:py-32">
+      <div className="absolute inset-0 gradient-section-dark" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(201,162,39,0.12),transparent_55%)]" />
+      <div className="pointer-events-none absolute left-0 top-24 h-px w-full bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+
+      <div className="relative mx-auto max-w-6xl px-5">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="section-label">Features</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white md:text-4xl lg:text-[2.75rem] lg:leading-tight">
+            Everything you need for{" "}
+            <span className="text-gradient-gold">shared spending</span>
           </h2>
-          <p className="mt-4 text-lg text-muted">
+          <p className="mt-5 text-lg leading-relaxed text-white/65">
             From solo budgets to group trips — Trivense keeps everyone on the same page.
           </p>
         </div>
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <article
-              key={feature.title}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-primary">
-                {icons[feature.icon]}
-              </div>
-              <h3 className="mt-4 text-lg font-bold text-foreground">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{feature.description}</p>
-            </article>
-          ))}
+
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature, index) => {
+            const featured = highlights.has(feature.title);
+
+            return (
+              <article
+                key={feature.title}
+                className={`group relative overflow-hidden rounded-2xl border p-7 transition ${
+                  featured
+                    ? "border-gold/30 bg-white/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.25)] hover:border-gold/50 hover:bg-white/[0.1]"
+                    : "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]"
+                }`}
+              >
+                {featured ? (
+                  <span className="absolute right-4 top-4 rounded-full bg-gold/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-light ring-1 ring-gold/20">
+                    Core
+                  </span>
+                ) : null}
+                <div
+                  className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                    featured
+                      ? "bg-gradient-to-br from-gold/25 to-gold/10 text-gold-light ring-1 ring-gold/25"
+                      : "bg-white/10 text-white ring-1 ring-white/10"
+                  }`}
+                >
+                  {icons[feature.icon]}
+                </div>
+                <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-white/35">
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <h3 className="mt-2 text-lg font-bold text-white">{feature.title}</h3>
+                <p className="mt-2.5 text-sm leading-relaxed text-white/60">{feature.description}</p>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

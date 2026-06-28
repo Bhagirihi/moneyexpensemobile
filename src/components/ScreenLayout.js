@@ -3,6 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import FooterTab from "./FooterTab";
+import AdBanner from "./AdBanner";
 
 /**
  * Standard screen shell: top safe area + optional header + flex content + optional footer tab.
@@ -13,17 +14,26 @@ export function ScreenLayout({
   header = null,
   navigation,
   footerRoute = null,
+  showAdBanner = true,
   style,
   contentStyle,
 }) {
   const { theme } = useTheme();
 
+  const screenTestId = footerRoute
+    ? `screen-${String(footerRoute).toLowerCase()}`
+    : undefined;
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }, style]}>
+    <View
+      testID={screenTestId}
+      style={[styles.root, { backgroundColor: theme.background }, style]}
+    >
       <SafeAreaView style={styles.safeTop} edges={["top", "left", "right"]}>
         {header}
         <View style={[styles.content, contentStyle]}>{children}</View>
       </SafeAreaView>
+      {footerRoute && showAdBanner ? <AdBanner /> : null}
       {footerRoute ? (
         <FooterTab navigation={navigation} activeRoute={footerRoute} />
       ) : null}

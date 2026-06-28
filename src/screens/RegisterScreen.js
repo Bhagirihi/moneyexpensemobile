@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
 } from "react-native";
+import { useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { signUpWithEmail, signInWithGoogle } from "../config/supabase";
@@ -13,24 +13,46 @@ import { isValidEmail } from "../utils/validation";
 import { showToast } from "../utils/toast";
 import AuthShell from "../components/ui/AuthShell";
 import FormButton from "../components/common/FormButton";
+import { createAuthFormStyles } from "../components/ui/authFormStyles";
 import { useTranslation } from "../hooks/useTranslation";
-import { spacing, typography } from "../theme/tokens";
+import {
+  getPendingReferralCode,
+  normalizeReferralCode,
+  setPendingReferralCode,
+} from "../utils/referralStorage";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const route = useRoute();
+  const compact = true;
+  const styles = useMemo(() => createAuthFormStyles(compact), [compact]);
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     mobile: "",
     password: "",
     confirmPassword: "",
+    referralCode: "",
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const fromRoute = normalizeReferralCode(route.params?.referralCode);
+      const fromStorage = await getPendingReferralCode();
+      const code = fromRoute || fromStorage;
+      if (code) {
+        setFormData((prev) => ({ ...prev, referralCode: code }));
+        await setPendingReferralCode(code);
+      }
+    })();
+  }, [route.params?.referralCode]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -72,6 +94,10 @@ const RegisterScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
+      if (formData.referralCode.trim()) {
+        await setPendingReferralCode(formData.referralCode);
+      }
+
       const { error: signUpError } = await signUpWithEmail(
         formData.email.trim(),
         formData.password,
@@ -106,6 +132,10 @@ const RegisterScreen = ({ navigation }) => {
   const handleGoogleSignUp = async () => {
     setGoogleLoading(true);
     try {
+      if (formData.referralCode.trim()) {
+        await setPendingReferralCode(formData.referralCode);
+      }
+
       const { data, error } = await signInWithGoogle();
       if (error) throw error;
       if (data?.user?.email_confirmed_at) {
@@ -154,11 +184,12 @@ const RegisterScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons
             name={options.icon}
-            size={20}
+            size={18}
             color={theme.textMuted}
             style={styles.inputIcon}
           />
           <TextInput
+            testID={`register-${key}-input`}
             style={[styles.input, { color: theme.text }]}
             placeholder={options.placeholder}
             placeholderTextColor={theme.textMuted}
@@ -178,7 +209,7 @@ const RegisterScreen = ({ navigation }) => {
             <TouchableOpacity onPress={toggleVisible} style={styles.eyeBtn}>
               <MaterialCommunityIcons
                 name={visible ? "eye-off-outline" : "eye-outline"}
-                size={20}
+                size={18}
                 color={theme.textMuted}
               />
             </TouchableOpacity>
@@ -193,62 +224,27 @@ const RegisterScreen = ({ navigation }) => {
 
   return (
     <AuthShell
+      testID="screen-register"
+      compact
       title="Create account"
       subtitle={t("brandTagline")}
+      showSubtitle={false}
       footer={
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>
             Already have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+          <TouchableOpacity
+            testID="register-go-login"
+            accessibilityRole="link"
+            accessibilityLabel="register-sign-in-link"
+            onPress={() => navigation.navigate("Login")}
+          >
             <Text style={[styles.footerLink, { color: theme.primary }]}>Sign in</Text>
           </TouchableOpacity>
         </View>
       }
     >
-      {renderField("Full name", "fullName", {
-        icon: "account-outline",
-        placeholder: "Your full name",
-        autoCapitalize: "words",
-      })}
-      {renderField("Email", "email", {
-        icon: "email-outline",
-        placeholder: "you@example.com",
-        keyboard: "email-address",
-      })}
-      {renderField("Mobile", "mobile", {
-        icon: "phone-outline",
-        placeholder: "10-digit mobile number",
-        keyboard: "phone-pad",
-        maxLength: 10,
-      })}
-      {renderField("Password", "password", {
-        icon: "lock-outline",
-        placeholder: "At least 8 characters",
-        secure: true,
-        secureKey: "password",
-      })}
-      {renderField("Confirm password", "confirmPassword", {
-        icon: "lock-check-outline",
-        placeholder: "Re-enter your password",
-        secure: true,
-        secureKey: "confirm",
-      })}
-
-      <FormButton
-        title="Create account"
-        onPress={handleRegister}
-        loading={loading}
-        size="large"
-        style={styles.submitBtn}
-      />
-
-      <View style={styles.dividerRow}>
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <Text style={[styles.dividerText, { color: theme.textMuted }]}>or</Text>
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-      </View>
-
       <TouchableOpacity
         style={[
           styles.googleBtn,
@@ -262,58 +258,76 @@ const RegisterScreen = ({ navigation }) => {
           <Text style={{ color: theme.text }}>...</Text>
         ) : (
           <>
-            <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+            <MaterialCommunityIcons name="google" size={18} color="#4285F4" />
             <Text style={[styles.googleText, { color: theme.text }]}>
               Continue with Google
             </Text>
           </>
         )}
       </TouchableOpacity>
+
+      <View style={styles.dividerRow}>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Text style={[styles.dividerText, { color: theme.textMuted }]}>
+          or sign up with email
+        </Text>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      </View>
+
+      {renderField("Full name", "fullName", {
+        icon: "account-outline",
+        placeholder: "Your full name",
+        autoCapitalize: "words",
+      })}
+      {renderField("Email", "email", {
+        icon: "email-outline",
+        placeholder: "you@example.com",
+        keyboard: "email-address",
+      })}
+      {renderField("Mobile", "mobile", {
+        icon: "phone-outline",
+        placeholder: "10-digit mobile",
+        keyboard: "phone-pad",
+        maxLength: 10,
+      })}
+
+      {renderField("Password", "password", {
+        icon: "lock-outline",
+        placeholder: "Min. 8 characters",
+        secure: true,
+        secureKey: "password",
+      })}
+      {renderField("Confirm password", "confirmPassword", {
+        icon: "lock-check-outline",
+        placeholder: "Re-enter password",
+        secure: true,
+        secureKey: "confirm",
+      })}
+
+      {renderField(t("referralCodeOptional"), "referralCode", {
+        icon: "ticket-percent-outline",
+        placeholder: t("referralCodePlaceholder"),
+        autoCapitalize: "characters",
+        maxLength: 12,
+      })}
+
+      {formData.referralCode.trim() ? (
+        <Text style={[styles.referralHint, { color: theme.textSecondary }]}>
+          {t("referralRewardHint")}
+        </Text>
+      ) : null}
+
+      <FormButton
+        testID="register-submit-button"
+        accessibilityLabel="register-submit-button"
+        title="Create account"
+        onPress={handleRegister}
+        loading={loading}
+        size="medium"
+        style={styles.submitBtn}
+      />
     </AuthShell>
   );
 };
-
-const styles = StyleSheet.create({
-  field: { marginBottom: spacing.md },
-  label: { ...typography.label, marginBottom: spacing.sm },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    minHeight: 52,
-  },
-  inputIcon: { marginRight: spacing.sm },
-  input: { flex: 1, fontSize: 16, paddingVertical: spacing.md },
-  eyeBtn: { padding: spacing.sm },
-  error: { fontSize: 12, marginTop: spacing.xs },
-  submitBtn: { marginTop: spacing.sm },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  divider: { flex: 1, height: 1 },
-  dividerText: { ...typography.caption },
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  googleText: { ...typography.label },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    flexWrap: "wrap",
-  },
-  footerText: { fontSize: 14 },
-  footerLink: { fontSize: 14, fontWeight: "700" },
-});
 
 export default RegisterScreen;

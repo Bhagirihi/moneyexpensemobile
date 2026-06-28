@@ -27,6 +27,8 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
           return (
             <TouchableOpacity
               key={tab.key}
+              testID={`footer-tab-${tab.key}`}
+              accessibilityLabel={t(tab.labelKey)}
               style={styles.tabItem}
               onPress={() => navigation.navigate(tab.route)}
               activeOpacity={0.75}
@@ -34,13 +36,20 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
               <View
                 style={[
                   styles.iconWrap,
-                  isActive && { backgroundColor: theme.primaryMuted },
+                  isActive && {
+                    backgroundColor: theme.tabBarActive,
+                    borderRadius: radii.md,
+                  },
                 ]}
               >
                 <MaterialCommunityIcons
                   name={isActive ? tab.icon : tab.iconOutline}
                   size={22}
-                  color={isActive ? theme.tabBarActive : theme.tabBarInactive}
+                  color={
+                    isActive
+                      ? theme.tabBarActiveIcon ?? theme.white
+                      : theme.tabBarInactive
+                  }
                 />
               </View>
               <Text

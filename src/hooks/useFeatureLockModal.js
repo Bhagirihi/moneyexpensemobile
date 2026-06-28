@@ -1,15 +1,20 @@
 import { useState, useCallback } from "react";
+import { useSubscription } from "../context/SubscriptionContext";
 import FeatureLockModal from "../components/FeatureLockModal";
 
 export function useFeatureLockModal(navigation) {
+  const { paymentsEnabled } = useSubscription();
   const [visible, setVisible] = useState(false);
   const [feature, setFeature] = useState(null);
 
-  const openFeatureLock = useCallback((featureKey) => {
-    if (!featureKey) return;
-    setFeature(featureKey);
-    setVisible(true);
-  }, []);
+  const openFeatureLock = useCallback(
+    (featureKey) => {
+      if (!featureKey || !paymentsEnabled) return;
+      setFeature(featureKey);
+      setVisible(true);
+    },
+    [paymentsEnabled]
+  );
 
   const closeFeatureLock = useCallback(() => {
     setVisible(false);
@@ -20,10 +25,10 @@ export function useFeatureLockModal(navigation) {
     const activeFeature = feature;
     setVisible(false);
     setFeature(null);
-    if (activeFeature && navigation) {
+    if (activeFeature && navigation && paymentsEnabled) {
       navigation.navigate("Paywall", { feature: activeFeature });
     }
-  }, [feature, navigation]);
+  }, [feature, navigation, paymentsEnabled]);
 
   const featureLockModal = (
     <FeatureLockModal

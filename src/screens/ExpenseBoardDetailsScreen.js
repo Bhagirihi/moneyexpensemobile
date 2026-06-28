@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { shadowStyle } from "../utils/platformStyles";
 import {
   View,
@@ -24,18 +24,30 @@ import { formatCurrency } from "../utils/formatters";
 import { devLog } from "../utils/logger";
 import ExpenseItem from "../components/ExpenseItem";
 import { FEATURES } from "../config/subscriptionPlans";
+import { subscriptionService } from "../services/subscriptionService";
+import { useSubscription } from "../context/SubscriptionContext";
+import { useAdPolicy } from "../context/AdPolicyContext";
 import {
   LockedActionButton,
-  LockedIconButton,
 } from "../components/LockedFeature";
+import InlineListAd from "../components/InlineListAd";
+import {
+  interleaveListWithAds,
+  isAdListItem,
+} from "../utils/listWithAds";
+import { LIST_AD_INTERVAL_TRANSACTIONS } from "../config/admob";
+import { useTranslation } from "../hooks/useTranslation";
 
 export const ExpenseBoardDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
 
   const { boardId, boardName, totalExpenses, totalBudget, totalTransactions } =
     route.params;
   const { theme } = useTheme();
+  const { subscription, requireFeature, isPremium } = useSubscription();
+  const { showBannerAds } = useAdPolicy();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -48,6 +60,14 @@ export const ExpenseBoardDetailsScreen = () => {
   const [isBoardOwner, setIsBoardOwner] = useState(false);
 
   const ITEMS_PER_PAGE = 10;
+
+  const expenseListData = useMemo(() => {
+    if (!showBannerAds || isPremium || expenses.length === 0) return expenses;
+    return interleaveListWithAds(expenses, {
+      interval: LIST_AD_INTERVAL_TRANSACTIONS,
+      adKeyPrefix: "board-txn-ad",
+    });
+  }, [expenses, isPremium, showBannerAds]);
 
   const fetchData = async (pageNum = 1, isRefreshing = false) => {
     try {
@@ -143,7 +163,22 @@ export const ExpenseBoardDetailsScreen = () => {
     }
   };
 
-  const handleShareBoard = () => {
+  const handleShareBoard = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const shareCheck = await subscriptionService.canShareBoardWithLimit(
+      subscription,
+      user.id,
+      boardId
+    );
+    if (!shareCheck.allowed) {
+      requireFeature(FEATURES.BOARD_SHARING, navigation);
+      return;
+    }
+
     setShowShareModal(true);
   };
 
@@ -229,13 +264,16 @@ export const ExpenseBoardDetailsScreen = () => {
         rightComponent={
           isBoardOwner ? (
             <View style={styles.headerButtons}>
-              <LockedIconButton
-                feature={FEATURES.BOARD_SHARING}
-                navigation={navigation}
-                icon="share-variant"
+              <TouchableOpacity
                 style={styles.headerButton}
                 onPress={handleShareBoard}
-              />
+              >
+                <MaterialCommunityIcons
+                  name="share-variant"
+                  size={24}
+                  color={theme.primary}
+                />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerButton}
                 onPress={handleDeleteBoard}
@@ -430,21 +468,24 @@ export const ExpenseBoardDetailsScreen = () => {
                 </Text>
               </View>
               <View>
-                {expenses.map((expense) => (
-                  <ExpenseItem
-                    key={expense.id}
-                    expense={expense}
-                    onPress={() =>
-                      navigation.navigate("ExpenseDetails", {
-                        expenseId: expense.id,
-                      })
-                    }
-                    onDelete={() => {
-                      // Handle delete if needed
-                      devLog("Delete expense:", expense.id);
-                    }}
-                  />
-                ))}
+                {expenseListData.map((item) =>
+                  isAdListItem(item) ? (
+                    <InlineListAd key={item.id} />
+                  ) : (
+                    <ExpenseItem
+                      key={item.id}
+                      expense={item}
+                      onPress={() =>
+                        navigation.navigate("ExpenseDetails", {
+                          expenseId: item.id,
+                        })
+                      }
+                      onDelete={() => {
+                        devLog("Delete expense:", item.id);
+                      }}
+                    />
+                  )
+                )}
               </View>
             </View>
           ) : (
@@ -473,8 +514,8 @@ export const ExpenseBoardDetailsScreen = () => {
             feature={FEATURES.BOARD_SETTLEMENTS}
             navigation={navigation}
             style={[styles.actionButton, { backgroundColor: theme.card }]}
-            icon="chart-bar"
-            label="Analysis"
+            icon="scale-balance"
+            label={t("settlements")}
             onPress={() => navigation.navigate("Analysis", { boardId })}
           />
         </View>

@@ -24,8 +24,7 @@ import {
   formatCurrency,
   formatDateTime,
 } from "../utils/formatters";
-import { expenseBoardService } from "../services/expenseBoardService";
-import { categoryService } from "../services/categoryService";
+import { getBoardSummaries } from "../services/boardAccessService";
 import { userService } from "../services/supabaseService";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
@@ -49,7 +48,7 @@ export const ProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { plan, isPremium } = useSubscription();
+  const { plan, isPremium, paymentsEnabled } = useSubscription();
   const { language } = useAppSettings();
   const locale = getLocaleFromLanguage(language);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -100,22 +99,38 @@ export const ProfileScreen = ({ navigation }) => {
   };
 
   const accountStatics = async () => {
-    const expenseBoards = await expenseBoardService.getExpenseBoards();
-    const categories = await categoryService.getCategories();
-    const sharedMembers = await expenseBoardService.getSharedMembers();
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
 
-    const totalExpenses = expenseBoards.reduce(
-      (sum, board) => sum + (board.totalExpenses || 0),
-      0
-    );
-    const totalCategories = categories.length;
-    const totalBoards = expenseBoards.length;
-    const totalSharedMembers = sharedMembers.length;
+    try {
+      const [boardsRes, categoriesRes, sharedRes, summaries] = await Promise.all([
+        supabase
+          .from("expense_boards")
+          .select("id", { count: "exact", head: true })
+          .eq("created_by", userId),
+        supabase
+          .from("categories")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId),
+        supabase
+          .from("shared_users")
+          .select("id", { count: "exact", head: true })
+          .eq("shared_by", userId),
+        getBoardSummaries({ force: true }),
+      ]);
 
-    setTotalExpenses(totalExpenses);
-    setTotalCategories(totalCategories);
-    setTotalBoards(totalBoards);
-    setTotalSharedMembers(totalSharedMembers);
+      const totalExpenses = (summaries || []).reduce(
+        (sum, board) => sum + (Number(board.totalExpenses) || 0),
+        0
+      );
+
+      setTotalExpenses(totalExpenses);
+      setTotalCategories(categoriesRes.count || 0);
+      setTotalBoards(boardsRes.count || 0);
+      setTotalSharedMembers(sharedRes.count || 0);
+    } catch (error) {
+      console.error("Error loading account stats:", error.message);
+    }
   };
 
   const handleEditProfile = () => {
@@ -357,7 +372,7 @@ export const ProfileScreen = ({ navigation }) => {
   );
 
   const renderPremiumBanner = () => {
-    if (isPremium) return null;
+    if (isPremium || !paymentsEnabled) return null;
     return (
       <TouchableOpacity
         activeOpacity={0.9}

@@ -15,6 +15,8 @@
 
 require("dotenv").config();
 
+const path = require("path");
+
 const API_BASE = "https://api.revenuecat.com/v2";
 
 const ENTITLEMENT_LOOKUP_KEY = "premium";
@@ -313,6 +315,17 @@ async function main() {
   }
 
   await setCurrentOffering(projectId, offering.id);
+
+  console.log("\n→ Syncing tiered pricing (Test Store + Play via RevenueCat)…");
+  try {
+    require("child_process").execFileSync(
+      process.execPath,
+      [path.join(__dirname, "sync-revenuecat-pricing.js")],
+      { stdio: "inherit", env: process.env }
+    );
+  } catch {
+    console.log("  Pricing sync skipped or partial — run: npm run sync:revenuecat-pricing");
+  }
 
   console.log("\nDone. Trivense RevenueCat setup:");
   console.log(`  Entitlement: ${ENTITLEMENT_LOOKUP_KEY}`);

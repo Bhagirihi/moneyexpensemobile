@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { site } from "@/lib/content";
 
 export function Waitlist() {
   const [name, setName] = useState("");
@@ -26,7 +27,7 @@ export function Waitlist() {
       }
 
       setStatus("success");
-      setMessage("You're on the list! We'll email you when Trivense launches.");
+      setMessage("You're on the list! We'll email you when Trivense launches on iOS.");
       setName("");
       setEmail("");
     } catch (err) {
@@ -36,23 +37,36 @@ export function Waitlist() {
   }
 
   return (
-    <section id="waitlist" className="py-20 md:py-28">
+    <section id="waitlist" className="pb-24 md:pb-32">
       <div className="mx-auto max-w-6xl px-5">
-        <div className="gradient-hero overflow-hidden rounded-3xl px-6 py-12 md:px-12 md:py-16">
-          <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-3xl font-bold text-white md:text-4xl">
-              Get early access
-            </h2>
-            <p className="mt-3 text-white/85">
-              Join the waitlist for launch updates, beta invites, and product news.
-            </p>
-            <form onSubmit={handleSubmit} className="mt-8 space-y-3 text-left">
+        <div className="gradient-hero relative overflow-hidden rounded-[2rem] px-6 py-14 md:px-14 md:py-20">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gold/10 blur-3xl" />
+          <div className="relative mx-auto grid max-w-4xl gap-10 lg:grid-cols-2 lg:items-center">
+            <div className="text-left">
+              <p className="section-label">Early access</p>
+              <h2 className="mt-3 text-3xl font-extrabold text-white md:text-4xl">
+                Get launch updates
+              </h2>
+              <p className="mt-4 text-white/70">
+                Android is live on Google Play. Join the waitlist for iOS beta invites and product
+                news.
+              </p>
+              <a
+                href={site.playStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-gold-light hover:underline"
+              >
+                Or download on Android now →
+              </a>
+            </div>
+            <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-6 text-left md:p-8">
               <input
                 type="text"
                 placeholder="Your name (optional)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border-0 px-4 py-3 text-sm text-foreground shadow-sm outline-none ring-2 ring-transparent focus:ring-white/50"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
               />
               <input
                 type="email"
@@ -60,25 +74,25 @@ export function Waitlist() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-xl border-0 px-4 py-3 text-sm text-foreground shadow-sm outline-none ring-2 ring-transparent focus:ring-white/50"
+                className="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
               />
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="w-full rounded-xl bg-white py-3 text-sm font-bold text-primary transition hover:bg-white/95 disabled:opacity-70"
+                className="btn-primary mt-4 w-full rounded-xl py-3.5 text-sm disabled:opacity-70"
               >
                 {status === "loading" ? "Joining…" : "Join waitlist"}
               </button>
+              {message ? (
+                <p
+                  className={`mt-4 text-sm ${
+                    status === "error" ? "text-red-600" : "text-emerald-700"
+                  }`}
+                >
+                  {message}
+                </p>
+              ) : null}
             </form>
-            {message ? (
-              <p
-                className={`mt-4 text-sm ${
-                  status === "error" ? "text-red-200" : "text-emerald-100"
-                }`}
-              >
-                {message}
-              </p>
-            ) : null}
           </div>
         </div>
       </div>
