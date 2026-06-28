@@ -1,11 +1,21 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DownloadPage } from "@/components/DownloadPage";
+import { site } from "@/lib/content";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Download Trivense — Split expenses, made easy.",
+export const metadata: Metadata = buildPageMetadata({
+  title: `Download ${site.name} — Split trip & group expenses on Android`,
   description:
-    "Get Trivense on Google Play. Split trip and group expenses with boards, analytics, and sharing.",
-};
+    "Download Trivense on Google Play. Split trip and group expenses with boards, real-time sync, analytics, and smart budgets.",
+  path: "/download",
+  keywords: [
+    "Trivense download",
+    "Trivense Android app",
+    "split expenses app download",
+    "trip expense tracker app",
+  ],
+});
 
 export default function DownloadRoute() {
   return (

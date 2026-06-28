@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import { site } from "@/lib/content";
 import { DownloadModalProvider } from "@/context/DownloadModalContext";
+import { rootMetadata } from "@/lib/seo";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -10,17 +10,7 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: `${site.name} — ${site.tagline}`,
-  description: site.description,
-  openGraph: {
-    title: `${site.name} — ${site.tagline}`,
-    description: site.description,
-    url: site.url,
-    siteName: site.name,
-    type: "website",
-  },
-};
+export const metadata: Metadata = rootMetadata;
 
 export default function RootLayout({
   children,
@@ -28,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full scroll-smooth`}>
+    <html lang="en-IN" className={`${manrope.variable} h-full scroll-smooth`}>
       <body className="min-h-full flex flex-col antialiased">
         <DownloadModalProvider>{children}</DownloadModalProvider>
       </body>

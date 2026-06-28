@@ -4,11 +4,13 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { legalMeta } from "@/lib/legal";
 import { site } from "@/lib/content";
+import { buildPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: `Delete Your Trivense Account — ${site.name}`,
   description: `Request deletion of your ${site.name} account and associated data.`,
-};
+  path: "/delete-account",
+});
 
 const deletedItems = [
   "Your Trivense profile (display name, email address, and user ID)",
