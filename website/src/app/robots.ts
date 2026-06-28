@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 
 import { SITE_URL } from "@/lib/seo";
 
+function siteHost(): string {
+  return SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -12,6 +16,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    host: siteHost(),
   };
 }
