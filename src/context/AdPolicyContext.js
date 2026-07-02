@@ -24,20 +24,20 @@ const AdPolicyContext = createContext({
 });
 
 export function AdPolicyProvider({ children }) {
-  const { isPremium, loading: subscriptionLoading } = useSubscription();
+  const { isPaidSubscriber, loading: subscriptionLoading } = useSubscription();
   const [policy, setPolicy] = useState(defaultState);
 
   const refreshAdPolicy = useCallback(async () => {
     if (subscriptionLoading) return;
 
-    if (isPremium || !isAdMobAvailable()) {
+    if (isPaidSubscriber || !isAdMobAvailable()) {
       setPolicy({ ...defaultState, loading: false });
       return;
     }
 
-    const visibility = await getAdVisibilityState(isPremium);
+    const visibility = await getAdVisibilityState(isPaidSubscriber);
     setPolicy({ ...visibility, loading: false });
-  }, [isPremium, subscriptionLoading]);
+  }, [isPaidSubscriber, subscriptionLoading]);
 
   useEffect(() => {
     refreshAdPolicy();

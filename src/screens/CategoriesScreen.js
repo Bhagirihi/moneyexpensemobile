@@ -22,7 +22,7 @@ import { AddCategoryScreen } from "./AddCategoryScreen";
 import { realTimeSync } from "../services/realTimeSync";
 import { sendDeleteCategoryNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
-import { useSubscription } from "../context/SubscriptionContext";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import { useAdPolicy } from "../context/AdPolicyContext";
 import InlineListAd from "../components/InlineListAd";
 import {
@@ -318,18 +318,18 @@ const styles = StyleSheet.create({
 export const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { isPremium } = useSubscription();
+  const { isAdFree } = useAdEntitlement();
   const { showBannerAds } = useAdPolicy();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const categoryListData = useMemo(() => {
-    if (!showBannerAds || isPremium || categories.length === 0) return categories;
+    if (!showBannerAds || isAdFree || categories.length === 0) return categories;
     return interleaveListWithAds(categories, {
       interval: LIST_AD_INTERVAL_CATEGORIES,
       adKeyPrefix: "category-ad",
     });
-  }, [categories, isPremium, showBannerAds]);
+  }, [categories, isAdFree, showBannerAds]);
 
   const fetchCategories = useCallback(async () => {
     console.log("🔄 Starting to fetch categories...");

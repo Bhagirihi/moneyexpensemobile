@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSubscription } from "../context/SubscriptionContext";
 import { useAdPolicy } from "../context/AdPolicyContext";
+import { useTranslation } from "./useTranslation";
 import {
   initializeAds,
   isAdMobAvailable,
@@ -13,7 +14,8 @@ import { showToast } from "../utils/toast";
  * Initialize AdMob and show app-open ad (max once per day, not during grace).
  */
 export function useAdsBootstrap(enabled = true) {
-  const { isPremium, loading: subscriptionLoading } = useSubscription();
+  const { isAdFree, paymentsEnabled, loading: subscriptionLoading } = useSubscription();
+  const { t } = useTranslation();
   const {
     showAppOpenAds,
     loading: policyLoading,
@@ -21,7 +23,7 @@ export function useAdsBootstrap(enabled = true) {
   } = useAdPolicy();
 
   useEffect(() => {
-    if (!enabled || !isAdMobAvailable() || subscriptionLoading || isPremium) {
+    if (!enabled || !isAdMobAvailable() || subscriptionLoading || isAdFree) {
       return;
     }
     if (policyLoading) return;
@@ -38,12 +40,13 @@ export function useAdsBootstrap(enabled = true) {
       await new Promise((r) => setTimeout(r, 800));
       if (cancelled) return;
 
-      const shown = await showAppOpenIfReady(isPremium);
+      const shown = await showAppOpenIfReady(isAdFree);
       if (shown && getSessionInterstitialCount() >= 2) {
-        showToast.info(
-          "Go ad-free",
-          "Upgrade to Premium for an uninterrupted experience.",
-        );
+        if (paymentsEnabled) {
+          showToast.info(t("goAdFreeToastTitle"), t("goAdFreeToastPremium"));
+        } else {
+          showToast.info(t("goAdFreeToastTitle"), t("goAdFreeToastAdSupported"));
+        }
       }
     })();
 
@@ -52,11 +55,13 @@ export function useAdsBootstrap(enabled = true) {
     };
   }, [
     enabled,
-    isPremium,
+    isAdFree,
+    paymentsEnabled,
     subscriptionLoading,
     policyLoading,
     showAppOpenAds,
     refreshAdPolicy,
+    t,
   ]);
 }
 

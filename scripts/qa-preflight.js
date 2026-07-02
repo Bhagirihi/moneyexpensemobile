@@ -61,9 +61,12 @@ const requiredFiles = [
   "app.config.js",
   "eas.json",
   "firebase/google-services.json",
-  "store-assets/play/listing.json",
-  "store-assets/play/manifest.json",
-  "store-assets/play/app_icon_512.png",
+  "store-assets/listing/manifest.json",
+  "store-assets/listing/LISTING_SPECS.md",
+  "store-assets/listing/app-icon/app_icon_512.png",
+  "store-assets/listing/feature-graphic/feature_graphic_1024x500.png",
+  "store-assets/listing/screenshots/android/screenshot_01_split_expenses.png",
+  "store-assets/listing/screenshots/android/screenshot_08_premium.png",
   "website/src/app/privacy/page.tsx",
   "website/src/app/terms/page.tsx",
 ];
@@ -72,12 +75,23 @@ for (const f of requiredFiles) {
   else fail(`Missing: ${f}`);
 }
 
+// Legacy play/ copies (optional — upload uses store-assets/listing/)
+if (fileExists("store-assets/play/app_icon_512.png")) {
+  pass("File: store-assets/play/app_icon_512.png (legacy copy)");
+} else {
+  warn("store-assets/play/app_icon_512.png missing (optional legacy copy)");
+}
+
 // ── Local env (dev) ─────────────────────────────────────────────────────────
 envOk("EXPO_PUBLIC_SUPABASE_URL", { pattern: /^https:\/\/.+\.supabase\.co/ });
 envOk("EXPO_PUBLIC_SUPABASE_ANON_KEY", { pattern: /^eyJ/ });
 envOk("EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY", { pattern: /^goog_/ });
 envOk("EXPO_PUBLIC_SENTRY_DSN", { optional: true, pattern: /^https:\/\// });
 envOk("EXPO_PUBLIC_ADMOB_ANDROID_APP_ID", {
+  optional: true,
+  pattern: /^ca-app-pub-/,
+});
+envOk("EXPO_PUBLIC_ADMOB_ANDROID_REWARDED", {
   optional: true,
   pattern: /^ca-app-pub-/,
 });

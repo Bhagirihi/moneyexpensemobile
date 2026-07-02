@@ -25,7 +25,7 @@ import { showToast } from "../utils/toast";
 import { sendCreateExpenseNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAppSettings } from "../context/AppSettingsContext";
-import { useSubscription } from "../context/SubscriptionContext";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import {
   registerExpenseSaveForAd,
   showExpenseInterstitialAfterLeave,
@@ -51,7 +51,7 @@ export const AddExpenseScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { currency } = useAppSettings();
   const { t } = useTranslation();
-  const { isPremium } = useSubscription();
+  const { isAdFree } = useAdEntitlement();
   const editingExpense = route.params?.expense;
   const editingExpenseId = route.params?.expenseId || editingExpense?.id;
   const isEditing = Boolean(editingExpenseId);
@@ -151,15 +151,15 @@ export const AddExpenseScreen = ({ navigation, route }) => {
       }
 
       let showAdAfterLeave = false;
-      if (!isEditing && !isPremium) {
-        showAdAfterLeave = await registerExpenseSaveForAd(isPremium);
+      if (!isEditing && !isAdFree) {
+        showAdAfterLeave = await registerExpenseSaveForAd(isAdFree);
       }
 
       navigation.goBack();
 
       if (showAdAfterLeave) {
         setTimeout(async () => {
-          const shown = await showExpenseInterstitialAfterLeave(isPremium);
+          const shown = await showExpenseInterstitialAfterLeave(isAdFree);
           if (shown && getSessionInterstitialCount() >= 2) {
             showToast.info(
               "Go ad-free",

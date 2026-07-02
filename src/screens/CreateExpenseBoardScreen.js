@@ -25,6 +25,7 @@ import { formatNumber, getCurrencySymbol } from "../utils/formatters";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import { buildBoardJoinUrl } from "../config/appLinks";
 import { supabase } from "../config/supabase";
 import {
@@ -134,7 +135,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { currency } = useAppSettings();
   const insets = useSafeAreaInsets();
-  const { isPremium } = useSubscription();
+  const { isAdFree } = useAdEntitlement();
   const [loading, setLoading] = useState(false);
   const [boardName, setBoardName] = useState("");
   const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0]);
@@ -220,7 +221,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const ownedBoardsBeforeCreate = !isPremium
+      const ownedBoardsBeforeCreate = !isAdFree
         ? await subscriptionService.countOwnedBoards(user.id)
         : 0;
 
@@ -256,9 +257,9 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
       showToast.success("Expense board created successfully");
 
       let showBoardAd = false;
-      if (!isPremium) {
+      if (!isAdFree) {
         showBoardAd = await shouldShowBoardCreateInterstitial(
-          isPremium,
+          isAdFree,
           ownedBoardsBeforeCreate,
         );
       }
@@ -272,7 +273,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
       if (showBoardAd) {
         setTimeout(async () => {
           await showInterstitialAfterBoardCreate(
-            isPremium,
+            isAdFree,
             ownedBoardsBeforeCreate,
           );
           if (getSessionInterstitialCount() >= 2) {

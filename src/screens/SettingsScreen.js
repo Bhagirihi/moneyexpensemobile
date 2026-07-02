@@ -33,6 +33,7 @@ import {
   backupExportToGoogleDrive,
   isGoogleDriveConfigured,
 } from "../services/googleDriveService";
+import { showPremiumActionInterstitialIfReady } from "../services/adService";
 import { useAuth } from "../context/AuthContext";
 import { useSubscription } from "../context/SubscriptionContext";
 import { FEATURES, PLAN_CATALOG } from "../config/subscriptionPlans";
@@ -52,7 +53,15 @@ export const SettingsScreen = ({ navigation }) => {
   const { openFeatureLock, featureLockModal } = useFeatureLockModal(navigation);
   const scrollBottomPadding = useFooterScrollPadding();
   const { session } = useAuth();
-  const { requireFeature, hasFeature, plan, isPremium, paymentsEnabled } = useSubscription();
+  const {
+    requireFeature,
+    hasFeature,
+    plan,
+    isPremium,
+    isPaidSubscriber,
+    isAdFree,
+    paymentsEnabled,
+  } = useSubscription();
   const [budget, setBudget] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -238,8 +247,10 @@ export const SettingsScreen = ({ navigation }) => {
     setEditModalVisible(true);
   };
 
-  const handleExportLocal = () => {
+  const handleExportLocal = async () => {
     if (!requireFeature(FEATURES.EXPORT_DATA, navigation)) return;
+
+    await showPremiumActionInterstitialIfReady(isAdFree, paymentsEnabled);
 
     Alert.alert(t("exportToLocal"), t("chooseExportFormat"), [
       {
@@ -283,6 +294,8 @@ export const SettingsScreen = ({ navigation }) => {
       showToast.error(t("backupFailed"), t("googleDriveNotConfigured"));
       return;
     }
+
+    await showPremiumActionInterstitialIfReady(isAdFree, paymentsEnabled);
 
     try {
       setDataActionLoading(true);
@@ -1513,7 +1526,27 @@ export const SettingsScreen = ({ navigation }) => {
           ],
         })}
 
-        {!isPremium ? (
+        {!paymentsEnabled ? (
+          <View
+            style={[
+              styles.accessStatusWrap,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={isPaidSubscriber ? "crown" : "television-play"}
+              size={20}
+              color={theme.primary}
+            />
+            <Text style={[styles.accessStatusText, { color: theme.text }]}>
+              {isPaidSubscriber
+                ? t("premiumAdFreePausedBilling")
+                : t("adSupportedAccessLabel")}
+            </Text>
+          </View>
+        ) : null}
+
+        {!isPaidSubscriber ? (
           <View style={styles.rewardedWrap}>
             <RewardedAdOffer navigation={navigation} />
           </View>
@@ -1689,6 +1722,20 @@ const styles = StyleSheet.create({
   },
   rewardedWrap: {
     marginBottom: 16,
+  },
+  accessStatusWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: 16,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  accessStatusText: {
+    ...typography.caption,
+    flex: 1,
+    fontWeight: "600",
   },
   section: {
     marginBottom: 24,

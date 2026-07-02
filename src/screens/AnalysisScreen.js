@@ -23,6 +23,7 @@ import { useTranslation } from "../hooks/useTranslation";
 import { useSubscription } from "../context/SubscriptionContext";
 import { FEATURES } from "../config/subscriptionPlans";
 import PaywallGate from "../components/PaywallGate";
+import PremiumFeatureAd from "../components/PremiumFeatureAd";
 const { width } = Dimensions.get("window");
 
 export const AnalysisScreen = ({ navigation, route }) => {
@@ -546,6 +547,7 @@ export const AnalysisScreen = ({ navigation, route }) => {
           />
         }
       >
+        <PremiumFeatureAd style={{ marginBottom: 12 }} />
         {renderTripSelector()}
         {renderSummaryCard()}
         {renderParticipantSpending()}

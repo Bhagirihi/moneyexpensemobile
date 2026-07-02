@@ -26,11 +26,13 @@ import ExpenseItem from "../components/ExpenseItem";
 import { FEATURES } from "../config/subscriptionPlans";
 import { subscriptionService } from "../services/subscriptionService";
 import { useSubscription } from "../context/SubscriptionContext";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import { useAdPolicy } from "../context/AdPolicyContext";
 import {
   LockedActionButton,
 } from "../components/LockedFeature";
 import InlineListAd from "../components/InlineListAd";
+import PremiumFeatureAd from "../components/PremiumFeatureAd";
 import {
   interleaveListWithAds,
   isAdListItem,
@@ -46,7 +48,8 @@ export const ExpenseBoardDetailsScreen = () => {
   const { boardId, boardName, totalExpenses, totalBudget, totalTransactions } =
     route.params;
   const { theme } = useTheme();
-  const { subscription, requireFeature, isPremium } = useSubscription();
+  const { subscription, requireFeature } = useSubscription();
+  const { isAdFree } = useAdEntitlement();
   const { showBannerAds } = useAdPolicy();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,12 +65,12 @@ export const ExpenseBoardDetailsScreen = () => {
   const ITEMS_PER_PAGE = 10;
 
   const expenseListData = useMemo(() => {
-    if (!showBannerAds || isPremium || expenses.length === 0) return expenses;
+    if (!showBannerAds || isAdFree || expenses.length === 0) return expenses;
     return interleaveListWithAds(expenses, {
       interval: LIST_AD_INTERVAL_TRANSACTIONS,
       adKeyPrefix: "board-txn-ad",
     });
-  }, [expenses, isPremium, showBannerAds]);
+  }, [expenses, isAdFree, showBannerAds]);
 
   const fetchData = async (pageNum = 1, isRefreshing = false) => {
     try {
@@ -495,6 +498,7 @@ export const ExpenseBoardDetailsScreen = () => {
       </ScrollView>
       <View style={styles.bottomButtons}>
         {renderLoadMore()}
+        <PremiumFeatureAd style={{ marginBottom: 8 }} />
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: theme.card }]}

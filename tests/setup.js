@@ -243,6 +243,9 @@ global.__authMock__ = {
 global.__subscriptionMock__ = {
   plan: "free",
   isPremium: false,
+  isPaidSubscriber: false,
+  isAdFree: false,
+  paymentsEnabled: true,
   loading: false,
   purchasing: false,
   restoring: false,

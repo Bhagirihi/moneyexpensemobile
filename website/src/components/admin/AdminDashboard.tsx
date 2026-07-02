@@ -500,8 +500,8 @@ function PaymentsToggleCard({
         <div className="max-w-xl">
           <p className="text-sm leading-relaxed text-white/70">
             When <strong className="text-white">off</strong>, the app hides the paywall, upgrade
-            prompts, and in-app purchases. All premium features stay unlocked for every user. Ads
-            on the Free plan are unchanged.
+            prompts, and in-app purchases. All premium features stay unlocked for every user.
+            Unpaid users see ads on free and premium surfaces; paying subscribers stay ad-free.
           </p>
           {config.updatedAt ? (
             <p className="mt-2 text-xs text-white/40">
@@ -535,7 +535,7 @@ function PaymentsToggleCard({
       <p className="mt-4 text-sm font-semibold text-white/85">
         Status:{" "}
         <span className={config.paymentsEnabled ? "text-emerald-300" : "text-amber-300"}>
-          {config.paymentsEnabled ? "Payments ON — paywall active" : "Payments OFF — open access"}
+          {config.paymentsEnabled ? "Payments ON — paywall active" : "Payments OFF — ad-supported full access"}
         </span>
         {saving ? <span className="ml-2 text-xs font-normal text-white/45">Saving…</span> : null}
       </p>

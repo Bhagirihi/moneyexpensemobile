@@ -68,6 +68,17 @@ export default {
   featureAdFree: "Ad-free अनुभव",
   featureAdFreeDesc: "खर्च ट्रैक करते समय कोई banner, interstitial या app-open ad नहीं।",
   featureAdFreeBenefit: "Splits और settlements पर बिना रुकावट के ध्यान दें।",
+  adSupportedAccessTitle: "Ad-supported full access",
+  adSupportedAccessBody:
+    "सब्सक्रिप्शन अस्थायी रूप से उपलब्ध नहीं। सभी फ़ीचर्स मुफ़्त; ads Trivense चलाने में मदद करते हैं।",
+  adSupportedAccessLabel: "Ad-supported access",
+  premiumAdFreePausedBilling:
+    "Premium — नए यूज़र्स के लिए सब्सक्रिप्शन रुके होने पर भी कोई ad नहीं",
+  goAdFreeToastTitle: "Ad-free बनें",
+  goAdFreeToastPremium: "बिना रुकावट के अनुभव के लिए Premium में अपग्रेड करें।",
+  goAdFreeToastAdSupported:
+    "Settings में छोटा वीडियो देखकर अस्थायी ad-free समय पाएं।",
+  dismiss: "बंद करें",
   featureUnlimitedBoards: "असीमित expense boards",
   featureBoardSharing: "दूसरों के साथ बोर्ड शेयर",
   featureBoardSettlements: "बिल बाँटें और settlements",

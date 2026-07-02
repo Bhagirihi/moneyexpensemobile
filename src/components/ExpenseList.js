@@ -11,7 +11,7 @@ import { useTranslation } from "../hooks/useTranslation";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ExpenseItem from "./ExpenseItem";
 import InlineListAd from "./InlineListAd";
-import { useSubscription } from "../context/SubscriptionContext";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import { useAdPolicy } from "../context/AdPolicyContext";
 import {
   interleaveListWithAds,
@@ -41,11 +41,11 @@ const ExpenseList = memo(
   }) => {
     const { theme } = useTheme();
     const { t } = useTranslation();
-    const { isPremium } = useSubscription();
+    const { isAdFree } = useAdEntitlement();
     const { showBannerAds } = useAdPolicy();
 
     const listData = useMemo(() => {
-      if (!showInlineAds || !showBannerAds || isPremium || expenses.length === 0) {
+      if (!showInlineAds || !showBannerAds || isAdFree || expenses.length === 0) {
         return expenses;
       }
       if (inlineAdMode === "single") {
@@ -56,7 +56,7 @@ const ExpenseList = memo(
       expenses,
       showInlineAds,
       showBannerAds,
-      isPremium,
+      isAdFree,
       inlineAdMode,
       inlineAdInterval,
     ]);

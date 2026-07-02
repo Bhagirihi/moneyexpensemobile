@@ -92,6 +92,15 @@ export const FREE_BOARD_AD_AFTER_COUNT = 1;
 /** Free plan: inline banner on these analytics periods (week stays ad-free). */
 export const FREE_AD_ANALYTICS_PERIODS = ["month", "year", "all"];
 
+/** Premium-surface placements when payments are off (unpaid users only). */
+export const PREMIUM_FEATURE_AD_SURFACES = [
+  "settlements",
+  "analytics_footer",
+  "export",
+  "google_drive_backup",
+  "board_settlements_entry",
+];
+
 export const LIST_AD_INTERVAL_TRANSACTIONS = 5;
 export const LIST_AD_INTERVAL_BOARDS = 2;
 export const LIST_AD_INTERVAL_CATEGORIES = 3;
@@ -123,6 +132,6 @@ export function isUsingTestAdUnits() {
   );
 }
 
-export function shouldShowAnalyticsPeriodAd(isPremium, period) {
-  return !isPremium && FREE_AD_ANALYTICS_PERIODS.includes(period);
+export function shouldShowAnalyticsPeriodAd(isAdFree, period) {
+  return !isAdFree && FREE_AD_ANALYTICS_PERIODS.includes(period);
 }

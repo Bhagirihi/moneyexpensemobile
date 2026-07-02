@@ -76,6 +76,17 @@ export default {
   rewardedAdSuccessTitle: "Ad-free activated",
   rewardedAdSuccessMessage: "All ads are hidden for the next {{hours}} hours.",
   rewardedAdFailedTitle: "Could not show rewarded ad",
+  adSupportedAccessTitle: "Ad-supported full access",
+  adSupportedAccessBody:
+    "Subscriptions are temporarily unavailable. All features are free to use; ads help keep Trivense running.",
+  adSupportedAccessLabel: "Ad-supported access",
+  premiumAdFreePausedBilling:
+    "Premium — no ads while subscriptions are paused for new users",
+  goAdFreeToastTitle: "Go ad-free",
+  goAdFreeToastPremium: "Upgrade to Premium for an uninterrupted experience.",
+  goAdFreeToastAdSupported:
+    "Watch a short video in Settings for temporary ad-free time.",
+  dismiss: "Dismiss",
   featureUnlimitedBoards: "Unlimited expense boards",
   featureBoardSharing: "Share boards with others",
   featureBoardSettlements: "Split bills & settlements",

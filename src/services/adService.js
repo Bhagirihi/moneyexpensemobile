@@ -84,8 +84,8 @@ export async function getExpenseSaveCount() {
   return parseInt(raw, 10) || 0;
 }
 
-export async function isInNewUserGracePeriod(isPremium) {
-  if (isPremium) return false;
+export async function isInNewUserGracePeriod(isAdFree) {
+  if (isAdFree) return false;
 
   const installAt = await ensureInstallRecorded();
   const daysSince = (Date.now() - installAt) / (24 * 60 * 60 * 1000);
@@ -100,8 +100,8 @@ export async function isInNewUserGracePeriod(isPremium) {
 /**
  * Visibility flags for banners vs full-screen formats.
  */
-export async function getAdVisibilityState(isPremium) {
-  if (isPremium || !isNativeAdsSupported()) {
+export async function getAdVisibilityState(isAdFree) {
+  if (isAdFree || !isNativeAdsSupported()) {
     return {
       showBannerAds: false,
       showInterstitialAds: false,
@@ -150,8 +150,8 @@ async function recordInterstitialShown() {
   );
 }
 
-export async function canShowInterstitial(isPremium) {
-  const visibility = await getAdVisibilityState(isPremium);
+export async function canShowInterstitial(isAdFree) {
+  const visibility = await getAdVisibilityState(isAdFree);
   if (!visibility.showInterstitialAds) return false;
   if (sessionInterstitialCount >= MAX_INTERSTITIALS_PER_SESSION) return false;
 
@@ -165,8 +165,8 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function canShowAppOpenToday(isPremium) {
-  const visibility = await getAdVisibilityState(isPremium);
+export async function canShowAppOpenToday(isAdFree) {
+  const visibility = await getAdVisibilityState(isAdFree);
   if (!visibility.showAppOpenAds) return false;
 
   const lastDay = await AsyncStorage.getItem(STORAGE.APP_OPEN_DAY);
@@ -284,8 +284,8 @@ async function preloadRewarded() {
   rewarded.load();
 }
 
-export async function showInterstitialIfReady(isPremium) {
-  if (!(await canShowInterstitial(isPremium))) return false;
+export async function showInterstitialIfReady(isAdFree) {
+  if (!(await canShowInterstitial(isAdFree))) return false;
   if (!isNativeAdsSupported() || !initialized) return false;
 
   if (!interstitialLoaded || !interstitial) {
@@ -304,8 +304,8 @@ export async function showInterstitialIfReady(isPremium) {
   }
 }
 
-export async function showAppOpenIfReady(isPremium) {
-  if (!(await canShowAppOpenToday(isPremium))) return false;
+export async function showAppOpenIfReady(isAdFree) {
+  if (!(await canShowAppOpenToday(isAdFree))) return false;
   if (!isNativeAdsSupported() || !initialized) return false;
 
   if (!appOpenLoaded || !appOpen) {
@@ -325,15 +325,15 @@ export async function showAppOpenIfReady(isPremium) {
 }
 
 /** Returns true if an interstitial should run after navigating back from Add Expense. */
-export async function registerExpenseSaveForAd(isPremium) {
-  if (isPremium || !isNativeAdsSupported()) return false;
+export async function registerExpenseSaveForAd(isAdFree) {
+  if (isAdFree || !isNativeAdsSupported()) return false;
 
   try {
     const nextCount = (await getExpenseSaveCount()) + 1;
     await AsyncStorage.setItem(STORAGE.EXPENSE_COUNT, String(nextCount));
 
     if (nextCount % EXPENSE_AD_EVERY_N !== 0) return false;
-    return canShowInterstitial(isPremium);
+    return canShowInterstitial(isAdFree);
   } catch (error) {
     devError("Expense ad counter failed:", error?.message || error);
     return false;
@@ -341,29 +341,43 @@ export async function registerExpenseSaveForAd(isPremium) {
 }
 
 /** Call after navigation.goBack() from a successful expense save. */
-export async function showExpenseInterstitialAfterLeave(isPremium) {
+export async function showExpenseInterstitialAfterLeave(isAdFree) {
   await initializeAds();
-  return showInterstitialIfReady(isPremium);
+  return showInterstitialIfReady(isAdFree);
 }
 
 export async function shouldShowBoardCreateInterstitial(
-  isPremium,
+  isAdFree,
   ownedBoardCount = 0,
 ) {
-  if (isPremium) return false;
+  if (isAdFree) return false;
   if (ownedBoardCount < FREE_BOARD_AD_AFTER_COUNT) return false;
-  return canShowInterstitial(isPremium);
+  return canShowInterstitial(isAdFree);
 }
 
 export async function showInterstitialAfterBoardCreate(
-  isPremium,
+  isAdFree,
   ownedBoardCount = 0,
 ) {
-  if (!(await shouldShowBoardCreateInterstitial(isPremium, ownedBoardCount))) {
+  if (!(await shouldShowBoardCreateInterstitial(isAdFree, ownedBoardCount))) {
     return false;
   }
   await initializeAds();
-  return showInterstitialIfReady(isPremium);
+  return showInterstitialIfReady(isAdFree);
+}
+
+/** Pre-action interstitial on export/backup when payments are off (unpaid only). */
+export async function shouldShowPremiumActionInterstitial(isAdFree, paymentsEnabled) {
+  if (isAdFree || paymentsEnabled || !isNativeAdsSupported()) return false;
+  return canShowInterstitial(isAdFree);
+}
+
+export async function showPremiumActionInterstitialIfReady(isAdFree, paymentsEnabled) {
+  if (!(await shouldShowPremiumActionInterstitial(isAdFree, paymentsEnabled))) {
+    return false;
+  }
+  await initializeAds();
+  return showInterstitialIfReady(isAdFree);
 }
 
 export async function showRewardedAdForTemporaryAdFree() {

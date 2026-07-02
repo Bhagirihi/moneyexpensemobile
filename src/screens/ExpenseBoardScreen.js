@@ -22,6 +22,7 @@ import { realTimeSync } from "../services/realTimeSync";
 import { sendExpenseBoardDeletedNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
 import { useSubscription } from "../context/SubscriptionContext";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
 import { useAdPolicy } from "../context/AdPolicyContext";
 import { FEATURES } from "../config/subscriptionPlans";
 import { subscriptionService } from "../services/subscriptionService";
@@ -43,7 +44,8 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { subscription, requireFeature, hasFeature, isPremium } = useSubscription();
+  const { subscription, requireFeature, hasFeature } = useSubscription();
+  const { isAdFree } = useAdEntitlement();
   const { showBannerAds } = useAdPolicy();
   const [expenseBoards, setExpenseBoards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,11 +87,11 @@ export const ExpenseBoardScreen = ({ navigation }) => {
   );
 
   const boardListData = useMemo(() => {
-    if (!showBannerAds || isPremium || expenseBoards.length === 0) return expenseBoards;
+    if (!showBannerAds || isAdFree || expenseBoards.length === 0) return expenseBoards;
     return interleaveListWithAds(expenseBoards, {
       interval: LIST_AD_INTERVAL_BOARDS,
     });
-  }, [expenseBoards, isPremium, showBannerAds]);
+  }, [expenseBoards, isAdFree, showBannerAds]);
 
   const fetchExpenseBoards = async () => {
     try {

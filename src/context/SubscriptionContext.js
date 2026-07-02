@@ -39,14 +39,6 @@ const isBillingUnavailableError = (error) => {
   );
 };
 
-const UNLOCKED_SUBSCRIPTION = {
-  plan: PLANS.MONTHLY,
-  status: "active",
-  isPremium: false,
-  expiresAt: null,
-  startedAt: null,
-};
-
 export const SubscriptionProvider = ({ children }) => {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState({
@@ -206,12 +198,7 @@ export const SubscriptionProvider = ({ children }) => {
     });
   }, [user?.id, paymentsEnabled, refreshSubscription]);
 
-  const effectiveSubscription = useMemo(() => {
-    if (!paymentsEnabled) {
-      return { ...UNLOCKED_SUBSCRIPTION };
-    }
-    return subscription;
-  }, [subscription, paymentsEnabled]);
+  const isPaidSubscriber = subscription.isPremium;
 
   const getPlanPriceLabel = useCallback(
     (planId) => {
@@ -316,7 +303,7 @@ export const SubscriptionProvider = ({ children }) => {
 
   const value = useMemo(
     () => ({
-      subscription: effectiveSubscription,
+      subscription,
       loading: loading || configLoading,
       purchasing,
       restoring,
@@ -334,15 +321,17 @@ export const SubscriptionProvider = ({ children }) => {
       hasFeature,
       canUseAnalyticsPeriod,
       requireFeature,
-      isPremium: effectiveSubscription.isPremium,
-      plan: effectiveSubscription.plan,
+      isPaidSubscriber,
+      isPremium: isPaidSubscriber,
+      isAdFree: isPaidSubscriber,
+      plan: subscription.plan,
       limits,
       purchasesConfigured: paymentsEnabled && purchaseService.isConfigured(),
       FEATURES,
       PLANS,
     }),
     [
-      effectiveSubscription,
+      subscription,
       loading,
       configLoading,
       purchasing,
@@ -350,6 +339,7 @@ export const SubscriptionProvider = ({ children }) => {
       offeringsLoading,
       planPrices,
       paymentsEnabled,
+      isPaidSubscriber,
       getPlanPriceLabel,
       getPlanMonthlyPriceLabel,
       refreshSubscription,

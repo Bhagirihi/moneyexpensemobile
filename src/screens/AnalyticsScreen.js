@@ -21,7 +21,8 @@ import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
 import { fetchExpenseTrends } from "../services/analyticsService";
 import { useAdPolicy } from "../context/AdPolicyContext";
-import { FREE_AD_ANALYTICS_PERIODS } from "../config/admob";
+import { useAdEntitlement } from "../hooks/useAdEntitlement";
+import { shouldShowAnalyticsPeriodAd } from "../config/admob";
 import { useTranslation } from "../hooks/useTranslation";
 import InlineListAd from "../components/InlineListAd";
 import { useFooterScrollPadding } from "../hooks/useFooterScrollPadding";
@@ -49,7 +50,8 @@ export const AnalyticsScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { showBannerAds } = useAdPolicy();
-  const scrollBottomPadding = useFooterScrollPadding(0, false);
+  const { isAdFree, shouldShowPremiumFeatureAds } = useAdEntitlement();
+  const scrollBottomPadding = useFooterScrollPadding(0, shouldShowPremiumFeatureAds);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -167,7 +169,8 @@ export const AnalyticsScreen = ({ navigation }) => {
   const pctChange = analytics.stats.previousPeriod?.percentageChange || 0;
   const isUp = pctChange >= 0;
   const showPeriodAd =
-    showBannerAds && FREE_AD_ANALYTICS_PERIODS.includes(selectedPeriod);
+    showBannerAds &&
+    shouldShowAnalyticsPeriodAd(isAdFree, selectedPeriod);
 
   const renderPeriodChips = () => (
     <ScrollView
@@ -400,7 +403,7 @@ export const AnalyticsScreen = ({ navigation }) => {
     <ScreenLayout
       navigation={navigation}
       footerRoute="Analytics"
-      showAdBanner={false}
+      showAdBanner={shouldShowPremiumFeatureAds}
       header={
         <Header
           title={t("analytics")}

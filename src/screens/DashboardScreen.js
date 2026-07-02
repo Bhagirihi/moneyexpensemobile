@@ -32,6 +32,7 @@ import { PlanBadge } from "../components/ui/PlanBadge";
 import { HomeSectionHeader } from "../components/home/HomeSectionHeader";
 import { HomeBrowseLink } from "../components/home/HomeBrowseLink";
 import { HomeInlineAd } from "../components/home/HomeInlineAd";
+import AdSupportedAccessBanner from "../components/AdSupportedAccessBanner";
 import { showToast } from "../utils/toast";
 import { formatCurrency } from "../utils/formatters";
 import { getLocalizedGreeting, getFirstName } from "../utils/greeting";
@@ -823,6 +824,8 @@ export const DashboardScreen = ({ navigation }) => {
           onTitlePress={() => navigation.navigate("Profile", { tabRoot: false })}
           trailing={renderHeaderTrailing()}
         />
+
+        <AdSupportedAccessBanner />
 
         <View style={styles.sections}>
           {renderFirstBoardPrompt()}

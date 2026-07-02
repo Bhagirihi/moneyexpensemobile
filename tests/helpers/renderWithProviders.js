@@ -29,9 +29,12 @@ function TestProviders({ children }) {
 }
 
 export function createMockSubscription(overrides = {}) {
+  const isPaidSubscriber = overrides.isPaidSubscriber ?? overrides.isPremium ?? false;
   return {
     plan: PLANS.FREE,
-    isPremium: false,
+    isPremium: isPaidSubscriber,
+    isPaidSubscriber,
+    isAdFree: isPaidSubscriber,
     loading: false,
     purchasing: false,
     restoring: false,
