@@ -326,9 +326,9 @@ const AppContent = () => {
       /> */}
       <AuthProvider>
           <SubscriptionProvider>
+            <AppSettingsProvider>
             <AdPolicyProvider>
             <AdsBootstrap enabled={Boolean(session?.user?.email_confirmed_at)} />
-            <AppSettingsProvider>
             <ReferralBootstrap />
             <AppCueProvider>
             <NavigationContainer>
@@ -425,8 +425,8 @@ const AppContent = () => {
               <Toast />
             </NavigationContainer>
             </AppCueProvider>
-          </AppSettingsProvider>
             </AdPolicyProvider>
+          </AppSettingsProvider>
           </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>
