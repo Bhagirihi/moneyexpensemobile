@@ -11,13 +11,24 @@ fail() {
 }
 
 # jenv often points at an invalid JAVA_HOME; Maestro needs Java 17+
-if [[ -z "${JAVA_HOME:-}" || ! -d "${JAVA_HOME}/bin" ]]; then
-  if [[ -d "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
-    export JAVA_HOME="/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
-  elif command -v /usr/libexec/java_home >/dev/null 2>&1; then
-    export JAVA_HOME="$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
+resolve_java_home() {
+  if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+    echo "$JAVA_HOME"
+    return
   fi
-fi
+  if [[ -d "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+    echo "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+    return
+  fi
+  if [[ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+    echo "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+    return
+  fi
+  if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    /usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true
+  fi
+}
+export JAVA_HOME="$(resolve_java_home)"
 
 if [[ -z "${MAESTRO_BIN:-}" && -x "${HOME}/.maestro/bin/maestro" ]]; then
   export MAESTRO_BIN="${HOME}/.maestro/bin/maestro"

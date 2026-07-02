@@ -30,7 +30,7 @@ export function AuthShell({
   const { height: windowHeight } = useWindowDimensions();
   const compact = compactProp ?? windowHeight < COMPACT_HEIGHT;
   const logoSize = compact ? 52 : 64;
-  const heroHeight = compact ? 148 : 196;
+  const heroHeight = compact ? 148 : 232;
 
   const bottomPad = Math.max(insets.bottom, spacing.sm) + (compact ? spacing.md : spacing.lg);
 
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   brandBlockDefault: {
     alignItems: "center",
     paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   brandBlockCompact: {
     paddingTop: spacing.sm,
@@ -225,6 +225,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: layout.screenPadding,
+    marginTop: spacing.sm,
     borderRadius: radii.xl,
     padding: spacing.lg,
     borderWidth: 1,

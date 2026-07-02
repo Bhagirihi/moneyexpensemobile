@@ -9,6 +9,15 @@ SUITE="${1:-smoke}"
 MAESTRO_BIN="${MAESTRO_BIN:-maestro}"
 EVIDENCE_DIR="${ROOT}/.qa/maestro-$(date +%Y%m%d-%H%M%S)"
 
+# Maestro inherits broken jenv JAVA_HOME from the shell; resolve JDK 17 explicitly.
+if [[ -d "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+  export JAVA_HOME="/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+elif [[ -d "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" ]]; then
+  export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
+elif command -v /usr/libexec/java_home >/dev/null 2>&1; then
+  export JAVA_HOME="$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
+fi
+
 export QA_EMAIL="${QA_EMAIL:-alice@trivense-demo.local}"
 export QA_PASSWORD="${QA_PASSWORD:-TrivenseDemo123!}"
 
@@ -21,13 +30,16 @@ run_flow() {
   name="$(basename "$flow" .yaml)"
   echo ""
   echo "▶ Running $name …"
-  "$MAESTRO_BIN" test \
+  if ! "$MAESTRO_BIN" test \
     --format NOOP \
     --flatten-debug-output \
     --debug-output "${EVIDENCE_DIR}/debug" \
     -e "QA_EMAIL=${QA_EMAIL}" \
     -e "QA_PASSWORD=${QA_PASSWORD}" \
-    "$flow"
+    "$flow"; then
+    echo "✗ $name"
+    return 1
+  fi
   echo "✓ $name"
 }
 
@@ -50,23 +62,25 @@ AUTH_FLOWS=(
 
 ALL_FLOWS=("${GUEST_FLOWS[@]}" "${AUTH_FLOWS[@]}")
 
+FAIL=0
+
 case "$SUITE" in
   smoke)
-    run_flow e2e/maestro/01-login-smoke.yaml
+    run_flow e2e/maestro/01-login-smoke.yaml || FAIL=$((FAIL + 1))
     ;;
   guest)
     for flow in "${GUEST_FLOWS[@]}"; do
-      run_flow "$flow"
+      run_flow "$flow" || FAIL=$((FAIL + 1))
     done
     ;;
   auth)
     for flow in "${AUTH_FLOWS[@]}"; do
-      run_flow "$flow"
+      run_flow "$flow" || FAIL=$((FAIL + 1))
     done
     ;;
   all)
     for flow in "${ALL_FLOWS[@]}"; do
-      run_flow "$flow"
+      run_flow "$flow" || FAIL=$((FAIL + 1))
     done
     ;;
   full)
@@ -75,7 +89,7 @@ case "$SUITE" in
     ;;
   *)
     if [[ -f "$SUITE" ]]; then
-      run_flow "$SUITE"
+      run_flow "$SUITE" || FAIL=$((FAIL + 1))
     else
       echo "Usage: $0 [smoke|guest|auth|all|full|<flow.yaml>]" >&2
       exit 1
@@ -85,4 +99,8 @@ esac
 
 echo ""
 echo "Evidence: $EVIDENCE_DIR"
+if [[ "$FAIL" -gt 0 ]]; then
+  echo "✗ Device QA suite '$SUITE' finished with $FAIL failure(s)"
+  exit 1
+fi
 echo "✓ Device QA suite '$SUITE' finished"

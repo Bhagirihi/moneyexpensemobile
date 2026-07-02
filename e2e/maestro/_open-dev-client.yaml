@@ -1,9 +1,26 @@
 # Expo dev client: pick Metro server before app UI loads
 appId: com.trivense.app
 ---
+- extendedWaitUntil:
+    visible:
+      text: "Development Build"
+    timeout: 60000
 - runFlow:
     when:
-      visible: "Development Build"
+      visible: "http://localhost:8081"
     commands:
       - tapOn: "http://localhost:8081"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "http://10.0.2.2:8081"
+    commands:
+      - tapOn: "http://10.0.2.2:8081"
+      - waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "DEVELOPMENT SERVERS"
+    commands:
+      - tapOn:
+          text: "8081"
       - waitForAnimationToEnd

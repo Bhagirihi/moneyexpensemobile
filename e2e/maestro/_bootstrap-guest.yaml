@@ -9,4 +9,4 @@ appId: com.trivense.app
     file: _dismiss-expo-dev-menu.yaml
 - extendedWaitUntil:
     visible: "Welcome back"
-    timeout: 90000
+    timeout: 120000

@@ -35,6 +35,7 @@ export function createMockSubscription(overrides = {}) {
     loading: false,
     purchasing: false,
     restoring: false,
+    paymentsEnabled: true,
     purchasesConfigured: true,
     offeringsLoading: false,
     hasFeature: jest.fn(() => false),
