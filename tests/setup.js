@@ -84,6 +84,15 @@ jest.mock("expo-notifications", () => ({
   getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: "test-token" }),
 }));
 
+jest.mock("expo-location", () => ({
+  getForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "denied" }),
+  getLastKnownPositionAsync: jest.fn().mockResolvedValue(null),
+  getCurrentPositionAsync: jest.fn().mockResolvedValue(null),
+  reverseGeocodeAsync: jest.fn().mockResolvedValue([]),
+  requestForegroundPermissionsAsync: jest.fn().mockResolvedValue({ status: "granted" }),
+  Accuracy: { Low: 1 },
+}));
+
 jest.mock("@sentry/react-native", () => ({
   init: jest.fn(),
   wrap: (c) => c,

@@ -25,7 +25,7 @@ import { formatNumber, getCurrencySymbol } from "../utils/formatters";
 import { useAppSettings } from "../context/AppSettingsContext";
 import { sendCreateExpenseBoardNotification } from "../services/pushNotificationService";
 import { useTranslation } from "../hooks/useTranslation";
-import { useSubscription } from "../context/SubscriptionContext";
+import { buildBoardJoinUrl } from "../config/appLinks";
 import { supabase } from "../config/supabase";
 import {
   showInterstitialAfterBoardCreate,
@@ -188,7 +188,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
     try {
       const code = shareCode || generateShareCode();
       const subject = `Join my expense board: ${boardName}`;
-      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: https://trivense.app/join/${code}`;
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: ${buildBoardJoinUrl(code)}`;
       await Share.share({
         message,
         subject,
@@ -201,7 +201,7 @@ export const CreateExpenseBoardScreen = ({ navigation, route }) => {
   const handleShareViaSocial = async () => {
     try {
       const code = shareCode || generateShareCode();
-      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: https://trivense.app/join/${code}`;
+      const message = `Join my expense board "${boardName}" on Trivense!\n\nBoard Code: ${code}\n\nClick here to join: ${buildBoardJoinUrl(code)}`;
       await Share.share({
         message,
       });

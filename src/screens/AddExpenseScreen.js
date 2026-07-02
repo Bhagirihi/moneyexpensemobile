@@ -207,7 +207,7 @@ export const AddExpenseScreen = ({ navigation, route }) => {
         }}
         placeholder={t("enterAmount")}
         keyboardType="numeric"
-        prefix={getCurrencySymbol(currency)}
+        prefix={getCurrencySymbol()}
       />
     </View>
   );

@@ -17,7 +17,6 @@ import {
   Linking,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { useAppSettings } from "../context/AppSettingsContext";
 import { Header } from "../components/Header";
 import ScreenLayout from "../components/ScreenLayout";
 import RewardedAdOffer from "../components/RewardedAdOffer";
@@ -52,8 +51,6 @@ export const SettingsScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const { openFeatureLock, featureLockModal } = useFeatureLockModal(navigation);
   const scrollBottomPadding = useFooterScrollPadding();
-  const { language, currency, updateLanguage, updateCurrency } =
-    useAppSettings();
   const { session } = useAuth();
   const { requireFeature, hasFeature, plan, isPremium, paymentsEnabled } = useSubscription();
   const [budget, setBudget] = useState(null);
@@ -84,46 +81,6 @@ export const SettingsScreen = ({ navigation }) => {
   const [loadingInvitees, setLoadingInvitees] = useState(false);
   const [dataActionLoading, setDataActionLoading] = useState(false);
 
-  const languages = [
-    { code: "en", name: "English" },
-    { code: "hi", name: "हिन्दी" },
-    { code: "es", name: "Spanish" },
-    { code: "fr", name: "French" },
-    { code: "de", name: "German" },
-  ];
-
-  const currencies = [
-    { code: "USD", name: "US Dollar", symbol: "$", conversionRate: 1 },
-    { code: "EUR", name: "Euro", symbol: "€", conversionRate: 0.92 },
-    { code: "GBP", name: "British Pound", symbol: "£", conversionRate: 0.79 },
-    { code: "INR", name: "Indian Rupee", symbol: "₹", conversionRate: 83.12 },
-    {
-      code: "AUD",
-      name: "Australian Dollar",
-      symbol: "A$",
-      conversionRate: 1.5,
-    },
-    { code: "CAD", name: "Canadian Dollar", symbol: "C$", conversionRate: 1.3 },
-    {
-      code: "NZD",
-      name: "New Zealand Dollar",
-      symbol: "NZ$",
-      conversionRate: 1.4,
-    },
-    {
-      code: "SGD",
-      name: "Singapore Dollar",
-      symbol: "S$",
-      conversionRate: 1.35,
-    },
-    {
-      code: "HKD",
-      name: "Hong Kong Dollar",
-      symbol: "HK$",
-      conversionRate: 7.8,
-    },
-  ];
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -138,25 +95,29 @@ export const SettingsScreen = ({ navigation }) => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      var budgetData = await userService.getProfile();
-      devLog("budgetData", budgetData);
+      const profileResult = await userService.getProfile();
+      devLog("budgetData", profileResult);
       const sharedMembers = await expenseBoardService.getSharedMembers();
 
-      budgetData = budgetData.profile;
+      const budgetData = profileResult?.profile;
+      if (!budgetData?.id) {
+        throw new Error("Profile not found");
+      }
+
       setUserID(budgetData.id);
       setBudget(budgetData);
-
-      // setBoardName(budgetData.board_id);
-      setMonthlyBudget(budgetData.default_board_budget);
+      setMonthlyBudget(budgetData.default_board_budget ?? 0);
       setReferralCode(budgetData.referral_code);
       setSharedMembers(sharedMembers);
-      // Fetch expense boards
+
       const { data: boardsData, error: boardsError } = await supabase
         .from("expense_boards")
         .select(`*`);
-      const board = await boardsData.find((b) => b.id === budgetData.board_id);
+      if (boardsError) throw boardsError;
 
-      const isDefaultBoard = await boardsData.find((b) => b.is_default);
+      const boards = boardsData || [];
+      const board = boards.find((b) => b.id === budgetData.board_id);
+      const isDefaultBoard = boards.find((b) => b.is_default);
 
       if (isDefaultBoard) {
         updateBoard(isDefaultBoard.id);
@@ -166,9 +127,8 @@ export const SettingsScreen = ({ navigation }) => {
       } else {
         devLog("Board not found for the given ID");
       }
-      if (boardsError) throw boardsError;
-      setBoardCount(boardsData.length);
-      setExpenseBoards(boardsData || []);
+      setBoardCount(boards.length);
+      setExpenseBoards(boards);
     } catch (error) {
       console.error("Error fetching data: <-", error);
       showToast.error(t("error"), t("failedToLoadSettings"));
@@ -262,7 +222,15 @@ export const SettingsScreen = ({ navigation }) => {
 
   const handleEdit = (item) => {
     setEditingItem(item);
-    setEditValue(item.subtitle || "");
+    if (item.modalKey === "Monthly Budget") {
+      setEditValue(
+        monthlyBudget != null && monthlyBudget !== ""
+          ? String(monthlyBudget)
+          : ""
+      );
+    } else {
+      setEditValue(item.subtitle || "");
+    }
     if (item.modalKey === "ShareApp") {
       setShowShareAppModal(true);
       return;
@@ -414,126 +382,6 @@ export const SettingsScreen = ({ navigation }) => {
     }
   };
 
-  const getConvertedPrice = (basePrice, currencyCode) => {
-    const selectedCurrency = currencies.find(
-      (curr) => curr.code === currencyCode
-    );
-    if (!selectedCurrency) return { amount: basePrice, symbol: "₹" };
-
-    const convertedAmount = basePrice * selectedCurrency.conversionRate;
-    return {
-      amount: convertedAmount.toFixed(2),
-      symbol: selectedCurrency.symbol,
-    };
-  };
-
-  const renderLanguageSelector = () => (
-    <View
-      style={[
-        styles.selectorContent,
-        { backgroundColor: theme.cardBackground },
-      ]}
-    >
-      <Text style={[styles.modalTitle, { color: theme.text }]}>
-        {t("selectLanguage")}
-      </Text>
-      {languages.map((lang) => (
-        <TouchableOpacity
-          key={lang.code}
-          style={[
-            styles.selectorItem,
-            { borderBottomColor: theme.borderLight },
-          ]}
-          onPress={() => {
-            updateLanguage(lang.code);
-            setEditModalVisible(false);
-          }}
-        >
-          <Text style={[styles.selectorItemText, { color: theme.text }]}>
-            {lang.name}
-          </Text>
-          {lang.code === language && (
-            <MaterialCommunityIcons
-              name="check"
-              size={20}
-              color={theme.primary}
-            />
-          )}
-        </TouchableOpacity>
-      ))}
-      <TouchableOpacity
-        style={[
-          styles.modalButton,
-          {
-            backgroundColor: theme.errorLight,
-            marginTop: 16,
-            alignSelf: "flex-start",
-          },
-        ]}
-        onPress={() => setEditModalVisible(false)}
-        activeOpacity={0.8}
-      >
-        <Text style={[styles.modalButtonText, { color: theme.error }]}>
-          {t("cancel")}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderCurrencySelector = () => (
-    <View
-      style={[
-        styles.selectorContent,
-        { backgroundColor: theme.cardBackground },
-      ]}
-    >
-      <Text style={[styles.modalTitle, { color: theme.text }]}>
-        Select Currency
-      </Text>
-      {currencies.map((curr) => (
-        <TouchableOpacity
-          key={curr.code}
-          style={[
-            styles.selectorItem,
-            { borderBottomColor: theme.borderLight },
-          ]}
-          onPress={() => {
-            updateCurrency(curr.code);
-            setEditModalVisible(false);
-          }}
-        >
-          <Text style={[styles.selectorItemText, { color: theme.text }]}>
-            {curr.symbol} {curr.name} ({curr.code})
-          </Text>
-          {curr.code === currency && (
-            <MaterialCommunityIcons
-              name="check"
-              size={20}
-              color={theme.primary}
-            />
-          )}
-        </TouchableOpacity>
-      ))}
-
-      <TouchableOpacity
-        style={[
-          styles.modalButton,
-          {
-            backgroundColor: theme.errorLight,
-            marginTop: 16,
-            alignSelf: "flex-start",
-          },
-        ]}
-        onPress={() => setEditModalVisible(false)}
-        activeOpacity={0.8}
-      >
-        <Text style={[styles.modalButtonText, { color: theme.error }]}>
-          Cancel
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   const renderDefaultBoardSelector = () => (
     <View
       style={[
@@ -586,6 +434,45 @@ export const SettingsScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderMonthlyBudgetEditor = () => (
+    <View
+      style={[styles.modalContent, { backgroundColor: theme.cardBackground }]}
+    >
+      <Text style={[styles.modalTitle, { color: theme.text }]}>
+        {t("monthlyBudget")}
+      </Text>
+      <Text style={[styles.budgetLabel, { color: theme.textSecondary }]}>
+        {t("monthlyBudgetHint")}
+      </Text>
+      <TextInput
+        style={[styles.budgetInput, { color: theme.text, borderColor: theme.border }]}
+        value={editValue}
+        onChangeText={setEditValue}
+        keyboardType="numeric"
+        placeholder={t("enterBudgetAmount")}
+        placeholderTextColor={theme.textSecondary}
+      />
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: theme.errorLight }]}
+          onPress={() => setEditModalVisible(false)}
+        >
+          <Text style={[styles.modalButtonText, { color: theme.error }]}>
+            {t("cancel")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: theme.primary }]}
+          onPress={handleUpdateBudget}
+        >
+          <Text style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
+            {t("save")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const renderBudgetEditor = () => {
     return (
       <View
@@ -628,8 +515,10 @@ export const SettingsScreen = ({ navigation }) => {
                     },
                   ]}
                   onPress={() => {
-                    setSelectedBoard(board);
-
+                    setSelectedBoard({
+                      ...board,
+                      budget: board.total_budget ?? 0,
+                    });
                     setEditValue(board.total_budget?.toString() || "");
                     setShowBoardDropdown(false);
                   }}
@@ -651,22 +540,16 @@ export const SettingsScreen = ({ navigation }) => {
             </Text>
             <TextInput
               style={[styles.budgetInput, { color: theme.text }]}
-              value={selectedBoard.budget?.toString() || ""}
+              value={editValue}
               onChangeText={(value) => {
-                const newBudget = parseFloat(value);
-                if (!isNaN(newBudget)) {
-                  setExpenseBoards((prevBoards) =>
-                    prevBoards.map((board) =>
-                      board.id === selectedBoard.id
-                        ? { ...board, budget: newBudget }
-                        : board
-                    )
-                  );
-                  setSelectedBoard((prev) => ({ ...prev, budget: newBudget }));
-                }
+                setEditValue(value);
+                if (!selectedBoard) return;
+                const parsed = parseFloat(value);
+                const nextBudget = Number.isFinite(parsed) ? parsed : 0;
+                setSelectedBoard((prev) => ({ ...prev, budget: nextBudget }));
               }}
               keyboardType="numeric"
-              placeholder="Enter budget"
+              placeholder={t("enterBudgetAmount")}
               placeholderTextColor={theme.textSecondary}
             />
           </View>
@@ -901,35 +784,27 @@ export const SettingsScreen = ({ navigation }) => {
         ))}
       </View>
       <View style={styles.pricingSection}>
-        {(() => {
-          const { amount, symbol } = getConvertedPrice(1.2, currency);
-          return (
-            <>
-              <Text style={[styles.priceAmount, { color: theme.text }]}>
-                {symbol}
-                {amount}
-              </Text>
-              <Text
-                style={[styles.pricePeriod, { color: theme.textSecondary }]}
-              >
-                /month
-              </Text>
-            </>
-          );
-        })()}
+        <Text style={[styles.priceAmount, { color: theme.text }]}>
+          {formatCurrency(299)}
+        </Text>
+        <Text style={[styles.pricePeriod, { color: theme.textSecondary }]}>
+          /month
+        </Text>
       </View>
-      <TouchableOpacity
-        style={[
-          styles.upgradePremiumButton,
-          { backgroundColor: theme.primary },
-        ]}
-        onPress={() => {
-          setEditModalVisible(false);
-          navigation.navigate("Paywall");
-        }}
-      >
-        <Text style={styles.upgradePremiumText}>Upgrade Now</Text>
-      </TouchableOpacity>
+      {paymentsEnabled ? (
+        <TouchableOpacity
+          style={[
+            styles.upgradePremiumButton,
+            { backgroundColor: theme.primary },
+          ]}
+          onPress={() => {
+            setEditModalVisible(false);
+            navigation.navigate("Paywall");
+          }}
+        >
+          <Text style={styles.upgradePremiumText}>Upgrade Now</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 
@@ -1254,17 +1129,11 @@ export const SettingsScreen = ({ navigation }) => {
     let modalContent;
     const modalKey = editingItem?.modalKey ?? editingItem?.title;
     switch (modalKey) {
-      case "Language":
-        modalContent = renderLanguageSelector();
-        break;
-      case "Currency":
-        modalContent = renderCurrencySelector();
-        break;
       case "Default Board":
         modalContent = renderDefaultBoardSelector();
         break;
       case "Monthly Budget":
-        modalContent = renderBudgetEditor();
+        modalContent = renderMonthlyBudgetEditor();
         break;
       case "Premium Access":
         modalContent = renderPremiumFeatures();
@@ -1450,6 +1319,7 @@ export const SettingsScreen = ({ navigation }) => {
 
     return (
     <TouchableOpacity
+      key={`${icon}-${String(title)}`}
       style={[
         styles.settingItem,
         showBorder && {
@@ -1610,14 +1480,6 @@ export const SettingsScreen = ({ navigation }) => {
               subtitle: t("darkModeSubtitle"),
               rightComponent: <ThemeToggle />,
               editable: false,
-            }),
-            renderSettingItem({
-              icon: "translate",
-              title: t("language"),
-              subtitle:
-                languages.find((lang) => lang.code === language)?.name ||
-                "English",
-              onPress: () => handleEdit({ modalKey: "Language", title: t("language") }),
               showBorder: false,
             }),
           ],
@@ -1626,14 +1488,6 @@ export const SettingsScreen = ({ navigation }) => {
         {renderSection({
           title: t("expenseSettings"),
           children: [
-            renderSettingItem({
-              icon: "currency-usd",
-              title: t("currency"),
-              subtitle: `${
-                currencies.find((curr) => curr.code === currency)?.symbol
-              } ${currencies.find((curr) => curr.code === currency)?.name}`,
-              onPress: () => handleEdit({ modalKey: "Currency", title: t("currency") }),
-            }),
             renderSettingItem({
               icon: "view-dashboard-outline",
               title: t("defaultBoard"),

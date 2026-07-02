@@ -6,6 +6,8 @@ const admobAndroidAppId =
 const admobIosAppId =
   process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID ||
   "ca-app-pub-3940256099942544~1458002511";
+const sentryOrg = process.env.SENTRY_ORG || "rasoi-app";
+const sentryProject = process.env.SENTRY_PROJECT || "trivense-mobile";
 
 export default {
   expo: {
@@ -29,6 +31,8 @@ export default {
           "Trivense needs photo library access to attach receipt images to expenses.",
         NSPhotoLibraryAddUsageDescription:
           "Trivense can save exported expense files to your photo library.",
+        NSLocationWhenInUseUsageDescription:
+          "Trivense uses your location to improve travel boards and local currency defaults.",
       },
     },
     android: {
@@ -36,9 +40,15 @@ export default {
         foregroundImage: "./assets/adaptive_icon.png",
         backgroundColor: "#003D66",
       },
+      softwareKeyboardLayoutMode: "resize",
       package: "com.trivense.app",
       googleServicesFile: "./firebase/google-services.json",
-      permissions: ["INTERNET", "POST_NOTIFICATIONS"],
+      permissions: [
+        "INTERNET",
+        "POST_NOTIFICATIONS",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+      ],
     },
     web: {
       favicon: "./assets/icon.png",
@@ -85,6 +95,13 @@ export default {
           color: "#003D66",
         },
       ],
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Trivense uses your location to improve travel boards and local currency defaults.",
+        },
+      ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       [
@@ -111,7 +128,17 @@ export default {
           iosAppId: admobIosAppId,
         },
       ],
-      ...(process.env.EXPO_PUBLIC_SENTRY_DSN ? ["@sentry/react-native"] : []),
+      ...(process.env.EXPO_PUBLIC_SENTRY_DSN
+        ? [
+            [
+              "@sentry/react-native/expo",
+              {
+                organization: sentryOrg,
+                project: sentryProject,
+              },
+            ],
+          ]
+        : []),
     ],
     extra: {
       eas: {

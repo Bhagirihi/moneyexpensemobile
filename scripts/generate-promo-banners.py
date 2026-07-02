@@ -196,21 +196,140 @@ def make_analytics_screen(glyph: Image.Image) -> Image.Image:
 
 
 def make_split_screen(glyph: Image.Image) -> Image.Image:
+    """Splitwise-style group balance list with owe/owed colors."""
+    w, h = 1080, 1920
+    img = Image.new("RGBA", (w, h), CREAM)
+    draw = ImageDraw.Draw(img)
+    rounded_rect(draw, (0, 0, w, 220), 0, BRAND)
+    draw.text((48, 72), "Balances", fill=WHITE, font=load_font("Poppins-Bold.ttf", 34))
+    draw.text((48, 124), "Overall, you are owed ₹2,050", fill=ACCENT_LIGHT, font=load_font("Inter_Medium.ttf", 20))
+    y = 260
+    groups = [
+        ("Goa Trip 2025", "you are owed ₹1,450", SUCCESS, "🏖️"),
+        ("Home & utilities", "you owe ₹680", (249, 115, 22), "🏠"),
+        ("Office lunch", "settled up", (148, 163, 184), "🍽️"),
+    ]
+    for name, status, color, emoji in groups:
+        rounded_rect(draw, (48, y, w - 48, y + 148), 20, WHITE, outline=(225, 228, 238), width=2)
+        rounded_rect(draw, (72, y + 28, 132, y + 92), 16, (*BRAND_LIGHT, 40))
+        draw.text((88, y + 44), emoji, fill=TEXT_DARK, font=load_font("Inter_Medium.ttf", 28))
+        draw.text((156, y + 32), name, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 26))
+        draw.text((156, y + 72), status, fill=color, font=load_font("Inter_Medium.ttf", 20))
+        y += 168
+    rounded_rect(draw, (w - 220, h - 140, w - 48, h - 56), 32, ACCENT)
+    draw.text((w - 196, h - 112), "+ Add expense", fill=WHITE, font=load_font("Poppins-SemiBold.ttf", 22))
+    return img
+
+
+def make_settle_screen(glyph: Image.Image) -> Image.Image:
+    """Tricount-style hero balance card."""
     w, h = 1080, 1920
     img = Image.new("RGBA", (w, h), CREAM)
     draw = ImageDraw.Draw(img)
     rounded_rect(draw, (0, 0, w, 200), 0, BRAND)
-    draw.text((48, 80), "Who owes whom", fill=WHITE, font=load_font("Poppins-Bold.ttf", 32))
+    draw.text((48, 80), "Goa Trip 2025", fill=WHITE, font=load_font("Poppins-Bold.ttf", 32))
+    y = 240
+    rounded_rect(draw, (48, y, w - 48, y + 220), 24, WHITE, outline=(225, 228, 238), width=2)
+    draw.text((88, y + 36), "🤑", fill=TEXT_DARK, font=load_font("Inter_Medium.ttf", 44))
+    draw.text((160, y + 44), "You're owed", fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 20))
+    draw.text((160, y + 76), "₹1,450", fill=TEXT_DARK, font=load_font("Poppins-Bold.ttf", 52))
+    draw.text((160, y + 148), "By Rahul & Priya", fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 20))
+    y += 260
+    draw.text((48, y), "Suggested payments", fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 26))
+    y += 52
+    payments = [("Rahul → You", "₹900"), ("Priya → You", "₹550")]
+    for pair, amt in payments:
+        rounded_rect(draw, (48, y, w - 48, y + 100), 16, WHITE, outline=(225, 228, 238), width=2)
+        draw.text((76, y + 24), pair, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))
+        draw.text((76, y + 58), amt, fill=ACCENT, font=load_font("Poppins-Bold.ttf", 26))
+        y += 120
+    rounded_rect(draw, (48, y + 24, w - 48, y + 108), 28, BRAND)
+    tw, _ = text_size(draw, "Mark as settled", load_font("Poppins-Bold.ttf", 28))
+    draw.text(((w - tw) // 2, y + 52), "Mark as settled", fill=WHITE, font=load_font("Poppins-Bold.ttf", 28))
+    return img
+
+
+def make_currency_screen(glyph: Image.Image) -> Image.Image:
+    w, h = 1080, 1920
+    img = Image.new("RGBA", (w, h), CREAM)
+    draw = ImageDraw.Draw(img)
+    rounded_rect(draw, (0, 0, w, 200), 0, BRAND)
+    draw.text((48, 80), "Multi-currency", fill=WHITE, font=load_font("Poppins-Bold.ttf", 32))
     y = 260
-    splits = [("Rahul owes You", "₹1,200"), ("You owe Priya", "₹850"), ("Amit owes Rahul", "₹400")]
-    for pair, amt in splits:
-        rounded_rect(draw, (48, y, w - 48, y + 110), 16, WHITE, outline=(225, 228, 238), width=2)
-        draw.text((76, y + 28), pair, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))
-        draw.text((76, y + 62), amt, fill=ACCENT, font=load_font("Poppins-Bold.ttf", 28))
-        y += 130
-    rounded_rect(draw, (48, y + 20, w - 48, y + 100), 24, BRAND)
-    tw, _ = text_size(draw, "Settle up", load_font("Poppins-Bold.ttf", 26))
-    draw.text(((w - tw) // 2, y + 44), "Settle up", fill=WHITE, font=load_font("Poppins-Bold.ttf", 26))
+    draw.text((48, y), "Trip totals in any currency", fill=TEXT_DARK, font=load_font("Poppins-Bold.ttf", 28))
+    y += 56
+    currencies = [
+        ("₹", "INR", "₹48,200", "Goa Trip", ACCENT),
+        ("$", "USD", "$1,240", "NYC Weekend", (79, 70, 229)),
+        ("€", "EUR", "€890", "Europe Tour", (249, 115, 22)),
+        ("£", "GBP", "£620", "London Visit", (16, 185, 129)),
+    ]
+    for sym, code, amt, label, color in currencies:
+        rounded_rect(draw, (48, y, w - 48, y + 132), 20, WHITE, outline=(225, 228, 238), width=2)
+        rounded_rect(draw, (72, y + 28, 132, y + 104), 16, color)
+        draw.text((96, y + 44), sym, fill=WHITE, font=load_font("Poppins-Bold.ttf", 36))
+        draw.text((156, y + 32), label, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))
+        draw.text((156, y + 64), f"{amt} · {code}", fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 18))
+        draw.text((w - 120, y + 48), "Live", fill=SUCCESS, font=load_font("Inter_Medium.ttf", 16))
+        y += 152
+    return img
+
+
+def make_invite_screen(glyph: Image.Image) -> Image.Image:
+    w, h = 1080, 1920
+    img = Image.new("RGBA", (w, h), CREAM)
+    draw = ImageDraw.Draw(img)
+    rounded_rect(draw, (0, 0, w, 220), 0, BRAND)
+    brand_header(img, glyph, 40, 50)
+    y = 280
+    draw.text((48, y), "Invite your group", fill=TEXT_DARK, font=load_font("Poppins-Bold.ttf", 32))
+    y += 56
+    rounded_rect(draw, (48, y, w - 48, y + 200), 24, WHITE, outline=(225, 228, 238), width=2)
+    draw.text((80, y + 32), "Share code", fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 18))
+    draw.text((80, y + 68), "TRV-GOA-7K2", fill=BRAND, font=load_font("Poppins-Bold.ttf", 40))
+    rounded_rect(draw, (80, y + 136, 280, y + 180), 20, ACCENT)
+    draw.text((108, y + 148), "Copy link", fill=WHITE, font=load_font("Poppins-SemiBold.ttf", 18))
+    y += 240
+    draw.text((48, y), "Members (4)", fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))
+    y += 48
+    members = [("You", "Admin", BRAND), ("Rahul", "Member", ACCENT), ("Priya", "Member", (79, 70, 229)), ("Amit", "Member", (249, 115, 22))]
+    for name, role, color in members:
+        rounded_rect(draw, (48, y, w - 48, y + 88), 16, WHITE, outline=(225, 228, 238), width=2)
+        rounded_rect(draw, (72, y + 20, 120, y + 68), 24, color)
+        initial = name[0]
+        tw, _ = text_size(draw, initial, load_font("Poppins-Bold.ttf", 22))
+        draw.text((96 - tw // 2, y + 30), initial, fill=WHITE, font=load_font("Poppins-Bold.ttf", 22))
+        draw.text((140, y + 22), name, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 22))
+        draw.text((140, y + 50), role, fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 16))
+        y += 104
+    return img
+
+
+def make_sync_screen(glyph: Image.Image) -> Image.Image:
+    w, h = 1080, 1920
+    img = Image.new("RGBA", (w, h), CREAM)
+    draw = ImageDraw.Draw(img)
+    rounded_rect(draw, (0, 0, w, 260), 0, BRAND)
+    mark = fit_glyph(glyph, 80)
+    img.paste(mark, (40, 70), mark)
+    draw.text((140, 88), "Trivense", fill=WHITE, font=load_font("Poppins-SemiBold.ttf", 34))
+    draw.text((140, 132), "Synced · Just now", fill=ACCENT_LIGHT, font=load_font("Inter_Medium.ttf", 20))
+    y = 300
+    perks = [
+        ("Offline-first", "Add expenses without signal"),
+        ("Cloud sync", "Everyone sees updates instantly"),
+        ("Secure boards", "Private to your group"),
+    ]
+    for title, sub in perks:
+        rounded_rect(draw, (48, y, w - 48, y + 120), 18, WHITE, outline=(225, 228, 238), width=2)
+        rounded_rect(draw, (72, y + 28, 108, y + 92), 12, ACCENT)
+        draw.text((128, y + 28), title, fill=TEXT_DARK, font=load_font("Poppins-SemiBold.ttf", 24))
+        draw.text((128, y + 62), sub, fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 18))
+        y += 140
+    rounded_rect(draw, (48, y + 20, w - 48, y + 180), 20, (*BRAND_LIGHT, 30))
+    draw.text((80, y + 48), "Free to start", fill=BRAND, font=load_font("Poppins-Bold.ttf", 32))
+    draw.text((80, y + 96), "1 board · Weekly analytics · 3 categories", fill=(110, 118, 145), font=load_font("Inter_Medium.ttf", 18))
+    draw.text((80, y + 132), "Premium: unlimited boards, export, ad-free", fill=ACCENT, font=load_font("Inter_Medium.ttf", 18))
     return img
 
 
@@ -532,7 +651,11 @@ def main() -> None:
         "boards": make_boards_screen(glyph),
         "analytics": make_analytics_screen(glyph),
         "split": make_split_screen(glyph),
+        "settle": make_settle_screen(glyph),
         "search": make_search_screen(glyph),
+        "currency": make_currency_screen(glyph),
+        "invite": make_invite_screen(glyph),
+        "sync": make_sync_screen(glyph),
     }
     for name, builder in BANNERS:
         img = builder(glyph, screens)

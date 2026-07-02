@@ -4,7 +4,9 @@ import { Platform } from "react-native";
 import { supabase } from "../config/supabase";
 import { formatCurrency } from "../utils/formatters";
 
-export async function registerForPushNotificationsAsync() {
+export async function registerForPushNotificationsAsync({
+  requestPermission = true,
+} = {}) {
   const {
     data: { session },
     error: sessionError,
@@ -22,6 +24,9 @@ export async function registerForPushNotificationsAsync() {
   let finalStatus = existingStatus;
 
   if (existingStatus !== "granted") {
+    if (!requestPermission) {
+      return null;
+    }
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
@@ -55,6 +60,10 @@ export async function registerForPushNotificationsAsync() {
     console.error("Error getting push token:", e);
     return null;
   }
+}
+
+export async function requestNotificationPermissionFromSetup() {
+  return registerForPushNotificationsAsync({ requestPermission: true });
 }
 
 async function savePushTokenToProfile(userId, expoPushToken) {

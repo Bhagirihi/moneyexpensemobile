@@ -61,6 +61,10 @@ export const PaywallScreen = ({ navigation, route }) => {
     [lockedFeature]
   );
 
+  if (subscriptionLoading) {
+    return null;
+  }
+
   if (!paymentsEnabled) {
     return null;
   }

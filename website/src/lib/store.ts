@@ -1,3 +1,5 @@
+export const WEBSITE_URL = "https://trivense.vercel.app";
+
 export const ANDROID_PACKAGE = "com.trivense.app";
 
 export const PLAY_STORE_BASE =
@@ -19,5 +21,5 @@ export function buildAndroidAppIntentUrl(referralCode: string) {
 
 export function buildReferralDownloadUrl(referralCode: string) {
   const code = encodeURIComponent(referralCode.trim().toUpperCase());
-  return `https://trivense.app/download?invite=${code}`;
+  return `${WEBSITE_URL}/download?invite=${code}`;
 }

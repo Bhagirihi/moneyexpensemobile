@@ -3,7 +3,7 @@ export const site = {
   tagline: "Split expenses, made easy.",
   description:
     "Trivense helps travelers and groups manage shared expenses with boards, real-time sync, analytics, and smart budgets — built for India and beyond.",
-  url: "https://trivense.app",
+  url: "https://trivense.vercel.app",
   supportEmail: "support@trivense.app",
   playStoreUrl:
     "https://play.google.com/store/apps/details?id=com.trivense.app",

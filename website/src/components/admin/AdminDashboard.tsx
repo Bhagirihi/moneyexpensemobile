@@ -165,7 +165,7 @@ function OverviewTab({
       <PaymentsToggleCard config={data.appConfig} onUpdated={onConfigChange} />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="App users" value={String(s.users.total)} hint={`+${s.users.last7Days} this week`} />
+        <StatCard label="App users" value={String(s.users.total)} hint={`+${s.users.last7Days} this week · ${s.users.withPushToken} with push token`} />
         <StatCard label="Premium (paid)" value={String(s.subscriptions.activePaid)} hint={`${s.plans.monthly} monthly · ${s.plans.yearly} yearly rows`} />
         <StatCard label="Referrals" value={String(s.referrals.total)} hint={`+${s.referrals.last7Days} this week`} />
         <StatCard label="Waitlist" value={String(s.waitlist.total)} hint={`+${s.waitlist.last7Days} this week`} />
@@ -221,18 +221,72 @@ function OverviewTab({
 function UsersTab({ data }: { data: AdminOverview }) {
   return (
     <Panel title={`Recent users (${data.recentUsers.length})`}>
-      <SimpleTable
-        headers={["Email", "Name", "Plan", "Status", "Referral code", "Joined"]}
-        rows={data.recentUsers.map((u) => [
-          u.email_address ?? "—",
-          u.full_name ?? "—",
-          u.current_plan ?? "free",
-          u.account_status ?? "active",
-          u.referral_code ?? "—",
-          formatDate(u.created_at),
-        ])}
-      />
+      <UsersTable users={data.recentUsers} />
     </Panel>
+  );
+}
+
+function UsersTable({ users }: { users: AdminOverview["recentUsers"] }) {
+  if (!users.length) {
+    return <p className="text-sm text-white/50">No records yet.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-b border-white/10 text-white/45">
+          <tr>
+            {[
+              "Email",
+              "Name",
+              "Plan",
+              "Status",
+              "Referral code",
+              "Expo push token",
+              "Joined",
+            ].map((header) => (
+              <th key={header} className="px-3 py-2 font-medium first:pl-0 last:pr-0">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {users.map((user) => (
+            <tr key={user.id} className="border-b border-white/[0.06] text-white/75">
+              <td className="px-3 py-2.5 first:pl-0">{user.email_address ?? "—"}</td>
+              <td className="px-3 py-2.5">{user.full_name ?? "—"}</td>
+              <td className="px-3 py-2.5">{user.current_plan ?? "free"}</td>
+              <td className="px-3 py-2.5">{user.account_status ?? "active"}</td>
+              <td className="px-3 py-2.5">{user.referral_code ?? "—"}</td>
+              <td className="max-w-[220px] px-3 py-2.5">
+                <PushTokenCell token={user.expo_push_token} />
+              </td>
+              <td className="px-3 py-2.5 last:pr-0">{formatDate(user.created_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PushTokenCell({ token }: { token: string | null }) {
+  if (!token?.trim()) {
+    return <span className="text-white/35">—</span>;
+  }
+
+  const trimmed = token.trim();
+  const compact =
+    trimmed.length > 36 ? `${trimmed.slice(0, 18)}…${trimmed.slice(-10)}` : trimmed;
+
+  return (
+    <code
+      className="block truncate font-mono text-xs text-emerald-200/90"
+      title={trimmed}
+    >
+      {compact}
+    </code>
   );
 }
 

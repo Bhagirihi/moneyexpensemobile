@@ -14,6 +14,11 @@ export default {
   currency: "मुद्रा",
   defaultBoard: "डिफ़ॉल्ट बोर्ड",
   monthlyBudget: "मासिक बजट",
+  monthlyBudgetHint: "बजट ट्रैकिंग के लिए अपनी डिफ़ॉल्ट मासिक खर्च सीमा सेट करें।",
+  enterBudgetAmount: "बजट राशि दर्ज करें",
+  monthlyBudgetPromptTitle: "अपना मासिक बजट सेट करें",
+  monthlyBudgetPromptSubtitle: "खर्च ट्रैक करने और अलर्ट पाने के लिए सेटिंग्स में मासिक बजट जोड़ें।",
+  setMonthlyBudgetInSettings: "सेटिंग्स में सेट करें",
   expenseBoard: "खर्च बोर्ड",
   boards: "बोर्ड",
   members: "सदस्य",
@@ -290,6 +295,26 @@ export default {
   setBudgetsAndTrack: "बजट सेट करें और खर्च ट्रैक करें",
   next: "आगे",
   getStarted: "शुरू करें",
+
+  postRegisterTermsTitle: "नियम और गोपनीयता",
+  postRegisterTermsBody:
+    "जारी रखने के लिए कृपया हमारी सेवा की शर्तें और गोपनीयता नीति स्वीकार करें।",
+  postRegisterTermsCheckbox:
+    "मैं सेवा की शर्तों और गोपनीयता नीति से सहमत हूँ",
+  readTermsOfService: "सेवा की शर्तें पढ़ें",
+  readPrivacyPolicy: "गोपनीयता नीति पढ़ें",
+  readFullTerms: "पूरी सेवा की शर्तें पढ़ें",
+  readFullPrivacy: "पूरी गोपनीयता नीति पढ़ें",
+  readFullDocumentOnline: "पूरा दस्तावेज़ ऑनलाइन पढ़ें",
+  postRegisterLocationTitle: "लोकेशन चालू करें",
+  postRegisterLocationBody:
+    "यात्रा बोर्ड और स्थानीय मुद्रा के लिए लोकेशन एक्सेस दें। आप इसे बाद में सेटिंग्स में बदल सकते हैं।",
+  postRegisterNotificationsTitle: "अपडेट पाएं",
+  postRegisterNotificationsBody:
+    "बोर्ड निमंत्रण, नए खर्च और सेटलमेंट अपडेट के लिए सूचनाएं पाएं।",
+  postRegisterAllowLocation: "लोकेशन की अनुमति दें",
+  postRegisterEnableNotifications: "सूचनाएं चालू करें",
+  postRegisterNotNow: "अभी नहीं",
 
   // App cues (dashboard tour)
   cueSkipTour: "टूर छोड़ें",

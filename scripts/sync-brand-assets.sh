@@ -2,22 +2,26 @@
 # Regenerate Trivense brand PNGs from the canonical UI icon.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/UI/icon.png"
+VENV="$ROOT/.venv-brand"
 
-cp "$SRC" "$ROOT/assets/icon.png"
-cp "$SRC" "$ROOT/assets/splash_icon.png"
-cp "$SRC" "$ROOT/UI/splash_icon.png"
-
-if command -v python3 >/dev/null 2>&1; then
-  python3 "$ROOT/scripts/generate-icon-transparent.py" 2>/dev/null || true
+if [[ ! -f "$ROOT/UI/icon.png" ]]; then
+  echo "Missing $ROOT/UI/icon.png" >&2
+  exit 1
 fi
+
+if [[ ! -d "$VENV" ]]; then
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install -q Pillow
+fi
+
+"$VENV/bin/python" "$ROOT/scripts/generate-brand-assets.py"
 
 if command -v sips >/dev/null 2>&1; then
-  sips -z 512 512 "$SRC" --out "$ROOT/store-assets/play/app_icon_512.png" >/dev/null
+  sips -z 512 512 "$ROOT/assets/icon.png" --out "$ROOT/store-assets/play/app_icon_512.png" >/dev/null 2>&1 || true
 fi
 
-cp "$SRC" "$ROOT/website/public/logo.png"
-cp "$SRC" "$ROOT/website/src/app/icon.png"
-cp "$SRC" "$ROOT/website/src/app/apple-icon.png"
+if [[ -d "$ROOT/website/public" ]]; then
+  cp "$ROOT/assets/icon.png" "$ROOT/website/public/logo.png"
+fi
 
-echo "✓ Brand assets synced from UI/icon.png (website + store icon included)"
+echo "✓ Brand assets regenerated from UI/icon.png"

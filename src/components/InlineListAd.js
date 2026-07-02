@@ -5,7 +5,6 @@ import { useAdPolicy } from "../context/AdPolicyContext";
 import { isAdMobAvailable } from "../services/adService";
 import { loadNativeModule } from "../utils/lazyNativeModule";
 import { radii, spacing } from "../theme/tokens";
-import AdSlotPlaceholder from "./AdSlotPlaceholder";
 
 /**
  * Inline banner between list rows (free users, respects grace + rewarded ad-free).
@@ -39,29 +38,26 @@ export default function InlineListAd({ style }) {
     };
   }, [canRequestAd]);
 
-  if (!showBannerAds) {
+  if (!showBannerAds || failed || !canRequestAd || !BannerAd || !bannerSize) {
     return null;
   }
 
-  const showRealAd = canRequestAd && BannerAd && bannerSize;
-
-  if (showRealAd) {
-    return (
-      <View style={[styles.wrap, style]}>
-        {!loaded ? <AdSlotPlaceholder variant="inline" /> : null}
-        <View style={loaded ? undefined : styles.hiddenBanner}>
-          <BannerAd
-            unitId={getBannerUnitId("inline")}
-            size={bannerSize}
-            onAdLoaded={() => setLoaded(true)}
-            onAdFailedToLoad={() => setFailed(true)}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  return <AdSlotPlaceholder variant="inline" style={style} />;
+  return (
+    <View
+      style={[
+        styles.wrap,
+        style,
+        !loaded && styles.hiddenBanner,
+      ]}
+    >
+      <BannerAd
+        unitId={getBannerUnitId("inline")}
+        size={bannerSize}
+        onAdLoaded={() => setLoaded(true)}
+        onAdFailedToLoad={() => setFailed(true)}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -75,5 +71,6 @@ const styles = StyleSheet.create({
     height: 0,
     overflow: "hidden",
     opacity: 0,
+    marginVertical: 0,
   },
 });

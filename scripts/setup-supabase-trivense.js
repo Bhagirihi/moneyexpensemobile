@@ -85,13 +85,8 @@ Restore or create the project:
   const anonHint = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? "set" : "missing";
   console.log(`
 Next steps:
+  • npm run setup:google-auth  — enable Google in Supabase (uses Firebase OAuth client)
   • Dashboard → Settings → API → copy anon key into .env (currently ${anonHint})
-  • Auth → Providers → enable Google (Client ID + Secret from Google Cloud)
-  • Auth → URL Configuration → add redirect URLs:
-      trivense://auth/callback
-      exp+trivense://auth/callback
-  • Google Cloud OAuth client → authorized redirect URI:
-      ${SUPABASE_URL}/auth/v1/callback
   • Set secret: supabase secrets set REVENUECAT_WEBHOOK_AUTH=...
   • RevenueCat webhook URL:
       ${SUPABASE_URL}/functions/v1/revenuecat-webhook

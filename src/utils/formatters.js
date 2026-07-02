@@ -1,9 +1,19 @@
 let activeCurrency = "USD";
 let activeLanguage = "en";
+let hideCurrencySymbols = false;
 
-export function setFormatterSettings({ currency, language } = {}) {
+export function setFormatterSettings({
+  currency,
+  language,
+  hideCurrencySymbols: hideSymbols,
+} = {}) {
   if (currency) activeCurrency = currency;
   if (language) activeLanguage = language;
+  if (hideSymbols !== undefined) hideCurrencySymbols = hideSymbols;
+}
+
+export function shouldHideCurrencySymbols() {
+  return hideCurrencySymbols;
 }
 
 export function getActiveCurrency() {
@@ -35,8 +45,19 @@ const CURRENCY_LOCALES = {
 };
 
 export function getCurrencySymbol(currencyCode) {
+  if (hideCurrencySymbols) return "";
   const code = currencyCode || activeCurrency;
   return CURRENCY_SYMBOLS[code] || code;
+}
+
+function formatAmountDecimal(num, locale) {
+  const fractionDigits =
+    activeCurrency === "INR" || activeCurrency === "JPY" ? 0 : 2;
+  return new Intl.NumberFormat(locale, {
+    style: "decimal",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(num);
 }
 
 /**
@@ -46,12 +67,15 @@ export const formatCurrency = (amount, currencyCode = null) => {
   const currencyToUse = currencyCode || activeCurrency;
   const num = Number(amount);
   if (Number.isNaN(num)) {
-    return `${getCurrencySymbol(currencyToUse)}0.00`;
+    return hideCurrencySymbols ? "0.00" : `${getCurrencySymbol(currencyToUse)}0.00`;
   }
 
   const locale = CURRENCY_LOCALES[currencyToUse] || "en-US";
 
   try {
+    if (hideCurrencySymbols) {
+      return formatAmountDecimal(num, locale);
+    }
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyToUse,
@@ -59,18 +83,27 @@ export const formatCurrency = (amount, currencyCode = null) => {
       maximumFractionDigits: 2,
     }).format(num);
   } catch {
-    return `${getCurrencySymbol(currencyToUse)}${num.toFixed(2)}`;
+    return hideCurrencySymbols
+      ? num.toFixed(2)
+      : `${getCurrencySymbol(currencyToUse)}${num.toFixed(2)}`;
   }
 };
 
 export const formatCompactCurrency = (amount, currencyCode = null) => {
   const currencyToUse = currencyCode || activeCurrency;
   const num = Number(amount);
-  if (Number.isNaN(num)) return getCurrencySymbol(currencyToUse);
+  if (Number.isNaN(num)) return hideCurrencySymbols ? "0" : getCurrencySymbol(currencyToUse);
 
   const locale = CURRENCY_LOCALES[currencyToUse] || "en-US";
 
   try {
+    if (hideCurrencySymbols) {
+      return new Intl.NumberFormat(locale, {
+        style: "decimal",
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(num);
+    }
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyToUse,
@@ -78,7 +111,9 @@ export const formatCompactCurrency = (amount, currencyCode = null) => {
       maximumFractionDigits: 1,
     }).format(num);
   } catch {
-    return `${getCurrencySymbol(currencyToUse)}${num.toFixed(1)}`;
+    return hideCurrencySymbols
+      ? num.toFixed(1)
+      : `${getCurrencySymbol(currencyToUse)}${num.toFixed(1)}`;
   }
 };
 
@@ -87,11 +122,7 @@ export const parseCurrency = (currencyString, currencyCode = null) => {
   return parseFloat(cleanString) || 0;
 };
 
-const getLocaleFromLanguage = (language) => {
-  if (language === "hi") return "hi-IN";
-  if (language === "en") return "en-US";
-  return "en-IN";
-};
+const getLocaleFromLanguage = () => "en-US";
 
 export const formatDate = (date = new Date(), format = "medium") => {
   const locale = getLocaleFromLanguage(activeLanguage);

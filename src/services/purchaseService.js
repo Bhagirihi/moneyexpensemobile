@@ -33,15 +33,16 @@ async function getPurchasesModule() {
 }
 
 function getApiKey() {
-  // Expo Go has no Play/App Store billing — RevenueCat Test Store key only.
-  if (isExpoGo()) {
+  // Development builds and Expo Go have unreliable Play/App Store billing on
+  // emulators, so prefer RevenueCat Test Store when it is configured.
+  if (__DEV__ && testKey) {
     return testKey || null;
   }
 
   if (Platform.OS === "ios") {
-    return iosKey || (__DEV__ ? testKey : null);
+    return iosKey || null;
   }
-  return androidKey || (__DEV__ ? testKey : null);
+  return androidKey || null;
 }
 
 function getPlatformKey() {

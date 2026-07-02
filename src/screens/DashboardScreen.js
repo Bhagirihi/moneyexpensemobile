@@ -53,6 +53,9 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchDashboardData } from "../fetcher";
 import { isOnboardingComplete } from "../utils/onboardingStorage";
+import {
+  shouldShowPostRegisterSetup,
+} from "../utils/postRegisterSetupStorage";
 import { isTourCompleted } from "../utils/appCueStorage";
 import { useAppCue } from "../context/AppCueContext";
 import { useTranslation } from "../hooks/useTranslation";
@@ -70,7 +73,7 @@ export const DashboardScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const { currency } = useAppSettings();
-  const { paymentsEnabled } = useSubscription();
+  const { paymentsEnabled, loading: subscriptionLoading } = useSubscription();
   const scrollBottomPadding = useFooterScrollPadding(0, false);
   const recentLimit = Platform.OS === "android" ? 5 : 4;
   const { user: authUser } = useAuth();
@@ -193,6 +196,10 @@ export const DashboardScreen = ({ navigation }) => {
     useCallback(() => {
       let active = true;
       (async () => {
+        if (authUser?.id && (await shouldShowPostRegisterSetup(authUser.id))) {
+          if (active) navigation.replace("PostRegisterSetup");
+          return;
+        }
         const done = await isOnboardingComplete();
         if (active && !done) {
           navigation.navigate("Onboarding");
@@ -415,6 +422,42 @@ export const DashboardScreen = ({ navigation }) => {
       </View>
     </LinearGradient>
   );
+
+  const renderMonthlyBudgetPrompt = () => {
+    const budgetSet =
+      Number(userProfile?.default_board_budget) > 0 ||
+      Number(stats.totalBudget) > 0;
+    if (!hasBoards || budgetSet) return null;
+
+    return (
+      <View
+        style={[
+          styles.firstBoardCard,
+          { backgroundColor: theme.card, borderColor: theme.border },
+        ]}
+      >
+        <View style={[styles.firstBoardIcon, { backgroundColor: theme.primaryMuted }]}>
+          <MaterialCommunityIcons name="wallet-outline" size={32} color={theme.primary} />
+        </View>
+        <Text style={[styles.firstBoardTitle, { color: theme.text }]}>
+          {t("monthlyBudgetPromptTitle")}
+        </Text>
+        <Text style={[styles.firstBoardSubtitle, { color: theme.textSecondary }]}>
+          {t("monthlyBudgetPromptSubtitle")}
+        </Text>
+        <TouchableOpacity
+          style={[styles.firstBoardButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("Settings")}
+          activeOpacity={0.85}
+        >
+          <MaterialCommunityIcons name="cog-outline" size={20} color={theme.white} />
+          <Text style={[styles.firstBoardButtonText, { color: theme.white }]}>
+            {t("setMonthlyBudgetInSettings")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderFirstBoardPrompt = () => {
     if (hasBoards) return null;
@@ -720,7 +763,11 @@ export const DashboardScreen = ({ navigation }) => {
       </TouchableOpacity>
       <ThemeToggle />
       <PlanBadge
-        onPress={paymentsEnabled ? () => navigation.navigate("Paywall") : undefined}
+        onPress={
+          paymentsEnabled && !subscriptionLoading
+            ? () => navigation.navigate("Paywall")
+            : undefined
+        }
       />
     </View>
   );
@@ -773,12 +820,13 @@ export const DashboardScreen = ({ navigation }) => {
           compact
           title={headerTitle}
           subtitle={dashboardSubtitle}
-          onTitlePress={() => navigation.navigate("Profile")}
+          onTitlePress={() => navigation.navigate("Profile", { tabRoot: false })}
           trailing={renderHeaderTrailing()}
         />
 
         <View style={styles.sections}>
           {renderFirstBoardPrompt()}
+          {renderMonthlyBudgetPrompt()}
           {hasBoards ? renderBalanceCard() : null}
           <HomeInlineAd />
           {renderQuickActions()}

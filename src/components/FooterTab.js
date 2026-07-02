@@ -9,6 +9,7 @@ import { layout, radii, spacing, typography } from "../theme/tokens";
 const TABS = [
   { key: "Home", route: "Dashboard", icon: "home-variant", iconOutline: "home-variant-outline", labelKey: "home" },
   { key: "Analytics", route: "Analytics", icon: "chart-box", iconOutline: "chart-box-outline", labelKey: "analytics" },
+  { key: "Profile", route: "Profile", icon: "account-circle", iconOutline: "account-circle-outline", labelKey: "profile" },
   { key: "Settings", route: "Settings", icon: "cog", iconOutline: "cog-outline", labelKey: "settings" },
 ];
 
@@ -30,7 +31,13 @@ const FooterTab = ({ navigation, activeRoute = "Home" }) => {
               testID={`footer-tab-${tab.key}`}
               accessibilityLabel={t(tab.labelKey)}
               style={styles.tabItem}
-              onPress={() => navigation.navigate(tab.route)}
+              onPress={() => {
+                if (tab.key === "Profile") {
+                  navigation.navigate(tab.route, { tabRoot: true });
+                  return;
+                }
+                navigation.navigate(tab.route);
+              }}
               activeOpacity={0.75}
             >
               <View

@@ -16,6 +16,7 @@ import { realTimeSync } from "../services/realTimeSync";
 import { useAuth } from "../context/AuthContext";
 import FormButton from "../components/common/FormButton";
 import { radii, spacing, typography } from "../theme/tokens";
+import { navigateAfterRegisterAuth } from "../utils/postRegisterNavigation";
 
 const EmailVerificationScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
@@ -35,7 +36,9 @@ const EmailVerificationScreen = ({ navigation, route }) => {
           setVerificationStatus("verified");
           showToast.success("Email verified successfully!");
           setTimeout(() => {
-            navigation.replace("Dashboard");
+            navigateAfterRegisterAuth(navigation, {
+              userId: session?.user?.id,
+            });
           }, 2000);
         }
       }
@@ -71,7 +74,7 @@ const EmailVerificationScreen = ({ navigation, route }) => {
         setVerificationStatus("verified");
         showToast.success("Email verified successfully!");
         setTimeout(() => {
-          navigation.replace("Dashboard");
+          navigateAfterRegisterAuth(navigation, { userId: user?.id });
         }, 2000);
       }
     } catch (error) {
@@ -118,7 +121,7 @@ const EmailVerificationScreen = ({ navigation, route }) => {
         // Update user profile to trigger any necessary updates
         await updateUserProfile({ updated_at: new Date() });
         setTimeout(() => {
-          navigation.replace("Dashboard");
+          navigateAfterRegisterAuth(navigation, { userId: user?.id });
         }, 2000);
       } else {
         showToast.info("Email not verified yet. Please check your inbox.");

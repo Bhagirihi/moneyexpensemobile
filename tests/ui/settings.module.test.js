@@ -44,7 +44,8 @@ describe("Settings module UI", () => {
       expect(getAllByText("Settings").length).toBeGreaterThan(0);
     });
     expect(getByText("Appearance")).toBeTruthy();
-    expect(getByText("Language")).toBeTruthy();
+    expect(getByText("Expense Settings")).toBeTruthy();
+    expect(getByText("Default Board")).toBeTruthy();
   });
 
   it("shows premium access row for free users", async () => {

@@ -14,6 +14,11 @@ export default {
   currency: "Currency",
   defaultBoard: "Default Board",
   monthlyBudget: "Monthly Budget",
+  monthlyBudgetHint: "Set your default monthly spending limit for budget tracking.",
+  enterBudgetAmount: "Enter budget amount",
+  monthlyBudgetPromptTitle: "Set your monthly budget",
+  monthlyBudgetPromptSubtitle: "Add a monthly budget in Settings to track spending and get alerts.",
+  setMonthlyBudgetInSettings: "Set in Settings",
   expenseBoard: "Expense Board",
   boards: "Boards",
   members: "Members",
@@ -299,6 +304,27 @@ export default {
   setBudgetsAndTrack: "Set budgets and track your spending",
   next: "Next",
   getStarted: "Get Started",
+
+  // Post-register setup (register only)
+  postRegisterTermsTitle: "Terms & Privacy",
+  postRegisterTermsBody:
+    "Please review and accept our Terms of Service and Privacy Policy to continue.",
+  postRegisterTermsCheckbox:
+    "I agree to the Terms of Service and Privacy Policy",
+  readTermsOfService: "Read Terms of Service",
+  readPrivacyPolicy: "Read Privacy Policy",
+  readFullTerms: "Read full Terms of Service",
+  readFullPrivacy: "Read full Privacy Policy",
+  readFullDocumentOnline: "Read full document online",
+  postRegisterLocationTitle: "Enable location",
+  postRegisterLocationBody:
+    "Allow location access for smarter travel boards and local currency defaults. You can change this anytime in Settings.",
+  postRegisterNotificationsTitle: "Stay in the loop",
+  postRegisterNotificationsBody:
+    "Get alerts for board invites, new expenses, and settlement updates.",
+  postRegisterAllowLocation: "Allow location",
+  postRegisterEnableNotifications: "Enable notifications",
+  postRegisterNotNow: "Not now",
 
   // App cues (dashboard tour)
   cueSkipTour: "Skip tour",

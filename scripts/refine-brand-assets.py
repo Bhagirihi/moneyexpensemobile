@@ -13,7 +13,7 @@ ASSETS = ROOT / "assets"
 PLAY = ROOT / "store-assets" / "play"
 FONTS = ASSETS / "fonts"
 
-BRAND = (49, 53, 110)  # #31356e — matches app.config.js
+BRAND = (0, 61, 102)  # #003D66 — matches app.config.js
 WHITE = (255, 255, 255)
 TAGLINE = "Split Smarter. Travel Lighter"
 

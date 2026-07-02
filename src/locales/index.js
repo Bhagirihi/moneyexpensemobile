@@ -8,8 +8,6 @@ const translations = { en, hi };
  * @param {string} lang - Language code (e.g. 'en', 'hi')
  * @returns {object} Translation strings for that language
  */
-export const getTranslations = (lang) => {
-  return translations[lang] || en;
-};
+export const getTranslations = (lang) => translations.en;
 
 export { en, hi };

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WEBSITE_URL } from "../config/appLinks";
 
 const PENDING_REFERRAL_KEY = "@trivense/pending_referral_code";
 const APPLIED_REFERRAL_KEY = "@trivense/applied_referral_for_user";
@@ -40,7 +41,9 @@ export function extractReferralCodeFromUrl(url) {
   if (!url) return null;
 
   try {
-    const parsed = new URL(url.replace(/^trivense:\/\//, "https://trivense.app/"));
+    const parsed = new URL(
+      url.replace(/^trivense:\/\//, `${WEBSITE_URL}/`)
+    );
     const fromQuery =
       parsed.searchParams.get("invite") ||
       parsed.searchParams.get("referral") ||

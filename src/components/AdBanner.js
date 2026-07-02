@@ -5,14 +5,12 @@ import { getBannerUnitId } from "../config/admob";
 import { useAdPolicy } from "../context/AdPolicyContext";
 import { isAdMobAvailable } from "../services/adService";
 import { loadNativeModule } from "../utils/lazyNativeModule";
-import AdSlotPlaceholder from "./AdSlotPlaceholder";
 import { AD_SLOT_HEIGHT } from "./AdSlotPlaceholder";
 
 export { AD_SLOT_HEIGHT as AD_BANNER_HEIGHT };
 
 /**
- * Footer adaptive banner — hidden when inline ads exist on the same screen
- * or during rewarded ad-free / premium.
+ * Footer adaptive banner — only rendered when a real ad is available.
  */
 export default function AdBanner() {
   const { showBannerAds } = useAdPolicy();
@@ -44,37 +42,24 @@ export default function AdBanner() {
     };
   }, [canRequestAd]);
 
-  if (!showBannerAds) {
+  if (!showBannerAds || failed || !canRequestAd || !BannerAd || !bannerSize) {
     return null;
   }
 
-  const footerStyle = {
-    paddingBottom: Math.max(insets.bottom > 0 ? 0 : 4, 0),
-  };
-
-  const showRealAd = canRequestAd && BannerAd && bannerSize;
-
-  if (showRealAd) {
-    return (
-      <View style={[styles.wrap, footerStyle]}>
-        {!loaded ? (
-          <AdSlotPlaceholder variant="footer" testID="ad-banner-placeholder" />
-        ) : null}
-        <View style={loaded ? undefined : styles.hiddenBanner}>
-          <BannerAd
-            unitId={getBannerUnitId("footer")}
-            size={bannerSize}
-            onAdLoaded={() => setLoaded(true)}
-            onAdFailedToLoad={() => setFailed(true)}
-          />
-        </View>
-      </View>
-    );
-  }
-
   return (
-    <View style={[styles.wrap, footerStyle]}>
-      <AdSlotPlaceholder variant="footer" testID="ad-banner-placeholder" />
+    <View
+      style={[
+        styles.wrap,
+        { paddingBottom: Math.max(insets.bottom > 0 ? 0 : 4, 0) },
+        !loaded && styles.hiddenBanner,
+      ]}
+    >
+      <BannerAd
+        unitId={getBannerUnitId("footer")}
+        size={bannerSize}
+        onAdLoaded={() => setLoaded(true)}
+        onAdFailedToLoad={() => setFailed(true)}
+      />
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { createServerSupabase } from "@/lib/supabase/server";
-import { weekAgoIso } from "@/lib/admin-api";
+import { csvEscape, weekAgoIso } from "@/lib/admin-api";
 import { getAppConfig, type AppConfig } from "@/lib/app-config.server";
 
 export type AdminOverview = {
@@ -10,7 +10,7 @@ export type AdminOverview = {
   };
   appConfig: AppConfig;
   stats: {
-    users: { total: number; last7Days: number };
+    users: { total: number; last7Days: number; withPushToken: number };
     plans: { free: number; premiumProfile: number; monthly: number; yearly: number };
     subscriptions: {
       activePaid: number;
@@ -38,6 +38,7 @@ export type AdminUserRow = {
   current_plan: string | null;
   account_status: string | null;
   referral_code: string | null;
+  expo_push_token: string | null;
   created_at: string;
 };
 
@@ -166,6 +167,7 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
     appConfig,
     usersTotal,
     usersRecent,
+    usersWithPushToken,
     premiumProfiles,
     freeProfiles,
     referralsTotal,
@@ -191,6 +193,9 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
     })),
     countRows(supabase, "profiles"),
     countRows(supabase, "profiles", (q) => q.gte("created_at", weekAgo)),
+    countRows(supabase, "profiles", (q) =>
+      q.not("expo_push_token", "is", null).neq("expo_push_token", "")
+    ),
     countRows(supabase, "profiles", (q) => q.eq("current_plan", "premium")),
     countRows(supabase, "profiles", (q) => q.eq("current_plan", "free")),
     countRows(supabase, "referrals"),
@@ -206,7 +211,9 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
     countRows(supabase, "website_waitlist", (q) => q.gte("created_at", weekAgo)),
     supabase
       .from("profiles")
-      .select("id, full_name, email_address, current_plan, account_status, referral_code, created_at")
+      .select(
+        "id, full_name, email_address, current_plan, account_status, referral_code, expo_push_token, created_at"
+      )
       .order("created_at", { ascending: false })
       .limit(25),
     supabase
@@ -342,7 +349,7 @@ export async function fetchAdminOverview(): Promise<AdminOverview> {
     },
     appConfig,
     stats: {
-      users: { total: usersTotal, last7Days: usersRecent },
+      users: { total: usersTotal, last7Days: usersRecent, withPushToken: usersWithPushToken },
       plans: {
         free: freeProfiles,
         premiumProfile: premiumProfiles,
@@ -390,7 +397,7 @@ export async function fetchAdminExport(type: string): Promise<{ header: string; 
     case "users":
       return {
         filename: "trivense-users.csv",
-        header: "email,name,plan,status,referral_code,created_at",
+        header: "email,name,plan,status,referral_code,expo_push_token,created_at",
         lines: overview.recentUsers.map((row) =>
           [
             row.email_address ?? "",
@@ -398,8 +405,11 @@ export async function fetchAdminExport(type: string): Promise<{ header: string; 
             row.current_plan ?? "",
             row.account_status ?? "",
             row.referral_code ?? "",
+            row.expo_push_token ?? "",
             row.created_at,
-          ].join(",")
+          ]
+            .map((value) => csvEscape(String(value)))
+            .join(",")
         ),
       };
     case "referrals":

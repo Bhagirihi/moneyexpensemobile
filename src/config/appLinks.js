@@ -1,12 +1,15 @@
+/** Canonical public website (Vercel). Use for all user-facing links. */
+export const WEBSITE_URL = "https://trivense.vercel.app";
+
 export const LEGAL_LINKS = {
-  privacyPolicy: "https://trivense.app/privacy",
-  termsOfService: "https://trivense.app/terms",
-  advertisingPolicy: "https://trivense.app/ads",
+  privacyPolicy: `${WEBSITE_URL}/privacy`,
+  termsOfService: `${WEBSITE_URL}/terms`,
+  advertisingPolicy: `${WEBSITE_URL}/ads`,
   support: "mailto:support@trivense.app",
 };
 
 export const STORE_LINKS = {
-  website: "https://trivense.app",
+  website: WEBSITE_URL,
   androidPackage: "com.trivense.app",
   playStoreBase:
     "https://play.google.com/store/apps/details?id=com.trivense.app",
@@ -24,6 +27,11 @@ export function buildPlayStoreUrl(referralCode) {
 export function buildReferralShareUrl(referralCode) {
   const code = encodeURIComponent((referralCode || "").trim().toUpperCase());
   return `${STORE_LINKS.website}/download?invite=${code}`;
+}
+
+export function buildBoardJoinUrl(boardCode) {
+  const code = encodeURIComponent(String(boardCode || "").trim());
+  return `${WEBSITE_URL}/join/${code}`;
 }
 
 export function buildReferralDeepLink(referralCode) {

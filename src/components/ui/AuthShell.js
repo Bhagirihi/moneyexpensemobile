@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -28,11 +28,18 @@ export function AuthShell({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
+  const scrollRef = useRef(null);
   const compact = compactProp ?? windowHeight < COMPACT_HEIGHT;
   const logoSize = compact ? 52 : 64;
   const heroHeight = compact ? 148 : 232;
 
-  const bottomPad = Math.max(insets.bottom, spacing.sm) + (compact ? spacing.md : spacing.lg);
+  const bottomPad = Math.max(insets.bottom, spacing.sm) + (compact ? spacing.xl : spacing.lg);
+
+  const handleScrollOnKeyboard = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
 
   const brandBlock = useMemo(() => {
     if (compact) {
@@ -82,11 +89,12 @@ export function AuthShell({
       />
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.flex}
           keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 8 : 0}
         >
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={[
               styles.scroll,
               compact && styles.scrollCompact,
@@ -94,7 +102,11 @@ export function AuthShell({
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
             bounces={false}
+            onContentSizeChange={handleScrollOnKeyboard}
+            onLayout={handleScrollOnKeyboard}
           >
             <View
               style={[

@@ -39,6 +39,7 @@ import { CategoriesScreen } from "./src/screens/CategoriesScreen";
 import { AnalyticsScreen } from "./src/screens/AnalyticsScreen";
 import { AnalysisScreen } from "./src/screens/AnalysisScreen";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
+import PostRegisterSetupScreen from "./src/screens/PostRegisterSetupScreen";
 import { NotificationScreen } from "./src/screens/NotificationScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
@@ -58,6 +59,10 @@ import {
 } from "./src/services/pushNotificationService";
 import { expenseBoardService } from "./src/services/expenseBoardService";
 import { bootstrapPlayStoreReferralInvite } from "./src/services/installReferrerService";
+import {
+  isPostRegisterSetupPending,
+  shouldShowPostRegisterSetup,
+} from "./src/utils/postRegisterSetupStorage";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -123,6 +128,7 @@ const screenOptions = {
 const AppContent = () => {
   const [session, setSession] = useState(null);
   const [appIsReady, setAppIsReady] = useState(false);
+  const [bootRoute, setBootRoute] = useState(null);
   const [fontsLoaded] = Font.useFonts({
     "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
   });
@@ -219,6 +225,20 @@ const AppContent = () => {
         } = await supabase.auth.getSession();
 
         setSession(session ?? null);
+
+        if (!session) {
+          setBootRoute("Login");
+        } else if (!session.user?.email_confirmed_at) {
+          setBootRoute("EmailVerification");
+        } else if (
+          session.user?.id &&
+          (await shouldShowPostRegisterSetup(session.user.id))
+        ) {
+          setBootRoute("PostRegisterSetup");
+        } else {
+          setBootRoute("Dashboard");
+        }
+
         await bootstrapPlayStoreReferralInvite();
       } catch (e) {
         console.warn(e);
@@ -231,11 +251,54 @@ const AppContent = () => {
   }, []);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!appIsReady) return;
 
-    registerForPushNotificationsAsync();
-    handleForegroundNotifications();
-    handleBackgroundNotifications();
+    let active = true;
+
+    (async () => {
+      if (!session) {
+        if (active) setBootRoute("Login");
+        return;
+      }
+
+      if (!session.user?.email_confirmed_at) {
+        if (active) setBootRoute("EmailVerification");
+        return;
+      }
+
+      if (
+        session.user?.id &&
+        (await shouldShowPostRegisterSetup(session.user.id))
+      ) {
+        if (active) setBootRoute("PostRegisterSetup");
+        return;
+      }
+
+      if (active) setBootRoute("Dashboard");
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [appIsReady, session?.user?.id, session?.user?.email_confirmed_at]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    let active = true;
+
+    (async () => {
+      const pendingSetup = await isPostRegisterSetupPending();
+      if (!active || pendingSetup) return;
+
+      registerForPushNotificationsAsync({ requestPermission: false });
+      handleForegroundNotifications();
+      handleBackgroundNotifications();
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [session?.user?.id]);
 
   const onLayoutRootView = useCallback(() => {
@@ -249,7 +312,7 @@ const AppContent = () => {
     }
   }, [appIsReady]);
 
-  if (!appIsReady) {
+  if (!appIsReady || !bootRoute) {
     return null;
   }
 
@@ -270,14 +333,9 @@ const AppContent = () => {
             <AppCueProvider>
             <NavigationContainer>
               <Stack.Navigator
+                key={session ? "auth-stack" : "guest-stack"}
                 screenOptions={screenOptions}
-                initialRouteName={
-                  !session
-                    ? "Login"
-                    : session?.user?.email_confirmed_at
-                    ? "Dashboard"
-                    : "EmailVerification"
-                }
+                initialRouteName={session ? bootRoute : "Login"}
               >
                 {session ? (
                   // Protected routes (unverified users see EmailVerification first)
@@ -285,6 +343,11 @@ const AppContent = () => {
                     <Stack.Screen
                       name="EmailVerification"
                       component={EmailVerificationScreen}
+                    />
+                    <Stack.Screen
+                      name="PostRegisterSetup"
+                      component={PostRegisterSetupScreen}
+                      options={{ gestureEnabled: false }}
                     />
                     <Stack.Screen
                       name="Onboarding"

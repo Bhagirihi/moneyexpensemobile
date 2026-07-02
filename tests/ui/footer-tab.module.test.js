@@ -8,15 +8,16 @@ describe("FooterTab UI", () => {
     jest.clearAllMocks();
   });
 
-  it("renders three tabs with labels", () => {
-    renderWithTheme(
-      <FooterTab navigation={mockNavigation} activeRoute="Home" />
-    );
+    it("renders four tabs with labels", () => {
+      renderWithTheme(
+        <FooterTab navigation={mockNavigation} activeRoute="Home" />
+      );
 
-    expect(screen.getByText("Home")).toBeTruthy();
-    expect(screen.getByText("Analytics")).toBeTruthy();
-    expect(screen.getByText("Settings")).toBeTruthy();
-  });
+      expect(screen.getByText("Home")).toBeTruthy();
+      expect(screen.getByText("Analytics")).toBeTruthy();
+      expect(screen.getByText("Profile")).toBeTruthy();
+      expect(screen.getByText("Settings")).toBeTruthy();
+    });
 
   it("navigates when a tab is pressed", () => {
     renderWithTheme(

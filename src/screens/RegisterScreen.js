@@ -20,6 +20,8 @@ import {
   normalizeReferralCode,
   setPendingReferralCode,
 } from "../utils/referralStorage";
+import { markPostRegisterSetupPending, clearPostRegisterSetupPending } from "../utils/postRegisterSetupStorage";
+import { navigateAfterRegisterAuth } from "../utils/postRegisterNavigation";
 
 const RegisterScreen = ({ navigation }) => {
   const { theme } = useTheme();
@@ -98,7 +100,9 @@ const RegisterScreen = ({ navigation }) => {
         await setPendingReferralCode(formData.referralCode);
       }
 
-      const { error: signUpError } = await signUpWithEmail(
+      await markPostRegisterSetupPending();
+
+      const { data, error: signUpError } = await signUpWithEmail(
         formData.email.trim(),
         formData.password,
         {
@@ -110,7 +114,15 @@ const RegisterScreen = ({ navigation }) => {
         }
       );
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        await clearPostRegisterSetupPending();
+        throw signUpError;
+      }
+
+      if (data?.user?.email_confirmed_at) {
+        await navigateAfterRegisterAuth(navigation, { userId: data.user.id });
+        return;
+      }
 
       navigation.reset({
         index: 0,
@@ -136,13 +148,16 @@ const RegisterScreen = ({ navigation }) => {
         await setPendingReferralCode(formData.referralCode);
       }
 
+      await markPostRegisterSetupPending();
+
       const { data, error } = await signInWithGoogle();
-      if (error) throw error;
+      if (error) {
+        await clearPostRegisterSetupPending();
+        throw error;
+      }
+
       if (data?.user?.email_confirmed_at) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Dashboard" }],
-        });
+        await navigateAfterRegisterAuth(navigation, { userId: data.user.id });
       } else {
         navigation.reset({
           index: 0,

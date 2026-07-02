@@ -14,15 +14,17 @@ describe("Navigation module UI", () => {
   });
 
   describe("FooterTab", () => {
-    it("renders Home, Analytics, and Settings tabs", () => {
+    it("renders Home, Analytics, Profile, and Settings tabs", () => {
       const { getByTestId, getByLabelText } = renderWithProviders(
         <FooterTab navigation={mockNavigation} activeRoute="Home" />
       );
       expect(getByTestId("footer-tab-Home")).toBeTruthy();
       expect(getByTestId("footer-tab-Analytics")).toBeTruthy();
+      expect(getByTestId("footer-tab-Profile")).toBeTruthy();
       expect(getByTestId("footer-tab-Settings")).toBeTruthy();
       expect(getByLabelText("Home")).toBeTruthy();
       expect(getByLabelText("Analytics")).toBeTruthy();
+      expect(getByLabelText("Profile")).toBeTruthy();
       expect(getByLabelText("Settings")).toBeTruthy();
     });
 

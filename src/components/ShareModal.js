@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { showToast } from "../utils/toast";
 import { copyToClipboard } from "../utils/clipboard";
+import { buildBoardJoinUrl } from "../config/appLinks";
 import { isValidEmail } from "../utils/validation";
 
 const ShareModal = ({
@@ -30,7 +31,7 @@ const ShareModal = ({
   const [inviting, setInviting] = useState(false);
 
   const code = shareCode || boardId;
-  const joinUrl = `https://trivense.app/join/${code}`;
+  const joinUrl = buildBoardJoinUrl(code);
 
   const handleShareApp = async (method) => {
     try {

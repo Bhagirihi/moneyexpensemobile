@@ -18,6 +18,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Header } from "../components/Header";
 import ScreenLayout from "../components/ScreenLayout";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRoute } from "@react-navigation/native";
 import { supabase, signInWithGoogle } from "../config/supabase";
 import {
   capitalizeFirstLetter,
@@ -36,6 +37,8 @@ import * as FileSystem from "expo-file-system";
 import Card from "../components/common/Card";
 import { SectionLabel, SettingsRow } from "../components/ui/UIKit";
 import { layout, radii, spacing, typography } from "../theme/tokens";
+import { AppTabHeader } from "../components/ui/AppTabHeader";
+import { useFooterScrollPadding } from "../hooks/useFooterScrollPadding";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const getLocaleFromLanguage = (language) => {
@@ -45,9 +48,12 @@ const getLocaleFromLanguage = (language) => {
 };
 
 export const ProfileScreen = ({ navigation }) => {
+  const route = useRoute();
+  const isTabRoot = route.params?.tabRoot === true;
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const scrollBottomPadding = useFooterScrollPadding(0, isTabRoot);
   const { plan, isPremium, paymentsEnabled } = useSubscription();
   const { language } = useAppSettings();
   const locale = getLocaleFromLanguage(language);
@@ -551,7 +557,7 @@ export const ProfileScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <ScreenLayout>
+      <ScreenLayout navigation={navigation} footerRoute={isTabRoot ? "Profile" : null}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.text }]}>
@@ -562,30 +568,48 @@ export const ProfileScreen = ({ navigation }) => {
     );
   }
 
+  const editButton = (
+    <TouchableOpacity
+      onPress={handleEditProfile}
+      style={[styles.editButton, { backgroundColor: theme.primaryMuted }]}
+    >
+      <MaterialCommunityIcons
+        name={isEditing ? "close" : "pencil"}
+        size={18}
+        color={theme.primary}
+      />
+    </TouchableOpacity>
+  );
+
   return (
     <ScreenLayout
+      navigation={navigation}
+      footerRoute={isTabRoot ? "Profile" : null}
+      showAdBanner={false}
       header={
-        <Header
-          title={t("profile")}
-          onBack={() => navigation.goBack()}
-          rightComponent={
-            <TouchableOpacity
-              onPress={handleEditProfile}
-              style={[styles.editButton, { backgroundColor: theme.primaryMuted }]}
-            >
-              <MaterialCommunityIcons
-                name={isEditing ? "close" : "pencil"}
-                size={18}
-                color={theme.primary}
-              />
-            </TouchableOpacity>
-          }
-        />
+        isTabRoot ? null : (
+          <Header
+            title={t("profile")}
+            onBack={() => navigation.goBack()}
+            rightComponent={editButton}
+          />
+        )
       }
     >
+      {isTabRoot ? (
+        <AppTabHeader
+          compact
+          title={t("profile")}
+          trailing={editButton}
+        />
+      ) : null}
       <Animated.ScrollView
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: spacing.xxl + insets.bottom }}
+        contentContainerStyle={{
+          paddingBottom: isTabRoot
+            ? scrollBottomPadding
+            : spacing.xxl + insets.bottom,
+        }}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],

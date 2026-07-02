@@ -6,10 +6,12 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { AppState } from "react-native";
 import { useAuth } from "./AuthContext";
 import { subscriptionService } from "../services/subscriptionService";
 import { purchaseService } from "../services/purchaseService";
 import { appConfigService } from "../services/appConfigService";
+import { supabase } from "../config/supabase";
 import { FEATURES, PLANS, PLAN_CATALOG, getPlanLimits } from "../config/subscriptionPlans";
 import { devError } from "../utils/logger";
 
@@ -18,6 +20,23 @@ const SubscriptionContext = createContext(null);
 const DEFAULT_PLAN_PRICES = {
   [PLANS.MONTHLY]: null,
   [PLANS.YEARLY]: null,
+};
+
+const isBillingUnavailableError = (error) => {
+  const details = [
+    error?.message,
+    error?.code,
+    error?.userInfo?.readableErrorCode,
+    error?.userInfo?.underlyingErrorMessage,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    details.includes("BILLING_UNAVAILABLE") ||
+    details.includes("Billing service unavailable") ||
+    details.includes("PurchaseNotAllowedError")
+  );
 };
 
 const UNLOCKED_SUBSCRIPTION = {
@@ -56,6 +75,42 @@ export const SubscriptionProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch remote flag on launch, when returning to foreground, and on admin updates.
+  useEffect(() => {
+    refreshAppConfig();
+
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        refreshAppConfig();
+      }
+    });
+
+    const configChannel = supabase
+      .channel("app-config-payments")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "app_config",
+          filter: "id=eq.1",
+        },
+        (payload) => {
+          const enabled = payload.new?.payments_enabled;
+          if (typeof enabled === "boolean") {
+            setPaymentsEnabled(enabled);
+            setConfigLoading(false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      appStateSub.remove();
+      supabase.removeChannel(configChannel);
+    };
+  }, [refreshAppConfig]);
+
   const refreshOfferings = useCallback(async () => {
     if (!paymentsEnabled || !purchaseService.isConfigured()) {
       setPlanPrices(DEFAULT_PLAN_PRICES);
@@ -67,7 +122,9 @@ export const SubscriptionProvider = ({ children }) => {
       const { planPrices: nextPrices } = await purchaseService.getOfferings();
       setPlanPrices(nextPrices);
     } catch (error) {
-      devError("refreshOfferings error:", error);
+      if (!isBillingUnavailableError(error)) {
+        devError("refreshOfferings error:", error);
+      }
     } finally {
       setOfferingsLoading(false);
     }
@@ -101,7 +158,13 @@ export const SubscriptionProvider = ({ children }) => {
     try {
       setLoading(true);
       if (paymentsOn) {
-        await purchaseService.syncPurchases();
+        try {
+          await purchaseService.syncPurchases();
+        } catch (error) {
+          if (!isBillingUnavailableError(error)) {
+            devError("syncPurchases error:", error);
+          }
+        }
       }
       const next = await subscriptionService.getEffectiveSubscription(user.id);
       setSubscription(next);
@@ -111,7 +174,9 @@ export const SubscriptionProvider = ({ children }) => {
           const { planPrices: nextPrices } = await purchaseService.getOfferings();
           setPlanPrices(nextPrices);
         } catch (error) {
-          devError("refreshOfferings error:", error);
+          if (!isBillingUnavailableError(error)) {
+            devError("refreshOfferings error:", error);
+          }
         } finally {
           setOfferingsLoading(false);
         }
@@ -231,6 +296,7 @@ export const SubscriptionProvider = ({ children }) => {
 
   const requireFeature = useCallback(
     (featureKey, navigation, options = {}) => {
+      if (configLoading) return true;
       if (!paymentsEnabled || hasFeature(featureKey)) return true;
       navigation.navigate("Paywall", {
         feature: featureKey,
@@ -238,7 +304,7 @@ export const SubscriptionProvider = ({ children }) => {
       });
       return false;
     },
-    [hasFeature, paymentsEnabled]
+    [configLoading, hasFeature, paymentsEnabled]
   );
 
   const limits = useMemo(() => {
@@ -257,6 +323,7 @@ export const SubscriptionProvider = ({ children }) => {
       offeringsLoading,
       planPrices,
       paymentsEnabled,
+      configLoading,
       getPlanPriceLabel,
       getPlanMonthlyPriceLabel,
       refreshSubscription,

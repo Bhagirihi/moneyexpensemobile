@@ -224,7 +224,7 @@ LISTING_SCREENS = [
     {
         "file": "phone_screenshot_4.png",
         "headline": "Everyone stays in sync",
-        "subhead": "Split bills & settle up fairly",
+        "subhead": "Split bills & track group balances",
         "badge": "SPLIT & SHARE",
         "screen_key": "split",
     },
@@ -233,7 +233,7 @@ LISTING_SCREENS = [
         "headline": "Settle up in seconds",
         "subhead": "Clear balances — who owes whom",
         "badge": "SETTLE UP",
-        "screen_key": "split",
+        "screen_key": "settle",
     },
     {
         "file": "phone_screenshot_6.png",
@@ -241,6 +241,27 @@ LISTING_SCREENS = [
         "subhead": "Search, filter & track in real time",
         "badge": "SMART SEARCH",
         "screen_key": "search",
+    },
+    {
+        "file": "phone_screenshot_7.png",
+        "headline": "₹ $ € £ and more",
+        "subhead": "Multi-currency for every trip",
+        "badge": "MULTI-CURRENCY",
+        "screen_key": "currency",
+    },
+    {
+        "file": "phone_screenshot_8.png",
+        "headline": "Invite in one tap",
+        "subhead": "Share boards with friends & family",
+        "badge": "INVITE & SHARE",
+        "screen_key": "invite",
+    },
+    {
+        "file": "phone_screenshot_9.png",
+        "headline": "Works offline",
+        "subhead": "Syncs when you're back online",
+        "badge": "REAL-TIME SYNC",
+        "screen_key": "sync",
     },
 ]
 
@@ -259,7 +280,11 @@ def main() -> None:
         "boards": promo.make_boards_screen(glyph),
         "analytics": promo.make_analytics_screen(glyph),
         "split": promo.make_split_screen(glyph),
+        "settle": promo.make_settle_screen(glyph),
         "search": promo.make_search_screen(glyph),
+        "currency": promo.make_currency_screen(glyph),
+        "invite": promo.make_invite_screen(glyph),
+        "sync": promo.make_sync_screen(glyph),
     }
 
     save(make_app_icon_512(), PLAY / "app_icon_512.png")
